@@ -178,7 +178,7 @@ export default function DashboardPage() {
 
     if (products) {
       const now = new Date()
-      const expiring = products
+      const allProducts = products
         .map(p => {
           const compra = new Date(p.fecha_compra)
           const vencimiento = new Date(compra)
@@ -186,9 +186,18 @@ export default function DashboardPage() {
           const diasRestantes = Math.ceil((vencimiento - now) / (1000 * 60 * 60 * 24))
           return { ...p, diasRestantes, fechaVencimiento: vencimiento }
         })
-        .filter(p => p.diasRestantes <= p.dias_alerta_vencimiento && p.diasRestantes >= 0)
+
+      // Productos vencidos (días negativos)
+      const expired = allProducts
+        .filter(p => p.diasRestantes < 0)
         .sort((a, b) => a.diasRestantes - b.diasRestantes)
 
+      // Productos próximos a vencer (dentro del rango de alerta)
+      const expiring = allProducts
+        .filter(p => p.diasRestantes >= 0 && p.diasRestantes <= p.dias_alerta_vencimiento)
+        .sort((a, b) => a.diasRestantes - b.diasRestantes)
+
+      setExpiredProducts(expired)
       setExpiringProducts(expiring)
     }
   }
