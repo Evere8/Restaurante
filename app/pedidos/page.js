@@ -354,12 +354,12 @@ export default function PedidosPage() {
               </div>
 
               {/* Carrito */}
-              <div className="border-l pl-4 flex flex-col overflow-hidden">
+              <div className="lg:border-l lg:pl-4 flex flex-col overflow-hidden mt-4 lg:mt-0">
                 <h3 className="font-bold text-lg mb-3 flex items-center">
                   <ShoppingCart className="mr-2 h-5 w-5" /> Carrito ({cart.length})
                 </h3>
 
-                <div className="flex-1 overflow-y-auto space-y-2 mb-4">
+                <div className="flex-1 overflow-y-auto space-y-2 mb-4 mobile-scroll max-h-[40vh] lg:max-h-full">
                   {cart.map(item => (
                     <div key={item.id} className="bg-gray-50 p-2 rounded-lg">
                       <div className="flex items-start justify-between mb-2">
