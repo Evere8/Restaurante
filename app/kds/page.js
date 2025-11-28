@@ -408,6 +408,99 @@ export default function KDSPage() {
               )}
           </TabsContent>
         </Tabs>
+
+        {/* Dialog de Vista de Detalles */}
+        <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Detalles del Pedido #{viewingOrder?.id?.slice(0, 8)}</DialogTitle>
+            </DialogHeader>
+            {viewingOrder && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-gray-600">Tipo:</span>
+                    <p className="font-medium">{viewingOrder.tipo}</p>
+                  </div>
+                  {viewingOrder.mesa && (
+                    <div>
+                      <span className="text-gray-600">Mesa:</span>
+                      <p className="font-medium">{viewingOrder.mesa}</p>
+                    </div>
+                  )}
+                  <div>
+                    <span className="text-gray-600">Estado:</span>
+                    <p className="font-medium">
+                      <Badge className={
+                        viewingOrder.estado === 'NUEVO' ? 'bg-blue-500' :
+                        viewingOrder.estado === 'PREPARANDO' ? 'bg-yellow-500' : 'bg-green-500'
+                      }>
+                        {viewingOrder.estado}
+                      </Badge>
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Creado:</span>
+                    <p className="font-medium">{new Date(viewingOrder.created_at).toLocaleString('es-ES')}</p>
+                  </div>
+                </div>
+
+                {viewingOrder.nota_cocina && (
+                  <div className="bg-yellow-50 p-3 rounded-lg">
+                    <p className="text-sm font-semibold text-yellow-800">Notas de cocina:</p>
+                    <p className="text-sm text-yellow-700">{viewingOrder.nota_cocina}</p>
+                  </div>
+                )}
+
+                {viewingOrder.nota_cliente && (
+                  <div className="bg-blue-50 p-3 rounded-lg">
+                    <p className="text-sm font-semibold text-blue-800">Notas del cliente:</p>
+                    <p className="text-sm text-blue-700">{viewingOrder.nota_cliente}</p>
+                  </div>
+                )}
+
+                <div className="border-t pt-4">
+                  <p className="font-semibold mb-3">Items del pedido:</p>
+                  <div className="space-y-2">
+                    {viewingOrder.order_items?.map((item, idx) => (
+                      <div key={idx} className="flex items-center justify-between bg-gray-50 p-3 rounded">
+                        <div className="flex items-center space-x-3">
+                          <span className="font-bold text-orange-500">{item.cantidad}x</span>
+                          <span>{item.nombre_item_snapshot}</span>
+                        </div>
+                        <span className="font-medium">${(item.precio_unitario * item.cantidad).toFixed(2)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="border-t pt-4 flex justify-between items-center">
+                  <span className="text-lg font-bold">Total:</span>
+                  <span className="text-2xl font-bold text-orange-600">${parseFloat(viewingOrder.total).toFixed(2)}</span>
+                </div>
+
+                <div className="flex space-x-2">
+                  <Button 
+                    variant="outline" 
+                    className="flex-1"
+                    onClick={() => {
+                      setViewDialogOpen(false)
+                      router.push('/pedidos')
+                    }}
+                  >
+                    Ir a Pedidos para Editar
+                  </Button>
+                  <Button 
+                    className="flex-1 bg-orange-500 hover:bg-orange-600"
+                    onClick={() => setViewDialogOpen(false)}
+                  >
+                    Cerrar
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
         </div>
       </div>
     </div>
