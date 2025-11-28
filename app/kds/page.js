@@ -336,22 +336,10 @@ export default function KDSPage() {
                   </CardContent>
                 </Card>
               )}
-            </div>
-          </div>
+          </TabsContent>
 
-          {/* Columna LISTO */}
-          <div className="space-y-4">
-            <div className="bg-green-500 text-white p-4 rounded-lg">
-              <h2 className="text-xl font-bold flex items-center justify-between">
-                <span>✅ LISTO</span>
-                <Badge variant="secondary" className="bg-green-600 text-white">
-                  {orders.LISTO.length}
-                </Badge>
-              </h2>
-            </div>
-
-            <div className="space-y-3">
-              {orders.LISTO.map(order => (
+          <TabsContent value="LISTO" className="space-y-4">
+            {orders.LISTO.map(order => (
                 <Card key={order.id} className="border-green-200 border-2">
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between">
