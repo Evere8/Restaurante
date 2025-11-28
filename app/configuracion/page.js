@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Plus, Edit, Trash2, Settings, Users as UsersIcon, Building } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -37,7 +38,18 @@ export default function ConfiguracionPage() {
     email: '',
     password: '',
     rol: 'CAJERO',
-    activo: true
+    activo: true,
+    permisos: {
+      dashboard: true,
+      menu: true,
+      pedidos: true,
+      kds: true,
+      cobro: true,
+      clientes: true,
+      cupones: true,
+      reportes: true,
+      configuracion: false
+    }
   })
 
   useEffect(() => {
