@@ -154,6 +154,104 @@ export default function PedidosPage() {
     return cart.reduce((sum, item) => sum + (parseFloat(item.precio_base) * item.cantidad), 0)
   }
 
+  const handleMarcarEntregado = async (orderId) => {
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({ estado: 'ENTREGADO' })
+        .eq('id', orderId)
+
+      if (error) throw error
+      toast.success('Pedido marcado como entregado')
+      loadOrders()
+    } catch (error) {
+      console.error('Error:', error)
+      toast.error('Error al actualizar pedido')
+    }
+  }
+
+  const openEditOrder = (order) => {
+    setEditingOrder(order)
+    setCart(order.order_items.map(item => ({
+      id: item.menu_item_id,
+      nombre: item.nombre_item_snapshot,
+      precio_base: item.precio_unitario,
+      cantidad: item.cantidad
+    })))
+    setOrderForm({
+      tipo: order.tipo,
+      mesa: order.mesa || '',
+      customer_id: order.customer_id || '',
+      nota_cliente: order.nota_cliente || '',
+      nota_cocina: order.nota_cocina || ''
+    })
+    setEditDialogOpen(true)
+  }
+
+  const handleUpdateOrder = async () => {
+    if (cart.length === 0) {
+      toast.error('El carrito está vacío')
+      return
+    }
+
+    try {
+      const subtotal = calculateTotal()
+      const total = subtotal
+
+      // Actualizar orden
+      const { error: orderError } = await supabase
+        .from('orders')
+        .update({
+          tipo: orderForm.tipo,
+          mesa: orderForm.mesa,
+          customer_id: orderForm.customer_id || null,
+          nota_cliente: orderForm.nota_cliente,
+          nota_cocina: orderForm.nota_cocina,
+          total: total
+        })
+        .eq('id', editingOrder.id)
+
+      if (orderError) throw orderError
+
+      // Eliminar items viejos
+      await supabase
+        .from('order_items')
+        .delete()
+        .eq('order_id', editingOrder.id)
+
+      // Insertar items nuevos
+      const orderItems = cart.map(item => ({
+        order_id: editingOrder.id,
+        menu_item_id: item.id,
+        cantidad: item.cantidad,
+        precio_unitario: parseFloat(item.precio_base),
+        nombre_item_snapshot: item.nombre
+      }))
+
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .insert(orderItems)
+
+      if (itemsError) throw itemsError
+
+      toast.success('Pedido actualizado exitosamente')
+      setEditDialogOpen(false)
+      setEditingOrder(null)
+      setCart([])
+      setOrderForm({
+        tipo: 'SALA',
+        mesa: '',
+        customer_id: '',
+        nota_cliente: '',
+        nota_cocina: ''
+      })
+      loadOrders()
+    } catch (error) {
+      console.error('Error actualizando pedido:', error)
+      toast.error('Error al actualizar pedido')
+    }
+  }
+
   const handleCreateOrder = async () => {
     if (cart.length === 0) {
       toast.error('El carrito está vacío')
