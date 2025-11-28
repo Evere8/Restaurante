@@ -148,20 +148,30 @@ export default function KDSPage() {
           <p className="text-gray-600">Sistema de pantalla para cocina (Actualización en tiempo real)</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Columna NUEVO */}
-          <div className="space-y-4">
-            <div className="bg-blue-500 text-white p-4 rounded-lg">
-              <h2 className="text-xl font-bold flex items-center justify-between">
-                <span>🆕 NUEVO</span>
-                <Badge variant="secondary" className="bg-blue-600 text-white">
-                  {orders.NUEVO.length}
-                </Badge>
-              </h2>
-            </div>
+        <Tabs defaultValue="NUEVO" className="space-y-4">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="NUEVO" className="relative">
+              🆕 Nuevos
+              {orders.NUEVO.length > 0 && (
+                <Badge className="ml-2 bg-blue-500">{orders.NUEVO.length}</Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="PREPARANDO" className="relative">
+              🔥 En Preparación
+              {orders.PREPARANDO.length > 0 && (
+                <Badge className="ml-2 bg-yellow-500">{orders.PREPARANDO.length}</Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="LISTO" className="relative">
+              ✅ Listos
+              {orders.LISTO.length > 0 && (
+                <Badge className="ml-2 bg-green-500">{orders.LISTO.length}</Badge>
+              )}
+            </TabsTrigger>
+          </TabsList>
 
-            <div className="space-y-3">
-              {orders.NUEVO.map(order => (
+          <TabsContent value="NUEVO" className="space-y-4">
+            {orders.NUEVO.map(order => (
                 <Card key={order.id} className="border-blue-200 border-2">
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between">
