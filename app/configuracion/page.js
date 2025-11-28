@@ -68,6 +68,12 @@ export default function ConfiguracionPage() {
     }
   }, [user, currentRestaurant])
 
+  useEffect(() => {
+    if (currency) {
+      setSelectedCurrency(currency)
+    }
+  }, [currency])
+
   const loadRestaurantData = async () => {
     const { data, error } = await supabase
       .from('restaurants')
