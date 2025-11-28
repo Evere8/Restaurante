@@ -156,5 +156,16 @@ code {
       max-height: 85vh !important;
       overflow-y: auto !important;
     }
+    
+    /* Fix para modales en móvil */
+    [role="dialog"] {
+      max-height: 95vh !important;
+      height: auto !important;
+    }
+    
+    /* Mejorar scroll touch en iOS */
+    * {
+      -webkit-tap-highlight-color: transparent;
+    }
   }
 }
