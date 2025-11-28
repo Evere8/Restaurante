@@ -186,15 +186,19 @@ export default function ClientesPage() {
             <h1 className="text-3xl font-bold text-gray-800">Gestión de Clientes</h1>
             <p className="text-gray-600">Administra tu base de clientes</p>
           </div>
-          <Dialog open={dialogOpen} onOpenChange={(open) => {
-            setDialogOpen(open)
-            if (!open) resetForm()
-          }}>
-            <DialogTrigger asChild>
-              <Button className="bg-orange-500 hover:bg-orange-600">
-                <Plus className="mr-2 h-4 w-4" /> Nuevo Cliente
-              </Button>
-            </DialogTrigger>
+          <div className="flex space-x-2">
+            <Button variant="outline" onClick={exportToCSV} disabled={customers.length === 0}>
+              <Download className="mr-2 h-4 w-4" /> Exportar CSV
+            </Button>
+            <Dialog open={dialogOpen} onOpenChange={(open) => {
+              setDialogOpen(open)
+              if (!open) resetForm()
+            }}>
+              <DialogTrigger asChild>
+                <Button className="bg-orange-500 hover:bg-orange-600">
+                  <Plus className="mr-2 h-4 w-4" /> Nuevo Cliente
+                </Button>
+              </DialogTrigger>
             <DialogContent className="max-w-2xl">
               <DialogHeader>
                 <DialogTitle>{editingCustomer ? 'Editar' : 'Nuevo'} Cliente</DialogTitle>
