@@ -336,7 +336,7 @@ export default function ClientesPage() {
             )}
           </CardContent>
         </Card>
-        </div>
+      </div>
       </div>
     </div>
   )
