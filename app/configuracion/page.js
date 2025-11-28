@@ -445,5 +445,7 @@ export default function ConfiguracionPage() {
         </Tabs>
       </div>
     </div>
+      </div>
+    </div>
   )
 }

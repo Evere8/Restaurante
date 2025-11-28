@@ -359,5 +359,7 @@ export default function CuponesPage() {
         </Card>
       </div>
     </div>
+      </div>
+    </div>
   )
 }

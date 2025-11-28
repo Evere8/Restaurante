@@ -469,5 +469,7 @@ export default function MenuPage() {
         </Tabs>
       </div>
     </div>
+      </div>
+    </div>
   )
 }

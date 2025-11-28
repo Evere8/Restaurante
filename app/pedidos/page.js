@@ -441,5 +441,7 @@ export default function PedidosPage() {
         </Dialog>
       </div>
     </div>
+      </div>
+    </div>
   )
 }
