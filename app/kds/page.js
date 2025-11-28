@@ -252,22 +252,10 @@ export default function KDSPage() {
                   </CardContent>
                 </Card>
               )}
-            </div>
-          </div>
+          </TabsContent>
 
-          {/* Columna PREPARANDO */}
-          <div className="space-y-4">
-            <div className="bg-yellow-500 text-white p-4 rounded-lg">
-              <h2 className="text-xl font-bold flex items-center justify-between">
-                <span>👨‍🍳 EN PREPARACIÓN</span>
-                <Badge variant="secondary" className="bg-yellow-600 text-white">
-                  {orders.PREPARANDO.length}
-                </Badge>
-              </h2>
-            </div>
-
-            <div className="space-y-3">
-              {orders.PREPARANDO.map(order => (
+          <TabsContent value="PREPARANDO" className="space-y-4">
+            {orders.PREPARANDO.map(order => (
                 <Card key={order.id} className="border-yellow-200 border-2">
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between">
