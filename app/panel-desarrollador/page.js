@@ -82,18 +82,76 @@ export default function PanelDesarrolladorPage() {
   const handleSaveRestaurant = async () => {
     try {
       if (editingRestaurant) {
+        // Actualizar restaurante existente
         const { error } = await supabase
           .from('restaurants')
-          .update(restaurantForm)
+          .update({
+            nombre: restaurantForm.nombre,
+            slug: restaurantForm.slug,
+            telefono: restaurantForm.telefono,
+            direccion: restaurantForm.direccion,
+            tipo_pago: restaurantForm.tipo_pago,
+            activo: restaurantForm.activo
+          })
           .eq('id', editingRestaurant.id)
         if (error) throw error
         toast.success('Cliente actualizado')
+      } else {
+        // Validar campos obligatorios
+        if (!restaurantForm.nombre || !restaurantForm.slug || !restaurantForm.admin_email || !restaurantForm.admin_password || !restaurantForm.admin_nombre) {
+          toast.error('Complete todos los campos obligatorios')
+          return
+        }
+
+        // Crear nuevo restaurante
+        const { data: newRestaurant, error: restaurantError } = await supabase
+          .from('restaurants')
+          .insert([{
+            nombre: restaurantForm.nombre,
+            slug: restaurantForm.slug,
+            telefono: restaurantForm.telefono,
+            direccion: restaurantForm.direccion,
+            tipo_pago: restaurantForm.tipo_pago,
+            activo: restaurantForm.activo
+          }])
+          .select()
+          .single()
+
+        if (restaurantError) throw restaurantError
+
+        // Crear usuario admin para el restaurante
+        const { error: adminError } = await supabase
+          .from('users')
+          .insert([{
+            restaurant_id: newRestaurant.id,
+            nombre: restaurantForm.admin_nombre,
+            email: restaurantForm.admin_email,
+            password: restaurantForm.admin_password,
+            rol: 'ADMIN',
+            activo: true,
+            permisos: {
+              dashboard: true,
+              menu: true,
+              pedidos: true,
+              kds: true,
+              cobro: true,
+              clientes: true,
+              cupones: true,
+              reportes: true,
+              configuracion: true
+            }
+          }])
+
+        if (adminError) throw adminError
+        toast.success('Restaurante y administrador creados exitosamente')
       }
+      
       setDialogOpen(false)
       resetRestaurantForm()
       loadRestaurants()
     } catch (error) {
-      toast.error('Error al guardar cliente')
+      console.error('Error:', error)
+      toast.error('Error al guardar: ' + error.message)
     }
   }
 
