@@ -121,6 +121,21 @@ export default function ConfiguracionPage() {
     }
   }
 
+  const handleSavePreferences = async () => {
+    try {
+      const result = await updateCurrency(selectedCurrency)
+      
+      if (result.success) {
+        toast.success('Preferencias guardadas correctamente')
+      } else {
+        toast.error('Error al guardar preferencias')
+      }
+    } catch (error) {
+      console.error('Error guardando preferencias:', error)
+      toast.error('Error al guardar preferencias')
+    }
+  }
+
   const handleSaveUser = async () => {
     if (!userForm.nombre || !userForm.email) {
       toast.error('Nombre y email son obligatorios')
