@@ -514,7 +514,7 @@ export default function CobroPage() {
                   className="w-full bg-orange-500 hover:bg-orange-600 py-6 text-lg"
                   onClick={handleProcessPayment}
                 >
-                  <CreditCard className="mr-2 h-5 w-5" /> Procesar Pago - €{calculateFinalTotal().toFixed(2)}
+                  <CreditCard className="mr-2 h-5 w-5" /> Procesar Pago - {formatCurrency(calculateFinalTotal())}
                 </Button>
               </div>
             )}
