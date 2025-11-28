@@ -367,7 +367,7 @@ export default function CobroPage() {
 
                     <div className="border-t pt-2 flex justify-between items-center">
                       <span className="font-bold">Total:</span>
-                      <span className="text-xl font-bold text-gray-700">€{parseFloat(order.total).toFixed(2)}</span>
+                      <span className="text-xl font-bold text-gray-700">{formatCurrency(order.total)}</span>
                     </div>
                   </CardContent>
                 </Card>
