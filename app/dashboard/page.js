@@ -240,7 +240,7 @@ export default function DashboardPage() {
               <DollarSign className="h-4 w-4 text-green-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">€{kpis.ventasHoy.toFixed(2)}</div>
+              <div className="text-2xl font-bold">{formatCurrency(kpis.ventasHoy)}</div>
             </CardContent>
           </Card>
 
