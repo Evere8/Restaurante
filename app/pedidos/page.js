@@ -282,7 +282,7 @@ export default function PedidosPage() {
                       </div>
                       <div className="border-t pt-2 mt-2 flex justify-between font-bold text-lg">
                         <span>Total:</span>
-                        <span className="text-orange-600">€{parseFloat(order.total).toFixed(2)}</span>
+                        <span className="text-orange-600">{formatCurrency(order.total)}</span>
                       </div>
                     </div>
                   </CardContent>
