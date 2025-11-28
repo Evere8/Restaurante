@@ -227,10 +227,14 @@ export default function PanelDesarrolladorPage() {
   const resetRestaurantForm = () => {
     setRestaurantForm({
       nombre: '',
-      email: '',
+      slug: '',
       telefono: '',
-      contacto_numero: '',
-      tipo_pago_plan: 'CONTADO'
+      direccion: '',
+      admin_nombre: '',
+      admin_email: '',
+      admin_password: '',
+      tipo_pago: 'CONTADO',
+      activo: true
     })
     setEditingRestaurant(null)
   }
