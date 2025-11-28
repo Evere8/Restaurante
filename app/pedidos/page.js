@@ -354,7 +354,7 @@ export default function PedidosPage() {
               </div>
 
               {/* Carrito */}
-              <div className="lg:border-l lg:pl-4 flex flex-col overflow-hidden mt-4 lg:mt-0">
+              <div className="lg:border-l lg:pl-4 flex flex-col mt-4 lg:mt-0">
                 <h3 className="font-bold text-lg mb-3 flex items-center">
                   <ShoppingCart className="mr-2 h-5 w-5" /> Carrito ({cart.length})
                 </h3>
