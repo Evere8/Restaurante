@@ -170,7 +170,12 @@ export default function KDSPage() {
                           {order.tipo}
                         </Badge>
                       </div>
-                      <OrderTimer createdAt={order.created_at} />
+                      <OrderTimer 
+                        createdAt={order.created_at}
+                        estado={order.estado}
+                        tiempoInicio={order.tiempo_inicio_preparacion}
+                        tiempoListo={order.tiempo_listo}
+                      />
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-3">
@@ -261,7 +266,12 @@ export default function KDSPage() {
                           {order.tipo}
                         </Badge>
                       </div>
-                      <OrderTimer createdAt={order.created_at} />
+                      <OrderTimer 
+                        createdAt={order.created_at}
+                        estado={order.estado}
+                        tiempoInicio={order.tiempo_inicio_preparacion}
+                        tiempoListo={order.tiempo_listo}
+                      />
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-3">
@@ -352,7 +362,12 @@ export default function KDSPage() {
                           {order.tipo}
                         </Badge>
                       </div>
-                      <OrderTimer createdAt={order.created_at} />
+                      <OrderTimer 
+                        createdAt={order.created_at}
+                        estado={order.estado}
+                        tiempoInicio={order.tiempo_inicio_preparacion}
+                        tiempoListo={order.tiempo_listo}
+                      />
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-3">
