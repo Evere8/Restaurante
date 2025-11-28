@@ -234,13 +234,15 @@ export default function MenuPage() {
 
   const openEditProduct = (product) => {
     setEditingProduct(product)
+    // Extract clean image URL if it's a Google search URL
+    const cleanImgUrl = product.img_url ? extractImageUrl(product.img_url) : ''
     setProductForm({
       nombre: product.nombre,
       descripcion: product.descripcion || '',
       precio_base: product.precio_base,
       coste: product.coste || '',
       category_id: product.category_id || '',
-      img_url: product.img_url || '',
+      img_url: cleanImgUrl,
       tiempo_preparacion_min: product.tiempo_preparacion_min,
       disponible: product.disponible,
       dias_para_vencer: product.dias_para_vencer || '',
