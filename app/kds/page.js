@@ -22,40 +22,6 @@ export default function KDSPage() {
     LISTO: []
   })
 
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/login')
-    }
-  }, [user, authLoading, router])
-
-  useEffect(() => {
-    if (user && restaurant) {
-      loadOrders()
-      
-      // Suscripción a cambios en tiempo real
-      const channel = supabase
-        .channel('kds-orders')
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'orders',
-            filter: `restaurant_id=eq.${restaurant.id}`
-          },
-          (payload) => {
-            console.log('Cambio detectado:', payload)
-            loadOrders()
-          }
-        )
-        .subscribe()
-
-      return () => {
-        supabase.removeChannel(channel)
-      }
-    }
-  }, [user, restaurant])
-
   const loadOrders = async () => {
     const { data, error } = await supabase
       .from('orders')
