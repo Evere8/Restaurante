@@ -299,7 +299,12 @@ export default function PanelDesarrolladorPage() {
             <TabsContent value="clientes">
               <Card>
                 <CardHeader>
-                  <CardTitle>Clientes (Restaurantes)</CardTitle>
+                  <div className="flex items-center justify-between">
+                    <CardTitle>Clientes (Restaurantes)</CardTitle>
+                    <Button className="bg-orange-500 hover:bg-orange-600" onClick={() => setDialogOpen(true)}>
+                      <Plus className="mr-2 h-4 w-4" /> Nuevo Restaurante
+                    </Button>
+                  </div>
                 </CardHeader>
                 <CardContent className="p-0">
                   <div className="overflow-x-auto">
