@@ -353,6 +353,76 @@ export default function ConfiguracionPage() {
                             </SelectContent>
                           </Select>
                         </div>
+                        
+                        {/* Sistema de Permisos */}
+                        <div className="space-y-2 pt-4 border-t">
+                          <Label className="text-base font-semibold">Permisos - Selecciona qué puede ver:</Label>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="flex items-center space-x-2">
+                              <Checkbox 
+                                checked={userForm.permisos.dashboard}
+                                onCheckedChange={(checked) => setUserForm({...userForm, permisos: {...userForm.permisos, dashboard: checked}})}
+                              />
+                              <Label className="cursor-pointer">Dashboard</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Checkbox 
+                                checked={userForm.permisos.menu}
+                                onCheckedChange={(checked) => setUserForm({...userForm, permisos: {...userForm.permisos, menu: checked}})}
+                              />
+                              <Label className="cursor-pointer">Menú</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Checkbox 
+                                checked={userForm.permisos.pedidos}
+                                onCheckedChange={(checked) => setUserForm({...userForm, permisos: {...userForm.permisos, pedidos: checked}})}
+                              />
+                              <Label className="cursor-pointer">Pedidos</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Checkbox 
+                                checked={userForm.permisos.kds}
+                                onCheckedChange={(checked) => setUserForm({...userForm, permisos: {...userForm.permisos, kds: checked}})}
+                              />
+                              <Label className="cursor-pointer">Cocina (KDS)</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Checkbox 
+                                checked={userForm.permisos.cobro}
+                                onCheckedChange={(checked) => setUserForm({...userForm, permisos: {...userForm.permisos, cobro: checked}})}
+                              />
+                              <Label className="cursor-pointer">Cobro</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Checkbox 
+                                checked={userForm.permisos.clientes}
+                                onCheckedChange={(checked) => setUserForm({...userForm, permisos: {...userForm.permisos, clientes: checked}})}
+                              />
+                              <Label className="cursor-pointer">Clientes</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Checkbox 
+                                checked={userForm.permisos.cupones}
+                                onCheckedChange={(checked) => setUserForm({...userForm, permisos: {...userForm.permisos, cupones: checked}})}
+                              />
+                              <Label className="cursor-pointer">Cupones</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Checkbox 
+                                checked={userForm.permisos.reportes}
+                                onCheckedChange={(checked) => setUserForm({...userForm, permisos: {...userForm.permisos, reportes: checked}})}
+                              />
+                              <Label className="cursor-pointer">Reportes</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Checkbox 
+                                checked={userForm.permisos.configuracion}
+                                onCheckedChange={(checked) => setUserForm({...userForm, permisos: {...userForm.permisos, configuracion: checked}})}
+                              />
+                              <Label className="cursor-pointer">Configuración</Label>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                       <div className="flex justify-end space-x-2 mt-4">
                         <Button variant="outline" onClick={() => setUserDialogOpen(false)}>Cancelar</Button>
