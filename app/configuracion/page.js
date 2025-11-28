@@ -237,7 +237,18 @@ export default function ConfiguracionPage() {
       email: userToEdit.email,
       password: '',
       rol: userToEdit.rol,
-      activo: userToEdit.activo
+      activo: userToEdit.activo,
+      permisos: userToEdit.permisos || {
+        dashboard: true,
+        menu: true,
+        pedidos: true,
+        kds: true,
+        cobro: true,
+        clientes: true,
+        cupones: true,
+        reportes: true,
+        configuracion: false
+      }
     })
     setUserDialogOpen(true)
   }
