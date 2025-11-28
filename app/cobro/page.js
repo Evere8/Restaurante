@@ -470,7 +470,7 @@ export default function CobroPage() {
                       <p className="text-sm text-green-700">
                         Descuento: {appliedCoupon.tipo === 'PORCENTAJE' 
                           ? `${appliedCoupon.valor}%` 
-                          : `€${appliedCoupon.valor}`}
+                          : formatCurrency(appliedCoupon.valor)}
                       </p>
                     </div>
                   )}
