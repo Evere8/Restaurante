@@ -194,6 +194,22 @@ export default function MenuPage() {
     }
   }
 
+  const extractImageUrl = (url) => {
+    // Si es una URL de búsqueda de Google, extraer la URL real de la imagen
+    if (url.includes('google.com/imgres')) {
+      try {
+        const urlObj = new URL(url)
+        const imgurl = urlObj.searchParams.get('imgurl')
+        if (imgurl) {
+          return decodeURIComponent(imgurl)
+        }
+      } catch (e) {
+        console.error('Error extrayendo URL:', e)
+      }
+    }
+    return url
+  }
+
   const resetProductForm = () => {
     setProductForm({
       nombre: '',
