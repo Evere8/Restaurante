@@ -24,7 +24,6 @@ export default function PanelDesarrolladorPage() {
   const [developers, setDevelopers] = useState([])
   const [editingRestaurant, setEditingRestaurant] = useState(null)
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false)
   const [developerDialogOpen, setDeveloperDialogOpen] = useState(false)
 
   const [restaurantForm, setRestaurantForm] = useState({
@@ -36,7 +35,6 @@ export default function PanelDesarrolladorPage() {
   })
 
   const [passwordForm, setPasswordForm] = useState({
-    current_password: '',
     new_password: '',
     new_email: ''
   })
@@ -61,26 +59,20 @@ export default function PanelDesarrolladorPage() {
   }, [user])
 
   const loadRestaurants = async () => {
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('restaurants')
       .select('*')
       .order('created_at', { ascending: false })
-
-    if (!error) {
-      setRestaurants(data || [])
-    }
+    setRestaurants(data || [])
   }
 
   const loadDevelopers = async () => {
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('users')
       .select('*')
       .eq('rol', 'DESARROLLADOR')
       .order('created_at', { ascending: false })
-
-    if (!error) {
-      setDevelopers(data || [])
-    }
+    setDevelopers(data || [])
   }
 
   const handleSaveRestaurant = async () => {
@@ -90,16 +82,13 @@ export default function PanelDesarrolladorPage() {
           .from('restaurants')
           .update(restaurantForm)
           .eq('id', editingRestaurant.id)
-
         if (error) throw error
         toast.success('Cliente actualizado')
       }
-
       setDialogOpen(false)
       resetRestaurantForm()
       loadRestaurants()
     } catch (error) {
-      console.error('Error:', error)
       toast.error('Error al guardar cliente')
     }
   }
@@ -107,36 +96,21 @@ export default function PanelDesarrolladorPage() {
   const handleToggleActive = async (restaurant) => {
     try {
       const newStatus = !restaurant.activo
-
       const { error } = await supabase
         .from('restaurants')
         .update({ activo: newStatus })
         .eq('id', restaurant.id)
-
       if (error) throw error
-
-      // Si se desactiva, cerrar sesión de todos los usuarios de ese restaurante
-      if (!newStatus) {
-        toast.success('Cliente desactivado. Los usuarios no podrán iniciar sesión.')
-      } else {
-        toast.success('Cliente activado')
-      }
-
+      toast.success(newStatus ? 'Cliente activado' : 'Cliente desactivado')
       loadRestaurants()
     } catch (error) {
-      console.error('Error:', error)
       toast.error('Error al cambiar estado')
     }
   }
 
   const handleDeleteRestaurant = async (id) => {
-    if (!confirm('¿Estás seguro de eliminar este cliente? Se eliminarán todos sus datos.')) return
-
-    const { error } = await supabase
-      .from('restaurants')
-      .delete()
-      .eq('id', id)
-
+    if (!confirm('¿Eliminar este cliente y todos sus datos?')) return
+    const { error } = await supabase.from('restaurants').delete().eq('id', id)
     if (error) {
       toast.error('Error eliminando cliente')
     } else {
@@ -150,27 +124,16 @@ export default function PanelDesarrolladorPage() {
       toast.error('Ingresa la nueva contraseña')
       return
     }
-
     try {
-      const updateData = {
-        password: passwordForm.new_password
-      }
-
+      const updateData = { password: passwordForm.new_password }
       if (passwordForm.new_email) {
         updateData.email = passwordForm.new_email
       }
-
-      const { error } = await supabase
-        .from('users')
-        .update(updateData)
-        .eq('id', user.id)
-
+      const { error } = await supabase.from('users').update(updateData).eq('id', user.id)
       if (error) throw error
-
       toast.success('Datos actualizados. Inicia sesión nuevamente.')
       setTimeout(() => logout(), 2000)
     } catch (error) {
-      console.error('Error:', error)
       toast.error('Error al actualizar datos')
     }
   }
@@ -180,27 +143,21 @@ export default function PanelDesarrolladorPage() {
       toast.error('Todos los campos son obligatorios')
       return
     }
-
     try {
-      const { error } = await supabase
-        .from('users')
-        .insert([{
-          nombre: developerForm.nombre,
-          email: developerForm.email,
-          password: developerForm.password,
-          rol: 'DESARROLLADOR',
-          activo: true,
-          restaurant_id: null
-        }])
-
+      const { error } = await supabase.from('users').insert([{
+        nombre: developerForm.nombre,
+        email: developerForm.email,
+        password: developerForm.password,
+        rol: 'DESARROLLADOR',
+        activo: true,
+        restaurant_id: null
+      }])
       if (error) throw error
-
       toast.success('Desarrollador añadido')
       setDeveloperDialogOpen(false)
       resetDeveloperForm()
       loadDevelopers()
     } catch (error) {
-      console.error('Error:', error)
       toast.error('Error al añadir desarrollador')
     }
   }
@@ -217,11 +174,7 @@ export default function PanelDesarrolladorPage() {
   }
 
   const resetDeveloperForm = () => {
-    setDeveloperForm({
-      nombre: '',
-      email: '',
-      password: ''
-    })
+    setDeveloperForm({ nombre: '', email: '', password: '' })
   }
 
   const openEditRestaurant = (restaurant) => {
@@ -237,81 +190,77 @@ export default function PanelDesarrolladorPage() {
   }
 
   if (authLoading || !user || user.rol !== 'DESARROLLADOR') {
-    return <div className=\"flex items-center justify-center min-h-screen\">Cargando...</div>
+    return <div className="flex items-center justify-center min-h-screen">Cargando...</div>
   }
 
   return (
-    <div className=\"flex min-h-screen bg-gray-50\">
+    <div className="flex min-h-screen bg-gray-50">
       <Sidebar />
-      <div className=\"flex-1 overflow-auto\">
-        <div className=\"container mx-auto px-4 py-6\">
-          <div className=\"mb-6\">
-            <h1 className=\"text-3xl font-bold text-gray-800\">Panel de Desarrollador</h1>
-            <p className=\"text-gray-600\">Gestión de clientes (restaurantes) y desarrolladores</p>
+      <div className="flex-1 overflow-auto">
+        <div className="container mx-auto px-4 py-6">
+          <div className="mb-6">
+            <h1 className="text-3xl font-bold text-gray-800">Panel de Desarrollador</h1>
+            <p className="text-gray-600">Gestión de clientes y desarrolladores</p>
           </div>
 
-          <Tabs defaultValue=\"clientes\" className=\"space-y-4\">
+          <Tabs defaultValue="clientes" className="space-y-4">
             <TabsList>
-              <TabsTrigger value=\"clientes\">Clientes ({restaurants.length})</TabsTrigger>
-              <TabsTrigger value=\"developers\">Desarrolladores ({developers.length})</TabsTrigger>
-              <TabsTrigger value=\"mi-cuenta\">Mi Cuenta</TabsTrigger>
+              <TabsTrigger value="clientes">Clientes ({restaurants.length})</TabsTrigger>
+              <TabsTrigger value="developers">Desarrolladores ({developers.length})</TabsTrigger>
+              <TabsTrigger value="mi-cuenta">Mi Cuenta</TabsTrigger>
             </TabsList>
 
-            {/* Pestaña Clientes */}
-            <TabsContent value=\"clientes\">
+            <TabsContent value="clientes">
               <Card>
                 <CardHeader>
                   <CardTitle>Clientes (Restaurantes)</CardTitle>
                 </CardHeader>
-                <CardContent className=\"p-0\">
-                  <div className=\"overflow-x-auto\">
-                    <table className=\"w-full\">
-                      <thead className=\"bg-gray-50 border-b\">
+                <CardContent className="p-0">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-50 border-b">
                         <tr>
-                          <th className=\"px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase\">Cliente</th>
-                          <th className=\"px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase\">Contacto</th>
-                          <th className=\"px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase\">Plan</th>
-                          <th className=\"px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase\">Estado</th>
-                          <th className=\"px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase\">Acciones</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cliente</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Contacto</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Plan</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
+                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Acciones</th>
                         </tr>
                       </thead>
-                      <tbody className=\"bg-white divide-y divide-gray-200\">
+                      <tbody className="bg-white divide-y divide-gray-200">
                         {restaurants.map(restaurant => (
-                          <tr key={restaurant.id} className=\"hover:bg-gray-50\">
-                            <td className=\"px-6 py-4\">
-                              <div className=\"flex items-center\">
-                                <Building className=\"h-5 w-5 text-gray-400 mr-3\" />
+                          <tr key={restaurant.id} className="hover:bg-gray-50">
+                            <td className="px-6 py-4">
+                              <div className="flex items-center">
+                                <Building className="h-5 w-5 text-gray-400 mr-3" />
                                 <div>
-                                  <div className=\"font-semibold\">{restaurant.nombre}</div>
-                                  <div className=\"text-sm text-gray-500\">{restaurant.slug}</div>
+                                  <div className="font-semibold">{restaurant.nombre}</div>
+                                  <div className="text-sm text-gray-500">{restaurant.slug}</div>
                                 </div>
                               </div>
                             </td>
-                            <td className=\"px-6 py-4 text-sm\">
+                            <td className="px-6 py-4 text-sm">
                               {restaurant.email && <div>{restaurant.email}</div>}
                               {restaurant.contacto_numero && <div>{restaurant.contacto_numero}</div>}
                             </td>
-                            <td className=\"px-6 py-4\">
+                            <td className="px-6 py-4">
                               <Badge variant={restaurant.tipo_pago_plan === 'CONTADO' ? 'default' : 'secondary'}>
                                 {restaurant.tipo_pago_plan || 'CONTADO'}
                               </Badge>
                             </td>
-                            <td className=\"px-6 py-4\">
-                              <Switch
-                                checked={restaurant.activo}
-                                onCheckedChange={() => handleToggleActive(restaurant)}
-                              />
-                              <span className=\"ml-2 text-sm\">
-                                {restaurant.activo ? 'Activo' : 'Inactivo'}
-                              </span>
+                            <td className="px-6 py-4">
+                              <div className="flex items-center space-x-2">
+                                <Switch checked={restaurant.activo} onCheckedChange={() => handleToggleActive(restaurant)} />
+                                <span className="text-sm">{restaurant.activo ? 'Activo' : 'Inactivo'}</span>
+                              </div>
                             </td>
-                            <td className=\"px-6 py-4 text-right\">
-                              <div className=\"flex justify-end space-x-2\">
-                                <Button size=\"sm\" variant=\"outline\" onClick={() => openEditRestaurant(restaurant)}>
-                                  <Edit className=\"h-4 w-4\" />
+                            <td className="px-6 py-4 text-right">
+                              <div className="flex justify-end space-x-2">
+                                <Button size="sm" variant="outline" onClick={() => openEditRestaurant(restaurant)}>
+                                  <Edit className="h-4 w-4" />
                                 </Button>
-                                <Button size=\"sm\" variant=\"destructive\" onClick={() => handleDeleteRestaurant(restaurant.id)}>
-                                  <Trash2 className=\"h-4 w-4\" />
+                                <Button size="sm" variant="destructive" onClick={() => handleDeleteRestaurant(restaurant.id)}>
+                                  <Trash2 className="h-4 w-4" />
                                 </Button>
                               </div>
                             </td>
@@ -324,62 +273,50 @@ export default function PanelDesarrolladorPage() {
               </Card>
             </TabsContent>
 
-            {/* Pestaña Desarrolladores */}
-            <TabsContent value=\"developers\">
+            <TabsContent value="developers">
               <Card>
                 <CardHeader>
-                  <div className=\"flex items-center justify-between\">
+                  <div className="flex items-center justify-between">
                     <CardTitle>Otros Desarrolladores</CardTitle>
                     <Dialog open={developerDialogOpen} onOpenChange={setDeveloperDialogOpen}>
                       <DialogTrigger asChild>
-                        <Button className=\"bg-orange-500 hover:bg-orange-600\">
-                          <UserPlus className=\"mr-2 h-4 w-4\" /> Añadir Desarrollador
+                        <Button className="bg-orange-500 hover:bg-orange-600">
+                          <UserPlus className="mr-2 h-4 w-4" /> Añadir Desarrollador
                         </Button>
                       </DialogTrigger>
                       <DialogContent>
                         <DialogHeader>
                           <DialogTitle>Nuevo Desarrollador</DialogTitle>
                         </DialogHeader>
-                        <div className=\"space-y-4\">
-                          <div className=\"space-y-2\">
+                        <div className="space-y-4">
+                          <div className="space-y-2">
                             <Label>Nombre</Label>
-                            <Input
-                              value={developerForm.nombre}
-                              onChange={(e) => setDeveloperForm({...developerForm, nombre: e.target.value})}
-                            />
+                            <Input value={developerForm.nombre} onChange={(e) => setDeveloperForm({...developerForm, nombre: e.target.value})} />
                           </div>
-                          <div className=\"space-y-2\">
+                          <div className="space-y-2">
                             <Label>Email</Label>
-                            <Input
-                              type=\"email\"
-                              value={developerForm.email}
-                              onChange={(e) => setDeveloperForm({...developerForm, email: e.target.value})}
-                            />
+                            <Input type="email" value={developerForm.email} onChange={(e) => setDeveloperForm({...developerForm, email: e.target.value})} />
                           </div>
-                          <div className=\"space-y-2\">
+                          <div className="space-y-2">
                             <Label>Contraseña</Label>
-                            <Input
-                              type=\"password\"
-                              value={developerForm.password}
-                              onChange={(e) => setDeveloperForm({...developerForm, password: e.target.value})}
-                            />
+                            <Input type="password" value={developerForm.password} onChange={(e) => setDeveloperForm({...developerForm, password: e.target.value})} />
                           </div>
                         </div>
-                        <div className=\"flex justify-end space-x-2 mt-4\">
-                          <Button variant=\"outline\" onClick={() => setDeveloperDialogOpen(false)}>Cancelar</Button>
-                          <Button className=\"bg-orange-500 hover:bg-orange-600\" onClick={handleAddDeveloper}>Añadir</Button>
+                        <div className="flex justify-end space-x-2 mt-4">
+                          <Button variant="outline" onClick={() => setDeveloperDialogOpen(false)}>Cancelar</Button>
+                          <Button className="bg-orange-500 hover:bg-orange-600" onClick={handleAddDeveloper}>Añadir</Button>
                         </div>
                       </DialogContent>
                     </Dialog>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className=\"space-y-2\">
+                  <div className="space-y-2">
                     {developers.filter(dev => dev.id !== user.id).map(dev => (
-                      <div key={dev.id} className=\"flex items-center justify-between p-3 bg-gray-50 rounded-lg\">
+                      <div key={dev.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                         <div>
-                          <p className=\"font-semibold\">{dev.nombre}</p>
-                          <p className=\"text-sm text-gray-600\">{dev.email}</p>
+                          <p className="font-semibold">{dev.nombre}</p>
+                          <p className="text-sm text-gray-600">{dev.email}</p>
                         </div>
                         <Badge>{dev.activo ? 'Activo' : 'Inactivo'}</Badge>
                       </div>
@@ -389,42 +326,28 @@ export default function PanelDesarrolladorPage() {
               </Card>
             </TabsContent>
 
-            {/* Pestaña Mi Cuenta */}
-            <TabsContent value=\"mi-cuenta\">
+            <TabsContent value="mi-cuenta">
               <Card>
                 <CardHeader>
-                  <CardTitle className=\"flex items-center\">
-                    <Key className=\"mr-2 h-5 w-5\" /> Mi Cuenta
+                  <CardTitle className="flex items-center">
+                    <Key className="mr-2 h-5 w-5" /> Mi Cuenta
                   </CardTitle>
                 </CardHeader>
-                <CardContent className=\"space-y-4\">
-                  <div className=\"bg-blue-50 p-4 rounded-lg mb-4\">
-                    <p className=\"font-semibold\">Usuario actual:</p>
-                    <p className=\"text-sm\">{user.nombre}</p>
-                    <p className=\"text-sm text-gray-600\">{user.email}</p>
+                <CardContent className="space-y-4">
+                  <div className="bg-blue-50 p-4 rounded-lg mb-4">
+                    <p className="font-semibold">Usuario actual:</p>
+                    <p className="text-sm">{user.nombre}</p>
+                    <p className="text-sm text-gray-600">{user.email}</p>
                   </div>
-
-                  <div className=\"space-y-2\">
+                  <div className="space-y-2">
                     <Label>Nuevo Email (opcional)</Label>
-                    <Input
-                      type=\"email\"
-                      value={passwordForm.new_email}
-                      onChange={(e) => setPasswordForm({...passwordForm, new_email: e.target.value})}
-                      placeholder={user.email}
-                    />
+                    <Input type="email" value={passwordForm.new_email} onChange={(e) => setPasswordForm({...passwordForm, new_email: e.target.value})} placeholder={user.email} />
                   </div>
-
-                  <div className=\"space-y-2\">
+                  <div className="space-y-2">
                     <Label>Nueva Contraseña</Label>
-                    <Input
-                      type=\"password\"
-                      value={passwordForm.new_password}
-                      onChange={(e) => setPasswordForm({...passwordForm, new_password: e.target.value})}
-                      placeholder=\"Nueva contraseña\"
-                    />
+                    <Input type="password" value={passwordForm.new_password} onChange={(e) => setPasswordForm({...passwordForm, new_password: e.target.value})} placeholder="Nueva contraseña" />
                   </div>
-
-                  <Button className=\"w-full bg-orange-500 hover:bg-orange-600\" onClick={handleChangePassword}>
+                  <Button className="w-full bg-orange-500 hover:bg-orange-600" onClick={handleChangePassword}>
                     Actualizar Datos
                   </Button>
                 </CardContent>
@@ -432,61 +355,42 @@ export default function PanelDesarrolladorPage() {
             </TabsContent>
           </Tabs>
 
-          {/* Dialog Editar Cliente */}
-          <Dialog open={dialogOpen} onOpenChange={(open) => {
-            setDialogOpen(open)
-            if (!open) resetRestaurantForm()
-          }}>
+          <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetRestaurantForm(); }}>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Editar Cliente</DialogTitle>
               </DialogHeader>
-              <div className=\"space-y-4\">
-                <div className=\"space-y-2\">
+              <div className="space-y-4">
+                <div className="space-y-2">
                   <Label>Nombre</Label>
-                  <Input
-                    value={restaurantForm.nombre}
-                    onChange={(e) => setRestaurantForm({...restaurantForm, nombre: e.target.value})}
-                  />
+                  <Input value={restaurantForm.nombre} onChange={(e) => setRestaurantForm({...restaurantForm, nombre: e.target.value})} />
                 </div>
-                <div className=\"space-y-2\">
+                <div className="space-y-2">
                   <Label>Email</Label>
-                  <Input
-                    type=\"email\"
-                    value={restaurantForm.email}
-                    onChange={(e) => setRestaurantForm({...restaurantForm, email: e.target.value})}
-                  />
+                  <Input type="email" value={restaurantForm.email} onChange={(e) => setRestaurantForm({...restaurantForm, email: e.target.value})} />
                 </div>
-                <div className=\"space-y-2\">
+                <div className="space-y-2">
                   <Label>Teléfono</Label>
-                  <Input
-                    value={restaurantForm.telefono}
-                    onChange={(e) => setRestaurantForm({...restaurantForm, telefono: e.target.value})}
-                  />
+                  <Input value={restaurantForm.telefono} onChange={(e) => setRestaurantForm({...restaurantForm, telefono: e.target.value})} />
                 </div>
-                <div className=\"space-y-2\">
+                <div className="space-y-2">
                   <Label>Número de Contacto</Label>
-                  <Input
-                    value={restaurantForm.contacto_numero}
-                    onChange={(e) => setRestaurantForm({...restaurantForm, contacto_numero: e.target.value})}
-                  />
+                  <Input value={restaurantForm.contacto_numero} onChange={(e) => setRestaurantForm({...restaurantForm, contacto_numero: e.target.value})} />
                 </div>
-                <div className=\"space-y-2\">
+                <div className="space-y-2">
                   <Label>Tipo de Plan</Label>
                   <Select value={restaurantForm.tipo_pago_plan} onValueChange={(val) => setRestaurantForm({...restaurantForm, tipo_pago_plan: val})}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value=\"CONTADO\">Al Contado</SelectItem>
-                      <SelectItem value=\"CUOTAS\">En Cuotas</SelectItem>
+                      <SelectItem value="CONTADO">Al Contado</SelectItem>
+                      <SelectItem value="CUOTAS">En Cuotas</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
-              <div className=\"flex justify-end space-x-2 mt-4\">
-                <Button variant=\"outline\" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-                <Button className=\"bg-orange-500 hover:bg-orange-600\" onClick={handleSaveRestaurant}>Guardar</Button>
+              <div className="flex justify-end space-x-2 mt-4">
+                <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+                <Button className="bg-orange-500 hover:bg-orange-600" onClick={handleSaveRestaurant}>Guardar</Button>
               </div>
             </DialogContent>
           </Dialog>
