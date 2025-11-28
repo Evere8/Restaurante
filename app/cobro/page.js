@@ -133,7 +133,7 @@ export default function CobroPage() {
 
       // Validar monto mínimo
       if (coupon.monto_minimo && selectedOrder.total < coupon.monto_minimo) {
-        toast.error(`El pedido debe ser mínimo de €${coupon.monto_minimo}`)
+        toast.error(`El pedido debe ser mínimo de ${formatCurrency(coupon.monto_minimo)}`)
         setCouponLoading(false)
         return
       }
