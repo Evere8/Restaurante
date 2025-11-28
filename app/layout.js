@@ -16,8 +16,10 @@ export default function RootLayout({ children }) {
     <html lang="es">
       <body className={inter.className}>
         <AuthProvider>
-          {children}
-          <Toaster position="top-right" richColors />
+          <CurrencyProvider>
+            {children}
+            <Toaster position="top-right" richColors />
+          </CurrencyProvider>
         </AuthProvider>
       </body>
     </html>
