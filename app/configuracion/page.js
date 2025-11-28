@@ -214,7 +214,18 @@ export default function ConfiguracionPage() {
       email: '',
       password: '',
       rol: 'CAJERO',
-      activo: true
+      activo: true,
+      permisos: {
+        dashboard: true,
+        menu: true,
+        pedidos: true,
+        kds: true,
+        cobro: true,
+        clientes: true,
+        cupones: true,
+        reportes: true,
+        configuracion: false
+      }
     })
     setEditingUser(null)
   }
