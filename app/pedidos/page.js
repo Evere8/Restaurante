@@ -306,12 +306,12 @@ export default function PedidosPage() {
           setCreateDialogOpen(open)
           if (!open) resetForm()
         }}>
-          <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col mobile-full-height">
-            <DialogHeader>
+          <DialogContent className="max-w-6xl h-[90vh] p-0 flex flex-col">
+            <DialogHeader className="px-6 pt-6 pb-3 border-b">
               <DialogTitle>Nuevo Pedido</DialogTitle>
             </DialogHeader>
             
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 flex-1 overflow-y-auto mobile-scroll">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 flex-1 overflow-y-auto p-6" style={{WebkitOverflowScrolling: 'touch'}}>
               {/* Productos */}
               <div className="lg:col-span-2 space-y-4 overflow-y-auto pr-2 mobile-scroll">
                 <div className="space-y-3">
