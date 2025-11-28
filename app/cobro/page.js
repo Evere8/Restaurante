@@ -517,7 +517,6 @@ export default function CobroPage() {
               </div>
             )}
           </DialogContent>
-        </Dialog>
         </div>
       </div>
     </div>
