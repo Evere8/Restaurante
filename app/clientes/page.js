@@ -124,6 +124,41 @@ export default function ClientesPage() {
     setEditingCustomer(null)
   }
 
+  const exportToCSV = () => {
+    if (customers.length === 0) {
+      toast.error('No hay clientes para exportar')
+      return
+    }
+
+    // Crear CSV con encabezados
+    const headers = ['Nombre', 'Teléfono', 'Email', 'Dirección', 'Notas', 'Acepta Marketing', 'Fecha Creación']
+    const csvContent = [
+      headers.join(','),
+      ...customers.map(c => [
+        `"${c.nombre || ''}"`,
+        `"${c.telefono || ''}"`,
+        `"${c.email || ''}"`,
+        `"${c.direccion_principal || ''}"`,
+        `"${(c.notas || '').replace(/"/g, '""')}"`, // Escapar comillas
+        c.acepta_marketing_whatsapp ? 'Sí' : 'No',
+        new Date(c.created_at).toLocaleDateString('es-ES')
+      ].join(','))
+    ].join('\n')
+
+    // Crear blob y descargar
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    const url = URL.createObjectURL(blob)
+    link.setAttribute('href', url)
+    link.setAttribute('download', `clientes_${restaurant?.nombre || 'restaurant'}_${new Date().toISOString().split('T')[0]}.csv`)
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    
+    toast.success(`${customers.length} clientes exportados exitosamente`)
+  }
+
   const openEditCustomer = (customer) => {
     setEditingCustomer(customer)
     setCustomerForm({
