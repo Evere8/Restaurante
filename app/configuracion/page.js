@@ -19,7 +19,7 @@ import { Plus, Edit, Trash2, Settings, Users as UsersIcon, Building } from 'luci
 import { toast } from 'sonner'
 
 export default function ConfiguracionPage() {
-  const { user, restaurant: currentRestaurant, loading: authLoading } = useAuth()
+  const { user, restaurant: currentRestaurant, loading: authLoading, reloadRestaurant } = useAuth()
   const { currency, updateCurrency } = useCurrency()
   const router = useRouter()
   const [restaurant, setRestaurant] = useState(null)
