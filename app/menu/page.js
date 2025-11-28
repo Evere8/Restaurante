@@ -345,7 +345,33 @@ export default function MenuPage() {
                     </div>
                     <div className="col-span-2 space-y-2">
                       <Label>URL Imagen</Label>
-                      <Input value={productForm.img_url} onChange={(e) => setProductForm({...productForm, img_url: e.target.value})} placeholder="https://..." />
+                      <Input 
+                        value={productForm.img_url} 
+                        onChange={(e) => setProductForm({...productForm, img_url: e.target.value})} 
+                        onBlur={(e) => {
+                          const cleanUrl = extractImageUrl(e.target.value)
+                          if (cleanUrl !== e.target.value) {
+                            setProductForm({...productForm, img_url: cleanUrl})
+                            toast.success('URL de imagen extraída correctamente')
+                          }
+                        }}
+                        placeholder="Pega cualquier URL de Google Imágenes o URL directa" 
+                      />
+                      {productForm.img_url && (
+                        <div className="mt-2">
+                          <p className="text-xs text-gray-500 mb-1">Vista previa:</p>
+                          <img 
+                            src={productForm.img_url} 
+                            alt="Preview" 
+                            className="w-32 h-32 object-cover rounded border"
+                            onError={(e) => {
+                              e.target.style.display = 'none'
+                              e.target.nextElementSibling.style.display = 'block'
+                            }}
+                          />
+                          <p className="text-xs text-red-500 hidden">❌ URL inválida o imagen no accesible</p>
+                        </div>
+                      )}
                     </div>
                     <div className="space-y-2">
                       <Label>Tiempo Preparación (min)</Label>
