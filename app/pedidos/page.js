@@ -342,7 +342,7 @@ export default function PedidosPage() {
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
                               <h4 className="font-semibold text-sm">{product.nombre}</h4>
-                              <p className="text-lg font-bold text-orange-600 mt-1">€{parseFloat(product.precio_base).toFixed(2)}</p>
+                              <p className="text-lg font-bold text-orange-600 mt-1">{formatCurrency(product.precio_base)}</p>
                             </div>
                             <Plus className="h-5 w-5 text-orange-500" />
                           </div>
