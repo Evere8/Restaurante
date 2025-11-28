@@ -462,13 +462,11 @@ export default function MenuPage() {
                     )
                   })}
                 </div>
-      </div>
               </CardContent>
             </Card>
           </TabsContent>
         </Tabs>
-      </div>
-    </div>
+        </div>
       </div>
     </div>
   )
