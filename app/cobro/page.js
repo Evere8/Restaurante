@@ -398,7 +398,7 @@ export default function CobroPage() {
                   <p className="text-sm text-gray-600 mb-2">Pedido #{selectedOrder.id.slice(0, 8)}</p>
                   <div className="flex justify-between items-center">
                     <span className="text-lg font-semibold">Subtotal:</span>
-                    <span className="text-xl font-bold">€{parseFloat(selectedOrder.total).toFixed(2)}</span>
+                    <span className="text-xl font-bold">{formatCurrency(selectedOrder.total)}</span>
                   </div>
                 </div>
 
