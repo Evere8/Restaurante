@@ -362,14 +362,31 @@ export default function PedidosPage() {
           </Button>
         </div>
 
-        <Tabs defaultValue="list" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="list">Lista de Pedidos</TabsTrigger>
+        <Tabs defaultValue="preparacion" className="space-y-4">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="preparacion">
+              🔥 En Preparación
+              {orders.preparacion.length > 0 && (
+                <Badge className="ml-2 bg-orange-500">{orders.preparacion.length}</Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="paraEntregar">
+              📦 Para Entregar
+              {orders.paraEntregar.length > 0 && (
+                <Badge className="ml-2 bg-blue-500">{orders.paraEntregar.length}</Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="entregados">
+              ✅ Entregados
+              {orders.entregados.length > 0 && (
+                <Badge className="ml-2 bg-green-500">{orders.entregados.length}</Badge>
+              )}
+            </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="list">
+          <TabsContent value="preparacion">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {orders.map(order => (
+              {orders.preparacion.map(order => (
                 <Card key={order.id}>
                   <CardHeader>
                     <div className="flex items-start justify-between">
