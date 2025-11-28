@@ -382,7 +382,7 @@ export default function MenuPage() {
                   <CardContent>
                     <p className="text-sm text-gray-600 mb-2 line-clamp-2">{product.descripcion}</p>
                     <div className="flex items-center justify-between mb-3">
-                      <span className="text-2xl font-bold text-orange-600">€{parseFloat(product.precio_base).toFixed(2)}</span>
+                      <span className="text-2xl font-bold text-orange-600">{formatCurrency(product.precio_base)}</span>
                       <span className="text-sm text-gray-500">{product.tiempo_preparacion_min} min</span>
                     </div>
                     <div className="flex space-x-2">
