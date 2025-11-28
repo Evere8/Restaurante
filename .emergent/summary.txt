@@ -1,0 +1,97 @@
+<analysis>
+The user requested the creation of a comprehensive, 14-page Restaurant CRM application using Next.js and Supabase. The initial phase involved gathering Supabase credentials and then rapidly scaffolding the entire application, including all pages, components, and the database schema via an SQL script. This initial build was followed by a critical bug where users couldn't log in, which was correctly diagnosed as a Supabase Row Level Security (RLS) issue. After providing a fix, the user requested major architectural and feature changes, including a persistent sidebar, responsive design, granular user permissions, and a redesigned developer panel.
+
+The attempt to implement these changes led to a prolonged and difficult debugging phase. The AI engineer introduced numerous syntax errors (unclosed s, incorrect escaping, etc.) across multiple files while trying to refactor the layout. The trajectory shows a struggle to fix these issues, employing various methods like , Python scripts, and manual file rewrites. After many cycles of fixing one error only to find another, the application was finally stabilized and compiled successfully.
+
+Most recently, the user asked for final enhancements: role-based permissions in the user creation form, adding Gs as a currency, and resetting the KDS timer on status changes. The AI implemented these, but the user noted the currency selection lacked a save button to make the change persistent. The last action was the AI starting to address this by proposing the necessary SQL modification.
+
+The user's primary language is Spanish. The next agent must respond in **Spanish**.
+</analysis>
+
+<product_requirements>
+The goal is to build a full-stack, production-ready Restaurant CRM. The application is built with Next.js 14 (App Router), Supabase for the backend (Database, Auth, Realtime), and styled with Shadcn/UI and Tailwind CSS.
+
+**Core Functionality (Initially Implemented):**
+- **Authentication:** Login system with user roles (Admin, Developer, etc.).
+- **Dashboard:** Real-time KPIs, sales charts, and alerts.
+- **Menu Management:** CRUD for products and categories.
+- **Order System:** Create, edit, and list orders for different types (Dine-in, Takeaway).
+- **KDS (Kitchen Display System):** A real-time Kanban board for kitchen staff.
+- **Billing System:** A payment processing interface with coupon integration.
+- **Customer & Coupon Management:** CRUD interfaces for customers and discount coupons.
+- **Reports & Settings:** Pages for sales reports and restaurant configuration.
+- **Developer Panel:** A separate interface for developers to manage restaurant clients.
+
+**Recent Feature Enhancements (Requested & Partially/Fully Implemented):**
+- **UI/UX:**
+    - A persistent left-hand sidebar for navigation (for client-facing pages).
+    - Responsive design with a hamburger menu for mobile.
+    - The Developer Panel should not have the sidebar.
+- **User Management:**
+    - Admins can assign specific page-view permissions to new users.
+    - Admins cannot edit the developer's profile or their own password.
+- **Settings:**
+    - Add Gs (Guaraníes) as a currency option.
+    - Allow users to save their selected currency preference.
+- **KDS:**
+    - The order timer must reset to zero at each stage of preparation (e.g., when moved from 'New' to 'In Progress').
+</product_requirements>
+
+<key_technical_concepts>
+- **Frameworks/Libraries:** Next.js 14 (App Router), React, Shadcn/UI, Tailwind CSS, Lucide-React.
+- **Backend:** Supabase (PostgreSQL, Auth, Realtime Subscriptions).
+- **Architecture:** Client-side data fetching directly from Supabase client (). API routes are not used; logic resides within React components.
+- **Authentication:** Managed via  and Supabase Auth.
+- **State Management:** React , , and .
+- **Database:** PostgreSQL managed via Supabase, with an initial schema provided in . Row Level Security (RLS) is disabled for functionality.
+</key_technical_concepts>
+
+<code_architecture>
+The application follows a standard Next.js App Router structure. Data fetching and mutations are handled directly in client components ('use client') via the Supabase JS library, rather than through Next.js API routes.
+
+**Directory Structure:**
+
+
+**Key Files:**
+- ****:
+    - **Importance:** Initializes and exports the singleton Supabase client, which is used throughout the application for all database interactions and authentication.
+    - **Changes:** Created to connect to the user's Supabase project using the provided  and  from environment variables.
+
+- ****:
+    - **Importance:** Provides global authentication state (user, session, loading status) to all components. It handles login, logout, and session checking logic.
+    - **Changes:** Modified to include logic for checking if a user is  (active) upon login, preventing inactive users from accessing the application.
+
+- ****:
+    - **Importance:** A new component that provides the main navigation for the application. It's designed to be responsive, collapsing into a hamburger menu on smaller screens.
+    - **Changes:** Created from scratch to fulfill the user's request for a persistent left-hand menu. It was made responsive and conditionally rendered in .
+
+- ****:
+    - **Importance:** Allows admins to manage restaurant details, users, and preferences like currency.
+    - **Changes:** Heavily modified to include:
+        1. A form for creating new users with checkboxes for granular permissions ().
+        2. The addition of 'Gs' to the currency selection dropdown.
+        3. Logic to handle the state for these new form fields.
+
+- ****:
+    - **Importance:** The interface for the developer role to manage their restaurant clients.
+    - **Changes:** Significantly refactored to remove the  and implement the specific UI/UX requested by the user, including controls to manage client status (active/inactive), edit details, and change passwords.
+
+- ** & **:
+    - **Importance:** The KDS is a core real-time feature.  displays how long an order has been active.
+    - **Changes:**  was modified to accept  as a prop. The  was updated to pass the correct timestamp ( or ) to the timer, ensuring it resets when the order status changes.
+</code_architecture>
+
+<pending_tasks>
+- **Theme Customization:** The user requested the ability to change the CRM's primary color from the settings page. This was acknowledged but not implemented during the bug-fixing phase.
+- **Global Currency Application:** The logic to apply the selected currency (e.g., 'Gs') across all pages displaying monetary values has not been implemented yet.
+</pending_tasks>
+
+<current_work>
+The AI engineer was in the process of implementing a complete currency management system, prompted by the user's feedback. The user had pointed out that after selecting Gs (Guaraníes) in the settings, there was no Save button to persist this choice.
+
+The last action taken by the AI engineer was to begin addressing this by proposing the necessary database schema change. Specifically, it started to add an SQL command to introduce a  column to the  table. This is the first step before adding the Save button to the UI, creating the function to update the database, and then building a context or prop-drilling system to make the selected currency available globally throughout the application for formatting all monetary values. The work was paused immediately after proposing the SQL for the new column.
+</current_work>
+
+<optional_next_step>
+Add a Save button in  and implement the  function to update the newly added  column for the restaurant in the Supabase database.
+</optional_next_step>
