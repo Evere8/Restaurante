@@ -442,41 +442,65 @@ export default function PanelDesarrolladorPage() {
           </Tabs>
 
           <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetRestaurantForm(); }}>
-            <DialogContent>
+            <DialogContent className="max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Editar Cliente</DialogTitle>
+                <DialogTitle>{editingRestaurant ? 'Editar' : 'Nuevo'} Cliente Restaurante</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Nombre</Label>
-                  <Input value={restaurantForm.nombre} onChange={(e) => setRestaurantForm({...restaurantForm, nombre: e.target.value})} />
+                  <Label>Nombre del Restaurante *</Label>
+                  <Input value={restaurantForm.nombre} onChange={(e) => setRestaurantForm({...restaurantForm, nombre: e.target.value})} placeholder="Ej: Restaurante La Bella Vista" />
                 </div>
                 <div className="space-y-2">
-                  <Label>Email</Label>
-                  <Input type="email" value={restaurantForm.email} onChange={(e) => setRestaurantForm({...restaurantForm, email: e.target.value})} />
+                  <Label>Slug (URL única) *</Label>
+                  <Input value={restaurantForm.slug} onChange={(e) => setRestaurantForm({...restaurantForm, slug: e.target.value.toLowerCase().replace(/\s/g, '-')})} placeholder="Ej: bella-vista" />
+                  <p className="text-xs text-gray-500">Este será el identificador único del restaurante</p>
                 </div>
                 <div className="space-y-2">
                   <Label>Teléfono</Label>
-                  <Input value={restaurantForm.telefono} onChange={(e) => setRestaurantForm({...restaurantForm, telefono: e.target.value})} />
+                  <Input value={restaurantForm.telefono} onChange={(e) => setRestaurantForm({...restaurantForm, telefono: e.target.value})} placeholder="+595 21 123456" />
                 </div>
                 <div className="space-y-2">
-                  <Label>Número de Contacto</Label>
-                  <Input value={restaurantForm.contacto_numero} onChange={(e) => setRestaurantForm({...restaurantForm, contacto_numero: e.target.value})} />
+                  <Label>Dirección</Label>
+                  <Input value={restaurantForm.direccion} onChange={(e) => setRestaurantForm({...restaurantForm, direccion: e.target.value})} placeholder="Dirección completa" />
                 </div>
                 <div className="space-y-2">
-                  <Label>Tipo de Plan</Label>
-                  <Select value={restaurantForm.tipo_pago_plan} onValueChange={(val) => setRestaurantForm({...restaurantForm, tipo_pago_plan: val})}>
+                  <Label>Tipo de Pago</Label>
+                  <Select value={restaurantForm.tipo_pago} onValueChange={(val) => setRestaurantForm({...restaurantForm, tipo_pago: val})}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="CONTADO">Al Contado</SelectItem>
                       <SelectItem value="CUOTAS">En Cuotas</SelectItem>
+                      <SelectItem value="MIXTO">Mixto</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
+                
+                {!editingRestaurant && (
+                  <>
+                    <div className="border-t pt-4">
+                      <h4 className="font-semibold mb-3">Datos del Administrador</h4>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Nombre del Admin *</Label>
+                      <Input value={restaurantForm.admin_nombre} onChange={(e) => setRestaurantForm({...restaurantForm, admin_nombre: e.target.value})} placeholder="Nombre completo" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Email del Admin *</Label>
+                      <Input type="email" value={restaurantForm.admin_email} onChange={(e) => setRestaurantForm({...restaurantForm, admin_email: e.target.value})} placeholder="admin@restaurante.com" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Contraseña del Admin *</Label>
+                      <Input type="password" value={restaurantForm.admin_password} onChange={(e) => setRestaurantForm({...restaurantForm, admin_password: e.target.value})} placeholder="Mínimo 6 caracteres" />
+                    </div>
+                  </>
+                )}
               </div>
               <div className="flex justify-end space-x-2 mt-4">
                 <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-                <Button className="bg-orange-500 hover:bg-orange-600" onClick={handleSaveRestaurant}>Guardar</Button>
+                <Button className="bg-orange-500 hover:bg-orange-600" onClick={handleSaveRestaurant}>
+                  {editingRestaurant ? 'Actualizar' : 'Crear'} Restaurante
+                </Button>
               </div>
             </DialogContent>
           </Dialog>
