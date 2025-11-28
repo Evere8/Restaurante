@@ -502,6 +502,7 @@ export default function ConfiguracionPage() {
                       <SelectContent>
                         <SelectItem value="EUR">Euro (€)</SelectItem>
                         <SelectItem value="USD">Dólar ($)</SelectItem>
+                        <SelectItem value="PYG">Guaraníes (Gs)</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
