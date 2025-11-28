@@ -276,7 +276,7 @@ export default function PedidosPage() {
                         {order.order_items?.map(item => (
                           <div key={item.id} className="flex justify-between text-xs">
                             <span>{item.cantidad}x {item.nombre_item_snapshot}</span>
-                            <span>€{(item.precio_unitario * item.cantidad).toFixed(2)}</span>
+                            <span>{formatCurrency(item.precio_unitario * item.cantidad)}</span>
                           </div>
                         ))}
                       </div>
