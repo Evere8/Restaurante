@@ -20,11 +20,13 @@ import { toast } from 'sonner'
 
 export default function ConfiguracionPage() {
   const { user, restaurant: currentRestaurant, loading: authLoading } = useAuth()
+  const { currency, updateCurrency } = useCurrency()
   const router = useRouter()
   const [restaurant, setRestaurant] = useState(null)
   const [users, setUsers] = useState([])
   const [editingUser, setEditingUser] = useState(null)
   const [userDialogOpen, setUserDialogOpen] = useState(false)
+  const [selectedCurrency, setSelectedCurrency] = useState('EUR')
 
   const [restaurantForm, setRestaurantForm] = useState({
     nombre: '',
