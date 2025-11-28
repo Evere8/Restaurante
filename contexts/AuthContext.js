@@ -109,12 +109,28 @@ export const AuthProvider = ({ children }) => {
     router.push('/login')
   }
 
+  const reloadRestaurant = async () => {
+    if (restaurant?.id) {
+      const { data } = await supabase
+        .from('restaurants')
+        .select('*')
+        .eq('id', restaurant.id)
+        .single()
+      
+      if (data) {
+        setRestaurant(data)
+        localStorage.setItem('crm_restaurant', JSON.stringify(data))
+      }
+    }
+  }
+
   const value = {
     user,
     restaurant,
     loading,
     login,
-    logout
+    logout,
+    reloadRestaurant
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
