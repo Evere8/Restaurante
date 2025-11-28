@@ -99,7 +99,27 @@ export default function PedidosPage() {
       .eq('restaurant_id', restaurant.id)
       .gte('created_at', twoDaysAgo.toISOString())
       .order('created_at', { ascending: false })
-    setOrders(data || [])
+
+    // Categorizar pedidos por estado
+    const categorized = {
+      preparacion: [],
+      paraEntregar: [],
+      entregados: []
+    }
+
+    if (data) {
+      data.forEach(order => {
+        if (order.estado === 'NUEVO' || order.estado === 'PREPARANDO') {
+          categorized.preparacion.push(order)
+        } else if (order.estado === 'LISTO') {
+          categorized.paraEntregar.push(order)
+        } else if (order.estado === 'ENTREGADO') {
+          categorized.entregados.push(order)
+        }
+      })
+    }
+
+    setOrders(categorized)
   }
 
   const addToCart = (product) => {
