@@ -428,7 +428,7 @@ export default function PedidosPage() {
                   <div className="bg-orange-50 p-3 rounded-lg">
                     <div className="flex justify-between items-center">
                       <span className="font-bold text-lg">TOTAL:</span>
-                      <span className="font-bold text-2xl text-orange-600">€{calculateTotal().toFixed(2)}</span>
+                      <span className="font-bold text-2xl text-orange-600">{formatCurrency(calculateTotal())}</span>
                     </div>
                   </div>
 
