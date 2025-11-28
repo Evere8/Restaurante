@@ -88,7 +88,7 @@ export default function ClientesPage() {
       }
 
       setDialogOpen(false)
-      resetForm()
+      resetCustomerForm()
       loadCustomers()
     } catch (error) {
       console.error('Error guardando cliente:', error)
