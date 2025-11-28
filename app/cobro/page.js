@@ -479,15 +479,15 @@ export default function CobroPage() {
                     <div className="bg-orange-50 p-3 rounded-lg space-y-1">
                       <div className="flex justify-between text-sm">
                         <span>Subtotal:</span>
-                        <span>€{parseFloat(selectedOrder.total).toFixed(2)}</span>
+                        <span>{formatCurrency(selectedOrder.total)}</span>
                       </div>
                       <div className="flex justify-between text-sm text-green-600 font-semibold">
                         <span>Descuento:</span>
-                        <span>-€{calculateDiscount().toFixed(2)}</span>
+                        <span>-{formatCurrency(calculateDiscount())}</span>
                       </div>
                       <div className="flex justify-between font-bold text-lg border-t pt-1">
                         <span>Total:</span>
-                        <span className="text-orange-600">€{calculateFinalTotal().toFixed(2)}</span>
+                        <span className="text-orange-600">{formatCurrency(calculateFinalTotal())}</span>
                       </div>
                     </div>
                   )}
