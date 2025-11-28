@@ -129,7 +129,8 @@ export default function ConfiguracionPage() {
         email: userForm.email,
         rol: userForm.rol,
         activo: userForm.activo,
-        restaurant_id: currentRestaurant.id
+        restaurant_id: currentRestaurant.id,
+        permisos: userForm.permisos
       }
 
       if (userForm.password) {
