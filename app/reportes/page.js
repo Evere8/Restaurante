@@ -321,11 +321,9 @@ export default function ReportesPage() {
                 Exportar Reporte (Próximamente)
               </Button>
             </div>
-      </div>
           </>
         )}
-      </div>
-    </div>
+        </div>
       </div>
     </div>
   )
