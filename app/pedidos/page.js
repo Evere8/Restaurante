@@ -359,7 +359,7 @@ export default function PedidosPage() {
                   <ShoppingCart className="mr-2 h-5 w-5" /> Carrito ({cart.length})
                 </h3>
 
-                <div className="flex-1 overflow-y-auto space-y-2 mb-4 mobile-scroll max-h-[40vh] lg:max-h-full">
+                <div className="space-y-2 mb-4">
                   {cart.map(item => (
                     <div key={item.id} className="bg-gray-50 p-2 rounded-lg">
                       <div className="flex items-start justify-between mb-2">
