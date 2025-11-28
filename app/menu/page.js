@@ -462,6 +462,7 @@ export default function MenuPage() {
                     )
                   })}
                 </div>
+      </div>
               </CardContent>
             </Card>
           </TabsContent>

@@ -438,6 +438,7 @@ export default function ConfiguracionPage() {
                 <div className="pt-4 border-t">
                   <p className="text-sm text-gray-600">Más opciones de configuración próximamente...</p>
                 </div>
+      </div>
               </CardContent>
             </Card>
           </TabsContent>

@@ -515,6 +515,7 @@ export default function CobroPage() {
                   <CreditCard className="mr-2 h-5 w-5" /> Procesar Pago - €{calculateFinalTotal().toFixed(2)}
                 </Button>
               </div>
+      </div>
             )}
           </DialogContent>
         </Dialog>

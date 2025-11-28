@@ -294,6 +294,7 @@ export default function ClientesPage() {
                 <Users className="h-12 w-12 text-gray-400 mx-auto mb-3" />
                 <p className="text-gray-600">No hay clientes aún. Crea tu primer cliente.</p>
               </div>
+      </div>
             )}
           </CardContent>
         </Card>

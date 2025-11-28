@@ -353,6 +353,7 @@ export default function CuponesPage() {
                 <Tag className="h-12 w-12 text-gray-400 mx-auto mb-3" />
                 <p className="text-gray-600">No hay cupones aún. Crea tu primer cupón.</p>
               </div>
+      </div>
             )}
           </CardContent>
         </Card>
