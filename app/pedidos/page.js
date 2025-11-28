@@ -378,7 +378,7 @@ export default function PedidosPage() {
                             <Plus className="h-3 w-3" />
                           </Button>
                         </div>
-                        <span className="font-bold text-orange-600">€{(parseFloat(item.precio_base) * item.cantidad).toFixed(2)}</span>
+                        <span className="font-bold text-orange-600">{formatCurrency(parseFloat(item.precio_base) * item.cantidad)}</span>
                       </div>
                     </div>
                   ))}
