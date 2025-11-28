@@ -85,7 +85,8 @@ export const AuthProvider = ({ children }) => {
         nombre: userData.nombre,
         email: userData.email,
         rol: userData.rol,
-        restaurant_id: userData.restaurant_id
+        restaurant_id: userData.restaurant_id,
+        permisos: userData.permisos || {}
       }
 
       setUser(userToSave)
