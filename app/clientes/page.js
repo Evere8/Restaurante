@@ -112,7 +112,7 @@ export default function ClientesPage() {
     }
   }
 
-  const resetForm = () => {
+  const resetCustomerForm = () => {
     setCustomerForm({
       nombre: '',
       telefono: '',
