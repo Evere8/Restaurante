@@ -4,19 +4,47 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import Navbar from '@/components/Navbar'
+import Sidebar from '@/components/Sidebar'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
-import { Building, Users, ShoppingCart, AlertCircle } from 'lucide-react'
+import { Plus, Edit, Trash2, Building, Key, UserPlus } from 'lucide-react'
+import { toast } from 'sonner'
 
 export default function PanelDesarrolladorPage() {
-  const { user, loading: authLoading } = useAuth()
+  const { user, loading: authLoading, logout } = useAuth()
   const router = useRouter()
   const [restaurants, setRestaurants] = useState([])
-  const [stats, setStats] = useState({
-    totalRestaurants: 0,
-    totalUsers: 0,
-    totalOrders: 0
+  const [developers, setDevelopers] = useState([])
+  const [editingRestaurant, setEditingRestaurant] = useState(null)
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false)
+  const [developerDialogOpen, setDeveloperDialogOpen] = useState(false)
+
+  const [restaurantForm, setRestaurantForm] = useState({
+    nombre: '',
+    email: '',
+    telefono: '',
+    contacto_numero: '',
+    tipo_pago_plan: 'CONTADO'
+  })
+
+  const [passwordForm, setPasswordForm] = useState({
+    current_password: '',
+    new_password: '',
+    new_email: ''
+  })
+
+  const [developerForm, setDeveloperForm] = useState({
+    nombre: '',
+    email: '',
+    password: ''
   })
 
   useEffect(() => {
@@ -27,127 +55,441 @@ export default function PanelDesarrolladorPage() {
 
   useEffect(() => {
     if (user && user.rol === 'DESARROLLADOR') {
-      loadDeveloperData()
+      loadRestaurants()
+      loadDevelopers()
     }
   }, [user])
 
-  const loadDeveloperData = async () => {
-    // Cargar todos los restaurantes
-    const { data: restaurantsData } = await supabase
+  const loadRestaurants = async () => {
+    const { data, error } = await supabase
       .from('restaurants')
       .select('*')
       .order('created_at', { ascending: false })
 
-    setRestaurants(restaurantsData || [])
+    if (!error) {
+      setRestaurants(data || [])
+    }
+  }
 
-    // Cargar estadísticas globales
-    const { count: usersCount } = await supabase
+  const loadDevelopers = async () => {
+    const { data, error } = await supabase
       .from('users')
-      .select('*', { count: 'exact', head: true })
+      .select('*')
+      .eq('rol', 'DESARROLLADOR')
+      .order('created_at', { ascending: false })
 
-    const { count: ordersCount } = await supabase
-      .from('orders')
-      .select('*', { count: 'exact', head: true })
+    if (!error) {
+      setDevelopers(data || [])
+    }
+  }
 
-    setStats({
-      totalRestaurants: restaurantsData?.length || 0,
-      totalUsers: usersCount || 0,
-      totalOrders: ordersCount || 0
+  const handleSaveRestaurant = async () => {
+    try {
+      if (editingRestaurant) {
+        const { error } = await supabase
+          .from('restaurants')
+          .update(restaurantForm)
+          .eq('id', editingRestaurant.id)
+
+        if (error) throw error
+        toast.success('Cliente actualizado')
+      }
+
+      setDialogOpen(false)
+      resetRestaurantForm()
+      loadRestaurants()
+    } catch (error) {
+      console.error('Error:', error)
+      toast.error('Error al guardar cliente')
+    }
+  }
+
+  const handleToggleActive = async (restaurant) => {
+    try {
+      const newStatus = !restaurant.activo
+
+      const { error } = await supabase
+        .from('restaurants')
+        .update({ activo: newStatus })
+        .eq('id', restaurant.id)
+
+      if (error) throw error
+
+      // Si se desactiva, cerrar sesión de todos los usuarios de ese restaurante
+      if (!newStatus) {
+        toast.success('Cliente desactivado. Los usuarios no podrán iniciar sesión.')
+      } else {
+        toast.success('Cliente activado')
+      }
+
+      loadRestaurants()
+    } catch (error) {
+      console.error('Error:', error)
+      toast.error('Error al cambiar estado')
+    }
+  }
+
+  const handleDeleteRestaurant = async (id) => {
+    if (!confirm('¿Estás seguro de eliminar este cliente? Se eliminarán todos sus datos.')) return
+
+    const { error } = await supabase
+      .from('restaurants')
+      .delete()
+      .eq('id', id)
+
+    if (error) {
+      toast.error('Error eliminando cliente')
+    } else {
+      toast.success('Cliente eliminado')
+      loadRestaurants()
+    }
+  }
+
+  const handleChangePassword = async () => {
+    if (!passwordForm.new_password) {
+      toast.error('Ingresa la nueva contraseña')
+      return
+    }
+
+    try {
+      const updateData = {
+        password: passwordForm.new_password
+      }
+
+      if (passwordForm.new_email) {
+        updateData.email = passwordForm.new_email
+      }
+
+      const { error } = await supabase
+        .from('users')
+        .update(updateData)
+        .eq('id', user.id)
+
+      if (error) throw error
+
+      toast.success('Datos actualizados. Inicia sesión nuevamente.')
+      setTimeout(() => logout(), 2000)
+    } catch (error) {
+      console.error('Error:', error)
+      toast.error('Error al actualizar datos')
+    }
+  }
+
+  const handleAddDeveloper = async () => {
+    if (!developerForm.nombre || !developerForm.email || !developerForm.password) {
+      toast.error('Todos los campos son obligatorios')
+      return
+    }
+
+    try {
+      const { error } = await supabase
+        .from('users')
+        .insert([{
+          nombre: developerForm.nombre,
+          email: developerForm.email,
+          password: developerForm.password,
+          rol: 'DESARROLLADOR',
+          activo: true,
+          restaurant_id: null
+        }])
+
+      if (error) throw error
+
+      toast.success('Desarrollador añadido')
+      setDeveloperDialogOpen(false)
+      resetDeveloperForm()
+      loadDevelopers()
+    } catch (error) {
+      console.error('Error:', error)
+      toast.error('Error al añadir desarrollador')
+    }
+  }
+
+  const resetRestaurantForm = () => {
+    setRestaurantForm({
+      nombre: '',
+      email: '',
+      telefono: '',
+      contacto_numero: '',
+      tipo_pago_plan: 'CONTADO'
+    })
+    setEditingRestaurant(null)
+  }
+
+  const resetDeveloperForm = () => {
+    setDeveloperForm({
+      nombre: '',
+      email: '',
+      password: ''
     })
   }
 
+  const openEditRestaurant = (restaurant) => {
+    setEditingRestaurant(restaurant)
+    setRestaurantForm({
+      nombre: restaurant.nombre,
+      email: restaurant.email || '',
+      telefono: restaurant.telefono || '',
+      contacto_numero: restaurant.contacto_numero || '',
+      tipo_pago_plan: restaurant.tipo_pago_plan || 'CONTADO'
+    })
+    setDialogOpen(true)
+  }
+
   if (authLoading || !user || user.rol !== 'DESARROLLADOR') {
-    return <div className="flex items-center justify-center min-h-screen">Cargando...</div>
+    return <div className=\"flex items-center justify-center min-h-screen\">Cargando...</div>
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar />
-      <div className="container mx-auto px-4 py-6">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-800">Panel de Desarrollador</h1>
-          <p className="text-gray-600">Vista global del sistema</p>
-        </div>
+    <div className=\"flex min-h-screen bg-gray-50\">
+      <Sidebar />
+      <div className=\"flex-1 overflow-auto\">
+        <div className=\"container mx-auto px-4 py-6\">
+          <div className=\"mb-6\">
+            <h1 className=\"text-3xl font-bold text-gray-800\">Panel de Desarrollador</h1>
+            <p className=\"text-gray-600\">Gestión de clientes (restaurantes) y desarrolladores</p>
+          </div>
 
-        {/* Estadísticas Globales */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Total Restaurantes</CardTitle>
-              <Building className="h-4 w-4 text-blue-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.totalRestaurants}</div>
-            </CardContent>
-          </Card>
+          <Tabs defaultValue=\"clientes\" className=\"space-y-4\">
+            <TabsList>
+              <TabsTrigger value=\"clientes\">Clientes ({restaurants.length})</TabsTrigger>
+              <TabsTrigger value=\"developers\">Desarrolladores ({developers.length})</TabsTrigger>
+              <TabsTrigger value=\"mi-cuenta\">Mi Cuenta</TabsTrigger>
+            </TabsList>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Total Usuarios</CardTitle>
-              <Users className="h-4 w-4 text-green-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.totalUsers}</div>
-            </CardContent>
-          </Card>
+            {/* Pestaña Clientes */}
+            <TabsContent value=\"clientes\">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Clientes (Restaurantes)</CardTitle>
+                </CardHeader>
+                <CardContent className=\"p-0\">
+                  <div className=\"overflow-x-auto\">
+                    <table className=\"w-full\">
+                      <thead className=\"bg-gray-50 border-b\">
+                        <tr>
+                          <th className=\"px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase\">Cliente</th>
+                          <th className=\"px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase\">Contacto</th>
+                          <th className=\"px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase\">Plan</th>
+                          <th className=\"px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase\">Estado</th>
+                          <th className=\"px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase\">Acciones</th>
+                        </tr>
+                      </thead>
+                      <tbody className=\"bg-white divide-y divide-gray-200\">
+                        {restaurants.map(restaurant => (
+                          <tr key={restaurant.id} className=\"hover:bg-gray-50\">
+                            <td className=\"px-6 py-4\">
+                              <div className=\"flex items-center\">
+                                <Building className=\"h-5 w-5 text-gray-400 mr-3\" />
+                                <div>
+                                  <div className=\"font-semibold\">{restaurant.nombre}</div>
+                                  <div className=\"text-sm text-gray-500\">{restaurant.slug}</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className=\"px-6 py-4 text-sm\">
+                              {restaurant.email && <div>{restaurant.email}</div>}
+                              {restaurant.contacto_numero && <div>{restaurant.contacto_numero}</div>}
+                            </td>
+                            <td className=\"px-6 py-4\">
+                              <Badge variant={restaurant.tipo_pago_plan === 'CONTADO' ? 'default' : 'secondary'}>
+                                {restaurant.tipo_pago_plan || 'CONTADO'}
+                              </Badge>
+                            </td>
+                            <td className=\"px-6 py-4\">
+                              <Switch
+                                checked={restaurant.activo}
+                                onCheckedChange={() => handleToggleActive(restaurant)}
+                              />
+                              <span className=\"ml-2 text-sm\">
+                                {restaurant.activo ? 'Activo' : 'Inactivo'}
+                              </span>
+                            </td>
+                            <td className=\"px-6 py-4 text-right\">
+                              <div className=\"flex justify-end space-x-2\">
+                                <Button size=\"sm\" variant=\"outline\" onClick={() => openEditRestaurant(restaurant)}>
+                                  <Edit className=\"h-4 w-4\" />
+                                </Button>
+                                <Button size=\"sm\" variant=\"destructive\" onClick={() => handleDeleteRestaurant(restaurant.id)}>
+                                  <Trash2 className=\"h-4 w-4\" />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Total Pedidos</CardTitle>
-              <ShoppingCart className="h-4 w-4 text-orange-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.totalOrders}</div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Lista de Restaurantes */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Restaurantes en el Sistema</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {restaurants.map(restaurant => (
-                <div key={restaurant.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-3">
-                      <Building className="h-5 w-5 text-gray-500" />
-                      <div>
-                        <h3 className="font-semibold">{restaurant.nombre}</h3>
-                        <p className="text-sm text-gray-600">{restaurant.email}</p>
+            {/* Pestaña Desarrolladores */}
+            <TabsContent value=\"developers\">
+              <Card>
+                <CardHeader>
+                  <div className=\"flex items-center justify-between\">
+                    <CardTitle>Otros Desarrolladores</CardTitle>
+                    <Dialog open={developerDialogOpen} onOpenChange={setDeveloperDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button className=\"bg-orange-500 hover:bg-orange-600\">
+                          <UserPlus className=\"mr-2 h-4 w-4\" /> Añadir Desarrollador
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Nuevo Desarrollador</DialogTitle>
+                        </DialogHeader>
+                        <div className=\"space-y-4\">
+                          <div className=\"space-y-2\">
+                            <Label>Nombre</Label>
+                            <Input
+                              value={developerForm.nombre}
+                              onChange={(e) => setDeveloperForm({...developerForm, nombre: e.target.value})}
+                            />
+                          </div>
+                          <div className=\"space-y-2\">
+                            <Label>Email</Label>
+                            <Input
+                              type=\"email\"
+                              value={developerForm.email}
+                              onChange={(e) => setDeveloperForm({...developerForm, email: e.target.value})}
+                            />
+                          </div>
+                          <div className=\"space-y-2\">
+                            <Label>Contraseña</Label>
+                            <Input
+                              type=\"password\"
+                              value={developerForm.password}
+                              onChange={(e) => setDeveloperForm({...developerForm, password: e.target.value})}
+                            />
+                          </div>
+                        </div>
+                        <div className=\"flex justify-end space-x-2 mt-4\">
+                          <Button variant=\"outline\" onClick={() => setDeveloperDialogOpen(false)}>Cancelar</Button>
+                          <Button className=\"bg-orange-500 hover:bg-orange-600\" onClick={handleAddDeveloper}>Añadir</Button>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className=\"space-y-2\">
+                    {developers.filter(dev => dev.id !== user.id).map(dev => (
+                      <div key={dev.id} className=\"flex items-center justify-between p-3 bg-gray-50 rounded-lg\">
+                        <div>
+                          <p className=\"font-semibold\">{dev.nombre}</p>
+                          <p className=\"text-sm text-gray-600\">{dev.email}</p>
+                        </div>
+                        <Badge>{dev.activo ? 'Activo' : 'Inactivo'}</Badge>
                       </div>
-                    </div>
+                    ))}
                   </div>
-                  <div className="flex items-center space-x-2">
-                    {restaurant.activo ? (
-                      <Badge className="bg-green-100 text-green-800">Activo</Badge>
-                    ) : (
-                      <Badge variant="secondary">Inactivo</Badge>
-                    )}
-                    {restaurant.en_mantenimiento && (
-                      <Badge className="bg-yellow-100 text-yellow-800">Mantenimiento</Badge>
-                    )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Pestaña Mi Cuenta */}
+            <TabsContent value=\"mi-cuenta\">
+              <Card>
+                <CardHeader>
+                  <CardTitle className=\"flex items-center\">
+                    <Key className=\"mr-2 h-5 w-5\" /> Mi Cuenta
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className=\"space-y-4\">
+                  <div className=\"bg-blue-50 p-4 rounded-lg mb-4\">
+                    <p className=\"font-semibold\">Usuario actual:</p>
+                    <p className=\"text-sm\">{user.nombre}</p>
+                    <p className=\"text-sm text-gray-600\">{user.email}</p>
                   </div>
-                </div>
-              ))}
 
-              {restaurants.length === 0 && (
-                <div className="py-12 text-center">
-                  <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                  <p className="text-gray-600">No hay restaurantes en el sistema</p>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+                  <div className=\"space-y-2\">
+                    <Label>Nuevo Email (opcional)</Label>
+                    <Input
+                      type=\"email\"
+                      value={passwordForm.new_email}
+                      onChange={(e) => setPasswordForm({...passwordForm, new_email: e.target.value})}
+                      placeholder={user.email}
+                    />
+                  </div>
 
-        <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <p className="text-sm text-blue-800">
-            <strong>Nota:</strong> Este panel proporciona una vista de solo lectura del sistema.
-            Para funciones administrativas avanzadas, accede directamente a Supabase.
-          </p>
+                  <div className=\"space-y-2\">
+                    <Label>Nueva Contraseña</Label>
+                    <Input
+                      type=\"password\"
+                      value={passwordForm.new_password}
+                      onChange={(e) => setPasswordForm({...passwordForm, new_password: e.target.value})}
+                      placeholder=\"Nueva contraseña\"
+                    />
+                  </div>
+
+                  <Button className=\"w-full bg-orange-500 hover:bg-orange-600\" onClick={handleChangePassword}>
+                    Actualizar Datos
+                  </Button>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+
+          {/* Dialog Editar Cliente */}
+          <Dialog open={dialogOpen} onOpenChange={(open) => {
+            setDialogOpen(open)
+            if (!open) resetRestaurantForm()
+          }}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Editar Cliente</DialogTitle>
+              </DialogHeader>
+              <div className=\"space-y-4\">
+                <div className=\"space-y-2\">
+                  <Label>Nombre</Label>
+                  <Input
+                    value={restaurantForm.nombre}
+                    onChange={(e) => setRestaurantForm({...restaurantForm, nombre: e.target.value})}
+                  />
+                </div>
+                <div className=\"space-y-2\">
+                  <Label>Email</Label>
+                  <Input
+                    type=\"email\"
+                    value={restaurantForm.email}
+                    onChange={(e) => setRestaurantForm({...restaurantForm, email: e.target.value})}
+                  />
+                </div>
+                <div className=\"space-y-2\">
+                  <Label>Teléfono</Label>
+                  <Input
+                    value={restaurantForm.telefono}
+                    onChange={(e) => setRestaurantForm({...restaurantForm, telefono: e.target.value})}
+                  />
+                </div>
+                <div className=\"space-y-2\">
+                  <Label>Número de Contacto</Label>
+                  <Input
+                    value={restaurantForm.contacto_numero}
+                    onChange={(e) => setRestaurantForm({...restaurantForm, contacto_numero: e.target.value})}
+                  />
+                </div>
+                <div className=\"space-y-2\">
+                  <Label>Tipo de Plan</Label>
+                  <Select value={restaurantForm.tipo_pago_plan} onValueChange={(val) => setRestaurantForm({...restaurantForm, tipo_pago_plan: val})}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value=\"CONTADO\">Al Contado</SelectItem>
+                      <SelectItem value=\"CUOTAS\">En Cuotas</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className=\"flex justify-end space-x-2 mt-4\">
+                <Button variant=\"outline\" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+                <Button className=\"bg-orange-500 hover:bg-orange-600\" onClick={handleSaveRestaurant}>Guardar</Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
     </div>
