@@ -239,7 +239,10 @@ export default function KDSPage() {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => router.push(`/pedidos?edit=${order.id}`)}
+                        onClick={() => {
+                          setViewingOrder(order)
+                          setViewDialogOpen(true)
+                        }}
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
@@ -323,7 +326,10 @@ export default function KDSPage() {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => router.push(`/pedidos?edit=${order.id}`)}
+                        onClick={() => {
+                          setViewingOrder(order)
+                          setViewDialogOpen(true)
+                        }}
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
