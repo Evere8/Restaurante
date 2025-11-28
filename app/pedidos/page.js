@@ -20,6 +20,7 @@ import { toast } from 'sonner'
 
 export default function PedidosPage() {
   const { user, restaurant, loading: authLoading } = useAuth()
+  const { formatCurrency } = useCurrency()
   const router = useRouter()
   const [categories, setCategories] = useState([])
   const [products, setProducts] = useState([])
