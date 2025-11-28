@@ -387,7 +387,7 @@ export default function DashboardPage() {
                       </div>
                       <div className="text-right">
                         <Badge className={estadoColors[order.estado]}>{order.estado}</Badge>
-                        <p className="text-sm font-bold mt-1">€{parseFloat(order.total).toFixed(2)}</p>
+                        <p className="text-sm font-bold mt-1">{formatCurrency(order.total)}</p>
                       </div>
                     </div>
                   ))}
