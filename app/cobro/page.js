@@ -301,7 +301,7 @@ export default function CobroPage() {
                       {order.order_items?.map(item => (
                         <div key={item.id} className="flex justify-between text-xs mb-1">
                           <span>{item.cantidad}x {item.nombre_item_snapshot}</span>
-                          <span className="font-medium">€{(item.precio_unitario * item.cantidad).toFixed(2)}</span>
+                          <span className="font-medium">{formatCurrency(item.precio_unitario * item.cantidad)}</span>
                         </div>
                       ))}
                     </div>
