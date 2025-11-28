@@ -702,6 +702,129 @@ export default function PedidosPage() {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Dialog de Edición */}
+        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+          <DialogContent className="max-w-6xl w-full max-h-[95vh] sm:max-h-[90vh] p-0 flex flex-col">
+            <DialogHeader className="px-4 sm:px-6 pt-4 sm:pt-6 pb-3 border-b shrink-0">
+              <DialogTitle>Editar Pedido #{editingOrder?.id?.slice(0, 8)}</DialogTitle>
+            </DialogHeader>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 overflow-y-scroll p-4 sm:p-6" style={{WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain'}}>
+              {/* Productos */}
+              <div className="lg:col-span-2 space-y-4">
+                <div className="space-y-3">
+                  <div className="flex space-x-2">
+                    <Input
+                      placeholder="Buscar producto..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="flex-1"
+                    />
+                    <Select value={selectedCategory || 'all'} onValueChange={(val) => setSelectedCategory(val === 'all' ? null : val)}>
+                      <SelectTrigger className="w-[200px]">
+                        <SelectValue placeholder="Categoría" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todas</SelectItem>
+                        {categories.map(cat => (
+                          <SelectItem key={cat.id} value={cat.id}>{cat.nombre}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    {filteredProducts.map(product => (
+                      <Card key={product.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => addToCart(product)}>
+                        <CardContent className="p-3">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <h4 className="font-semibold text-sm">{product.nombre}</h4>
+                              <p className="text-lg font-bold text-orange-600 mt-1">{formatCurrency(product.precio_base)}</p>
+                            </div>
+                            <Plus className="h-5 w-5 text-orange-500" />
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Carrito */}
+              <div className="lg:border-l lg:pl-4 flex flex-col mt-4 lg:mt-0">
+                <h3 className="font-bold text-lg mb-3 flex items-center">
+                  <ShoppingCart className="mr-2 h-5 w-5" /> Carrito ({cart.length})
+                </h3>
+
+                <div className="space-y-2 mb-4">
+                  {cart.map(item => (
+                    <div key={item.id} className="bg-gray-50 p-2 rounded-lg">
+                      <div className="flex items-start justify-between mb-2">
+                        <span className="font-medium text-sm">{item.nombre}</span>
+                        <Button size="sm" variant="ghost" onClick={() => removeFromCart(item.id)}>
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                        </Button>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <Button size="sm" variant="outline" onClick={() => updateQuantity(item.id, -1)}>
+                            <Minus className="h-3 w-3" />
+                          </Button>
+                          <span className="font-bold">{item.cantidad}</span>
+                          <Button size="sm" variant="outline" onClick={() => updateQuantity(item.id, 1)}>
+                            <Plus className="h-3 w-3" />
+                          </Button>
+                        </div>
+                        <span className="font-bold text-orange-600">{formatCurrency(parseFloat(item.precio_base) * item.cantidad)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <Label>Tipo de Pedido</Label>
+                    <Select value={orderForm.tipo} onValueChange={(val) => setOrderForm({...orderForm, tipo: val})}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="SALA">Sala</SelectItem>
+                        <SelectItem value="DELIVERY">Delivery</SelectItem>
+                        <SelectItem value="RECOGER">Para Recoger</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {orderForm.tipo === 'SALA' && (
+                    <div className="space-y-2">
+                      <Label>Mesa</Label>
+                      <Input value={orderForm.mesa} onChange={(e) => setOrderForm({...orderForm, mesa: e.target.value})} placeholder="Número de mesa" />
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <Label>Notas para cocina</Label>
+                    <Textarea value={orderForm.nota_cocina} onChange={(e) => setOrderForm({...orderForm, nota_cocina: e.target.value})} rows={2} />
+                  </div>
+
+                  <div className="bg-orange-50 p-3 rounded-lg">
+                    <div className="flex justify-between items-center">
+                      <span className="font-bold text-lg">TOTAL:</span>
+                      <span className="font-bold text-2xl text-orange-600">{formatCurrency(calculateTotal())}</span>
+                    </div>
+                  </div>
+
+                  <Button className="w-full bg-orange-500 hover:bg-orange-600" onClick={handleUpdateOrder} disabled={cart.length === 0}>
+                    Actualizar Pedido
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
         </div>
       </div>
     </div>
