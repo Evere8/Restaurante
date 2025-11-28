@@ -114,7 +114,8 @@ export default function ConfiguracionPage() {
 
       if (error) throw error
       toast.success('Restaurante actualizado')
-      loadRestaurantData()
+      await loadRestaurantData()
+      await reloadRestaurant() // Actualizar el contexto para que se vea en el sidebar
     } catch (error) {
       console.error('Error actualizando restaurante:', error)
       toast.error('Error al actualizar restaurante')
