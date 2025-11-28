@@ -352,26 +352,59 @@ export default function DashboardPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Productos por vencer */}
-          <Card>
-            <CardHeader>
+          {/* Productos VENCIDOS */}
+          {expiredProducts.length > 0 && (
+            <Card className="border-red-500 border-2">
+              <CardHeader className="bg-red-50">
+                <CardTitle className="flex items-center space-x-2 text-red-700">
+                  <Package className="h-5 w-5" />
+                  <span>🔴 Productos VENCIDOS</span>
+                  <Badge className="bg-red-600">{expiredProducts.length}</Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-4">
+                <div className="space-y-2">
+                  {expiredProducts.map((product) => (
+                    <div key={product.id} className="flex items-center justify-between p-3 bg-red-50 rounded-lg border border-red-200">
+                      <div>
+                        <p className="font-medium text-red-900">{product.nombre}</p>
+                        <p className="text-sm text-red-600">
+                          Venció: {product.fechaVencimiento.toLocaleDateString('es-ES')}
+                        </p>
+                      </div>
+                      <Badge className="bg-red-600">Hace {Math.abs(product.diasRestantes)} días</Badge>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Productos PRÓXIMOS A VENCER */}
+          <Card className={expiringProducts.length > 0 ? "border-yellow-500 border-2" : ""}>
+            <CardHeader className={expiringProducts.length > 0 ? "bg-yellow-50" : ""}>
               <CardTitle className="flex items-center space-x-2">
-                <Package className="h-5 w-5 text-orange-600" />
-                <span>Productos Próximos a Vencer</span>
+                <Package className="h-5 w-5 text-yellow-600" />
+                <span className={expiringProducts.length > 0 ? "text-yellow-700" : ""}>
+                  🟡 Productos Próximos a Vencer
+                </span>
+                {expiringProducts.length > 0 && (
+                  <Badge className="bg-yellow-500">{expiringProducts.length}</Badge>
+                )}
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-4">
               {expiringProducts.length > 0 ? (
                 <div className="space-y-2">
                   {expiringProducts.map((product) => (
-                    <div key={product.id} className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
+                    <div key={product.id} className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg border border-yellow-200">
                       <div>
                         <p className="font-medium">{product.nombre}</p>
                         <p className="text-sm text-gray-600">
                           Vence: {product.fechaVencimiento.toLocaleDateString('es-ES')}
                         </p>
                       </div>
-                      <Badge variant="destructive">{product.diasRestantes} días</Badge>
+                      <Badge className="bg-yellow-500">{product.diasRestantes} días</Badge>
                     </div>
                   ))}
                 </div>
