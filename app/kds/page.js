@@ -397,9 +397,8 @@ export default function KDSPage() {
                   </CardContent>
                 </Card>
               )}
-            </div>
-          </div>
-        </div>
+          </TabsContent>
+        </Tabs>
         </div>
       </div>
     </div>
