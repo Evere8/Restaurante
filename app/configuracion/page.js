@@ -519,7 +519,7 @@ export default function ConfiguracionPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Moneda</Label>
-                    <Select defaultValue="EUR">
+                    <Select value={selectedCurrency} onValueChange={setSelectedCurrency}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
@@ -542,6 +542,11 @@ export default function ConfiguracionPage() {
                       </SelectContent>
                     </Select>
                   </div>
+                </div>
+                <div className="flex justify-end pt-4">
+                  <Button className="bg-orange-500 hover:bg-orange-600" onClick={handleSavePreferences}>
+                    Guardar Preferencias
+                  </Button>
                 </div>
                 <div className="pt-4 border-t">
                   <p className="text-sm text-gray-600">Más opciones de configuración próximamente...</p>
