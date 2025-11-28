@@ -64,6 +64,11 @@ export const AuthProvider = ({ children }) => {
         throw new Error('Debes iniciar como desarrollador')
       }
 
+      // Verificar que el restaurante esté activo
+      if (userData.restaurants && !userData.restaurants.activo && userData.rol !== 'DESARROLLADOR') {
+        throw new Error('Tu cuenta ha sido desactivada. Por favor contacta a soporte.')
+      }
+
       // Verificar que el restaurante no esté en mantenimiento
       if (userData.restaurants && userData.restaurants.en_mantenimiento && userData.rol !== 'DESARROLLADOR') {
         throw new Error('Restaurante en mantenimiento')
