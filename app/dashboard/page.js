@@ -27,6 +27,7 @@ export default function DashboardPage() {
   const [salesData, setSalesData] = useState([])
   const [topProducts, setTopProducts] = useState([])
   const [expiringProducts, setExpiringProducts] = useState([])
+  const [expiredProducts, setExpiredProducts] = useState([])
   const [recentOrders, setRecentOrders] = useState([])
 
   useEffect(() => {
