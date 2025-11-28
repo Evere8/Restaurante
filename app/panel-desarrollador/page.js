@@ -194,10 +194,26 @@ export default function PanelDesarrolladorPage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      <Sidebar />
-      <div className="flex-1 overflow-auto">
-        <div className="container mx-auto px-4 py-6">
+    <div className="min-h-screen bg-gray-50">
+      {/* Header del Panel Desarrollador */}
+      <div className="bg-gradient-to-r from-purple-600 to-purple-700 text-white shadow-lg">
+        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">Panel Desarrollador</h1>
+            <p className="text-purple-100 text-sm">{user?.nombre} - {user?.email}</p>
+          </div>
+          <Button
+            variant="ghost"
+            onClick={logout}
+            className="text-white hover:bg-purple-600"
+          >
+            <LogOut className="h-5 w-5 mr-2" />
+            Cerrar Sesión
+          </Button>
+        </div>
+      </div>
+      
+      <div className="container mx-auto px-4 py-6">
           <div className="mb-6">
             <h1 className="text-3xl font-bold text-gray-800">Panel de Desarrollador</h1>
             <p className="text-gray-600">Gestión de clientes y desarrolladores</p>
