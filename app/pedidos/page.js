@@ -28,7 +28,11 @@ export default function PedidosPage() {
   const [cart, setCart] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
   const [customers, setCustomers] = useState([])
-  const [orders, setOrders] = useState([])
+  const [orders, setOrders] = useState({
+    preparacion: [],
+    paraEntregar: [],
+    entregados: []
+  })
   const [editingOrder, setEditingOrder] = useState(null)
 
   const [orderForm, setOrderForm] = useState({
@@ -40,6 +44,7 @@ export default function PedidosPage() {
   })
 
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
+  const [editDialogOpen, setEditDialogOpen] = useState(false)
 
   useEffect(() => {
     if (!authLoading && !user) {
