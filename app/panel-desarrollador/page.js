@@ -410,7 +410,7 @@ export default function PanelDesarrolladorPage() {
               </div>
             </DialogContent>
           </Dialog>
-      </div>
+        </div>
     </div>
   )
 }
