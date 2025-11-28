@@ -424,10 +424,132 @@ export default function PedidosPage() {
                         <span>Total:</span>
                         <span className="text-orange-600">{formatCurrency(order.total)}</span>
                       </div>
+                      <div className="flex space-x-2 mt-3">
+                        <Button size="sm" variant="outline" className="flex-1" onClick={() => openEditOrder(order)}>
+                          <Edit className="h-4 w-4 mr-1" /> Editar
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
               ))}
+              {orders.preparacion.length === 0 && (
+                <div className="col-span-full text-center py-12 text-gray-500">
+                  No hay pedidos en preparación
+                </div>
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="paraEntregar">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {orders.paraEntregar.map(order => (
+                <Card key={order.id}>
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <CardTitle className="text-lg">Pedido #{order.id.slice(0, 8)}</CardTitle>
+                        <p className="text-sm text-gray-600 mt-1">
+                          {new Date(order.created_at).toLocaleString('es-ES')}
+                        </p>
+                      </div>
+                      <Badge className="bg-blue-500">LISTO</Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Tipo:</span>
+                        <span className="font-medium">{order.tipo}</span>
+                      </div>
+                      {order.mesa && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Mesa:</span>
+                          <span className="font-medium">{order.mesa}</span>
+                        </div>
+                      )}
+                      <div className="border-t pt-2 mt-2">
+                        <p className="font-semibold mb-1">Items:</p>
+                        {order.order_items?.map(item => (
+                          <div key={item.id} className="flex justify-between text-xs">
+                            <span>{item.cantidad}x {item.nombre_item_snapshot}</span>
+                            <span>{formatCurrency(item.precio_unitario * item.cantidad)}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="border-t pt-2 mt-2 flex justify-between font-bold text-lg">
+                        <span>Total:</span>
+                        <span className="text-orange-600">{formatCurrency(order.total)}</span>
+                      </div>
+                      <div className="flex space-x-2 mt-3">
+                        <Button size="sm" variant="outline" className="flex-1" onClick={() => openEditOrder(order)}>
+                          <Edit className="h-4 w-4 mr-1" /> Editar
+                        </Button>
+                        <Button size="sm" className="flex-1 bg-green-500 hover:bg-green-600" onClick={() => handleMarcarEntregado(order.id)}>
+                          ✅ Entregado
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+              {orders.paraEntregar.length === 0 && (
+                <div className="col-span-full text-center py-12 text-gray-500">
+                  No hay pedidos listos para entregar
+                </div>
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="entregados">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {orders.entregados.map(order => (
+                <Card key={order.id} className="opacity-75">
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <CardTitle className="text-lg">Pedido #{order.id.slice(0, 8)}</CardTitle>
+                        <p className="text-sm text-gray-600 mt-1">
+                          {new Date(order.created_at).toLocaleString('es-ES')}
+                        </p>
+                      </div>
+                      <Badge className="bg-green-500">ENTREGADO</Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Tipo:</span>
+                        <span className="font-medium">{order.tipo}</span>
+                      </div>
+                      {order.mesa && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Mesa:</span>
+                          <span className="font-medium">{order.mesa}</span>
+                        </div>
+                      )}
+                      <div className="border-t pt-2 mt-2">
+                        <p className="font-semibold mb-1">Items:</p>
+                        {order.order_items?.map(item => (
+                          <div key={item.id} className="flex justify-between text-xs">
+                            <span>{item.cantidad}x {item.nombre_item_snapshot}</span>
+                            <span>{formatCurrency(item.precio_unitario * item.cantidad)}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="border-t pt-2 mt-2 flex justify-between font-bold text-lg">
+                        <span>Total:</span>
+                        <span className="text-orange-600">{formatCurrency(order.total)}</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+              {orders.entregados.length === 0 && (
+                <div className="col-span-full text-center py-12 text-gray-500">
+                  No hay pedidos entregados en las últimas 48 horas
+                </div>
+              )}
             </div>
 
             {orders.length === 0 && (
