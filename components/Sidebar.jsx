@@ -63,6 +63,16 @@ export default function Sidebar() {
       >
         {/* Header */}
         <div className="p-6 border-b border-orange-500 mt-16 lg:mt-0">
+          {restaurant?.logo_url && (
+            <div className="mb-4 flex justify-center">
+              <img 
+                src={restaurant.logo_url} 
+                alt="Logo del restaurante" 
+                className="h-20 w-20 object-contain rounded-lg bg-white/10 p-2"
+                onError={(e) => { e.target.style.display = 'none' }}
+              />
+            </div>
+          )}
           <h1 className="text-2xl font-bold">{restaurant?.nombre || 'CRM Restaurante'}</h1>
           <p className="text-orange-100 text-sm mt-1">{user?.nombre}</p>
           <p className="text-orange-200 text-xs">{user?.rol}</p>
