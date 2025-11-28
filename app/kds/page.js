@@ -22,6 +22,8 @@ export default function KDSPage() {
     PREPARANDO: [],
     LISTO: []
   })
+  const [viewingOrder, setViewingOrder] = useState(null)
+  const [viewDialogOpen, setViewDialogOpen] = useState(false)
 
   useEffect(() => {
     if (!authLoading && !user) {
