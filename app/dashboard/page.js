@@ -260,7 +260,7 @@ export default function DashboardPage() {
               <TrendingUp className="h-4 w-4 text-orange-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">€{kpis.ticketPromedio.toFixed(2)}</div>
+              <div className="text-2xl font-bold">{formatCurrency(kpis.ticketPromedio)}</div>
             </CardContent>
           </Card>
 
