@@ -13,7 +13,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Plus, Edit, Trash2, Users, Phone, Mail } from 'lucide-react'
+import { Plus, Edit, Trash2, Users, Phone, Mail, Download } from 'lucide-react'
 import { toast } from 'sonner'
 
 export default function ClientesPage() {
