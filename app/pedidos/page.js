@@ -306,12 +306,12 @@ export default function PedidosPage() {
           setCreateDialogOpen(open)
           if (!open) resetForm()
         }}>
-          <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col mobile-full-height">
             <DialogHeader>
               <DialogTitle>Nuevo Pedido</DialogTitle>
             </DialogHeader>
             
-            <div className="grid grid-cols-3 gap-4 flex-1 overflow-hidden">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 flex-1 overflow-y-auto mobile-scroll">
               {/* Productos */}
               <div className="col-span-2 space-y-4 overflow-y-auto pr-2">
                 <div className="space-y-3">
