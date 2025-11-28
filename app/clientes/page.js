@@ -192,7 +192,7 @@ export default function ClientesPage() {
             </Button>
             <Dialog open={dialogOpen} onOpenChange={(open) => {
               setDialogOpen(open)
-              if (!open) resetForm()
+              if (!open) resetCustomerForm()
             }}>
               <DialogTrigger asChild>
                 <Button className="bg-orange-500 hover:bg-orange-600">
