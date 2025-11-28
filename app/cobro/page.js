@@ -20,6 +20,7 @@ import { toast } from 'sonner'
 
 export default function CobroPage() {
   const { user, restaurant, loading: authLoading } = useAuth()
+  const { formatCurrency, currency } = useCurrency()
   const router = useRouter()
   const [ordersACobrar, setOrdersACobrar] = useState([])
   const [ordersCobrados, setOrdersCobrados] = useState([])
