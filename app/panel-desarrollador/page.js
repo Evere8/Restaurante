@@ -247,10 +247,14 @@ export default function PanelDesarrolladorPage() {
     setEditingRestaurant(restaurant)
     setRestaurantForm({
       nombre: restaurant.nombre,
-      email: restaurant.email || '',
+      slug: restaurant.slug || '',
       telefono: restaurant.telefono || '',
-      contacto_numero: restaurant.contacto_numero || '',
-      tipo_pago_plan: restaurant.tipo_pago_plan || 'CONTADO'
+      direccion: restaurant.direccion || '',
+      admin_nombre: '',
+      admin_email: '',
+      admin_password: '',
+      tipo_pago: restaurant.tipo_pago || 'CONTADO',
+      activo: restaurant.activo
     })
     setDialogOpen(true)
   }
