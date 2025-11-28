@@ -360,16 +360,19 @@ export default function MenuPage() {
                       {productForm.img_url && (
                         <div className="mt-2">
                           <p className="text-xs text-gray-500 mb-1">Vista previa:</p>
-                          <img 
-                            src={productForm.img_url} 
-                            alt="Preview" 
-                            className="w-32 h-32 object-cover rounded border"
-                            onError={(e) => {
-                              e.target.style.display = 'none'
-                              e.target.nextElementSibling.style.display = 'block'
-                            }}
-                          />
-                          <p className="text-xs text-red-500 hidden">❌ URL inválida o imagen no accesible</p>
+                          <div className="w-32 h-32 bg-gray-50 rounded border flex items-center justify-center overflow-hidden">
+                            <img 
+                              src={productForm.img_url} 
+                              alt="Preview" 
+                              className="w-full h-full object-cover"
+                              onLoad={(e) => {
+                                e.target.style.display = 'block'
+                              }}
+                              onError={(e) => {
+                                e.target.style.display = 'none'
+                              }}
+                            />
+                          </div>
                         </div>
                       )}
                     </div>
