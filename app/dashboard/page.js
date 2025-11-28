@@ -14,6 +14,7 @@ import { toast } from 'sonner'
 
 export default function DashboardPage() {
   const { user, restaurant, loading: authLoading } = useAuth()
+  const { formatCurrency } = useCurrency()
   const router = useRouter()
   const [kpis, setKpis] = useState({
     ventasHoy: 0,
