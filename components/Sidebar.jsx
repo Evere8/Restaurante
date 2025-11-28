@@ -1,8 +1,9 @@
 'use client'
 
+import { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
-import { LogOut, Home, Utensils, ShoppingCart, ChefHat, CreditCard, Users, Tag, BarChart3, Settings, Code } from 'lucide-react'
+import { LogOut, Home, Utensils, ShoppingCart, ChefHat, CreditCard, Users, Tag, BarChart3, Settings, Code, Menu, X } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
@@ -10,6 +11,7 @@ import { cn } from '@/lib/utils'
 export default function Sidebar() {
   const { user, restaurant, logout } = useAuth()
   const pathname = usePathname()
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   const menuItems = [
     { href: '/dashboard', label: 'Dashboard', icon: Home, permission: 'dashboard' },
