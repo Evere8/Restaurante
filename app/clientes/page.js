@@ -238,6 +238,7 @@ export default function ClientesPage() {
                           <div className="text-sm font-medium text-gray-900">{customer.nombre}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
+                          {customer.ruc && <div className="text-sm text-gray-900 font-medium">RUC: {customer.ruc}</div>}
                           <div className="text-sm text-gray-900">{customer.telefono}</div>
                           <div className="text-sm text-gray-500">{customer.email}</div>
                         </td>
