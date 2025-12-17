@@ -185,10 +185,14 @@ export default function ClientesPage() {
                       <Input value={customerForm.nombre} onChange={(e) => setCustomerForm({...customerForm, nombre: e.target.value})} />
                     </div>
                     <div className="space-y-2">
+                      <Label>RUC / C.I. N°</Label>
+                      <Input value={customerForm.ruc} onChange={(e) => setCustomerForm({...customerForm, ruc: e.target.value})} placeholder="12345678-9" />
+                    </div>
+                    <div className="space-y-2">
                       <Label>Teléfono</Label>
                       <Input value={customerForm.telefono} onChange={(e) => setCustomerForm({...customerForm, telefono: e.target.value})} />
                     </div>
-                    <div className="space-y-2">
+                    <div className="col-span-2 space-y-2">
                       <Label>Email</Label>
                       <Input type="email" value={customerForm.email} onChange={(e) => setCustomerForm({...customerForm, email: e.target.value})} />
                     </div>
