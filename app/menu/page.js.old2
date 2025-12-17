@@ -16,8 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Plus, Edit, Trash2, Package, AlertTriangle, X } from 'lucide-react'
+import { Plus, Edit, Trash2, Package } from 'lucide-react'
 import { toast } from 'sonner'
 
 export default function MenuPage() {
@@ -26,7 +25,6 @@ export default function MenuPage() {
   const router = useRouter()
   const [categories, setCategories] = useState([])
   const [products, setProducts] = useState([])
-  const [stockItems, setStockItems] = useState([])
   const [selectedCategory, setSelectedCategory] = useState(null)
   const [editingProduct, setEditingProduct] = useState(null)
   const [editingCategory, setEditingCategory] = useState(null)
@@ -44,14 +42,8 @@ export default function MenuPage() {
     disponible: true,
     dias_para_vencer: '',
     dias_alerta_vencimiento: 2,
-    fecha_compra: '',
-    usar_stock_avanzado: false,
-    crear_en_stock: false,
-    stock_minimo_alerta: 1,
-    dias_alerta_vencimiento_stock: 7
+    fecha_compra: ''
   })
-
-  const [recetaItems, setRecetaItems] = useState([])
 
   const [categoryForm, setCategoryForm] = useState({
     nombre: '',
@@ -68,7 +60,6 @@ export default function MenuPage() {
     if (user && restaurant) {
       loadCategories()
       loadProducts()
-      loadStockItems()
     }
   }, [user, restaurant])
 
@@ -100,42 +91,17 @@ export default function MenuPage() {
     }
   }
 
-  const loadStockItems = async () => {
-    const { data, error } = await supabase
-      .from('stock_items')
-      .select('*')
-      .eq('restaurant_id', restaurant.id)
-      .eq('utilizable_en_receta', true)
-      .eq('activo', true)
-      .order('nombre', { ascending: true })
-
-    if (error) {
-      console.error('Error cargando stock:', error)
-    } else {
-      setStockItems(data || [])
-    }
-  }
-
   const handleSaveProduct = async () => {
     try {
       const dataToSave = {
-        nombre: productForm.nombre,
-        descripcion: productForm.descripcion,
+        ...productForm,
         restaurant_id: restaurant.id,
         precio_base: parseFloat(productForm.precio_base),
         coste: productForm.coste ? parseFloat(productForm.coste) : null,
-        category_id: productForm.category_id || null,
-        img_url: productForm.img_url,
-        tiempo_preparacion_min: parseInt(productForm.tiempo_preparacion_min),
-        disponible: productForm.disponible,
         dias_para_vencer: productForm.dias_para_vencer ? parseInt(productForm.dias_para_vencer) : null,
         dias_alerta_vencimiento: parseInt(productForm.dias_alerta_vencimiento),
-        fecha_compra: productForm.fecha_compra || null,
-        usar_stock_avanzado: productForm.usar_stock_avanzado,
-        crear_en_stock: productForm.crear_en_stock
+        fecha_compra: productForm.fecha_compra || null
       }
-
-      let savedProductId
 
       if (editingProduct) {
         const { error } = await supabase
@@ -144,47 +110,14 @@ export default function MenuPage() {
           .eq('id', editingProduct.id)
 
         if (error) throw error
-        savedProductId = editingProduct.id
         toast.success('Producto actualizado')
       } else {
-        const { data: newProduct, error } = await supabase
+        const { error } = await supabase
           .from('menu_items')
           .insert([dataToSave])
-          .select()
-          .single()
 
         if (error) throw error
-        savedProductId = newProduct.id
         toast.success('Producto creado')
-      }
-
-      // Si usa stock avanzado, guardar receta
-      if (productForm.usar_stock_avanzado && recetaItems.length > 0) {
-        // Eliminar recetas anteriores si está editando
-        if (editingProduct) {
-          await supabase
-            .from('menu_receta')
-            .delete()
-            .eq('menu_item_id', savedProductId)
-        }
-
-        // Insertar nuevas recetas
-        const recetasToInsert = recetaItems.map(item => ({
-          menu_item_id: savedProductId,
-          stock_item_id: item.stock_item_id,
-          cantidad_usada: parseFloat(item.cantidad)
-        }))
-
-        const { error: recetaError } = await supabase
-          .from('menu_receta')
-          .insert(recetasToInsert)
-
-        if (recetaError) {
-          console.error('Error guardando receta:', recetaError)
-          toast.error('Producto guardado pero error en receta')
-        } else {
-          toast.success('Receta guardada')
-        }
       }
 
       setDialogOpen(false)
@@ -262,6 +195,7 @@ export default function MenuPage() {
   }
 
   const extractImageUrl = (url) => {
+    // Si es una URL de búsqueda de Google, extraer la URL real de la imagen
     if (url.includes('google.com/imgres')) {
       try {
         const urlObj = new URL(url)
@@ -288,13 +222,8 @@ export default function MenuPage() {
       disponible: true,
       dias_para_vencer: '',
       dias_alerta_vencimiento: 2,
-      fecha_compra: '',
-      usar_stock_avanzado: false,
-      crear_en_stock: false,
-      stock_minimo_alerta: 1,
-      dias_alerta_vencimiento_stock: 7
+      fecha_compra: ''
     })
-    setRecetaItems([])
     setEditingProduct(null)
   }
 
@@ -303,8 +232,9 @@ export default function MenuPage() {
     setEditingCategory(null)
   }
 
-  const openEditProduct = async (product) => {
+  const openEditProduct = (product) => {
     setEditingProduct(product)
+    // Extract clean image URL if it's a Google search URL
     const cleanImgUrl = product.img_url ? extractImageUrl(product.img_url) : ''
     setProductForm({
       nombre: product.nombre,
@@ -317,29 +247,8 @@ export default function MenuPage() {
       disponible: product.disponible,
       dias_para_vencer: product.dias_para_vencer || '',
       dias_alerta_vencimiento: product.dias_alerta_vencimiento,
-      fecha_compra: product.fecha_compra || '',
-      usar_stock_avanzado: product.usar_stock_avanzado || false,
-      crear_en_stock: product.crear_en_stock || false,
-      stock_minimo_alerta: 1,
-      dias_alerta_vencimiento_stock: 7
+      fecha_compra: product.fecha_compra || ''
     })
-
-    // Cargar receta si existe
-    if (product.usar_stock_avanzado) {
-      const { data: receta, error } = await supabase
-        .from('menu_receta')
-        .select('*, stock_items(nombre)')
-        .eq('menu_item_id', product.id)
-
-      if (!error && receta) {
-        setRecetaItems(receta.map(r => ({
-          stock_item_id: r.stock_item_id,
-          nombre: r.stock_items.nombre,
-          cantidad: r.cantidad_usada
-        })))
-      }
-    }
-
     setDialogOpen(true)
   }
 
@@ -352,32 +261,6 @@ export default function MenuPage() {
     setCategoryDialogOpen(true)
   }
 
-  const addRecetaItem = () => {
-    if (stockItems.length === 0) {
-      toast.error('No hay insumos disponibles')
-      return
-    }
-    setRecetaItems([...recetaItems, { stock_item_id: '', nombre: '', cantidad: '' }])
-  }
-
-  const removeRecetaItem = (index) => {
-    setRecetaItems(recetaItems.filter((_, i) => i !== index))
-  }
-
-  const updateRecetaItem = (index, field, value) => {
-    const updated = [...recetaItems]
-    updated[index][field] = value
-    
-    if (field === 'stock_item_id') {
-      const item = stockItems.find(s => s.id === value)
-      if (item) {
-        updated[index].nombre = item.nombre
-      }
-    }
-    
-    setRecetaItems(updated)
-  }
-
   if (authLoading || !user) {
     return <div className="flex items-center justify-center min-h-screen">Cargando...</div>
   }
@@ -385,8 +268,6 @@ export default function MenuPage() {
   const filteredProducts = selectedCategory
     ? products.filter(p => p.category_id === selectedCategory)
     : products
-
-  const showManualWarning = !productForm.usar_stock_avanzado && (productForm.coste || productForm.dias_para_vencer)
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -430,20 +311,10 @@ export default function MenuPage() {
                     <Plus className="mr-2 h-4 w-4" /> Nuevo Producto
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>{editingProduct ? 'Editar' : 'Nuevo'} Producto</DialogTitle>
                   </DialogHeader>
-                  
-                  {showManualWarning && (
-                    <Alert className="bg-yellow-50 border-yellow-200">
-                      <AlertTriangle className="h-4 w-4 text-yellow-600" />
-                      <AlertDescription className="text-yellow-800">
-                        ⚠️ Algunos productos que usan receta no se podrán analizar los costos correctamente.
-                      </AlertDescription>
-                    </Alert>
-                  )}
-
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Nombre *</Label>
@@ -471,63 +342,9 @@ export default function MenuPage() {
                       <Input type="number" step="0.01" value={productForm.precio_base} onChange={(e) => setProductForm({...productForm, precio_base: e.target.value})} />
                     </div>
                     <div className="space-y-2">
-                      <Label>Tiempo Preparación (min)</Label>
-                      <Input type="number" value={productForm.tiempo_preparacion_min} onChange={(e) => setProductForm({...productForm, tiempo_preparacion_min: e.target.value})} />
+                      <Label>Coste</Label>
+                      <Input type="number" step="0.01" value={productForm.coste} onChange={(e) => setProductForm({...productForm, coste: e.target.value})} />
                     </div>
-
-                    {/* Checkboxes de Stock */}
-                    <div className="col-span-2 space-y-3 border-t pt-3">
-                      <div className="flex items-center space-x-2">
-                        <Switch 
-                          checked={productForm.usar_stock_avanzado} 
-                          onCheckedChange={(checked) => setProductForm({...productForm, usar_stock_avanzado: checked, crear_en_stock: false})} 
-                        />
-                        <Label>✨ Usar Stock Avanzado (con Receta)</Label>
-                      </div>
-                      
-                      {!productForm.usar_stock_avanzado && (
-                        <div className="flex items-center space-x-2">
-                          <Switch 
-                            checked={productForm.crear_en_stock} 
-                            onCheckedChange={(checked) => setProductForm({...productForm, crear_en_stock: checked})} 
-                          />
-                          <Label>📦 Crear automáticamente en STOCK</Label>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Campos adicionales si NO usa stock avanzado */}
-                    {!productForm.usar_stock_avanzado && (
-                      <>
-                        <div className="space-y-2">
-                          <Label>Coste</Label>
-                          <Input type="number" step="0.01" value={productForm.coste} onChange={(e) => setProductForm({...productForm, coste: e.target.value})} />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Días para vencer</Label>
-                          <Input type="number" value={productForm.dias_para_vencer} onChange={(e) => setProductForm({...productForm, dias_para_vencer: e.target.value})} />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Fecha compra</Label>
-                          <Input type="date" value={productForm.fecha_compra} onChange={(e) => setProductForm({...productForm, fecha_compra: e.target.value})} />
-                        </div>
-                      </>
-                    )}
-
-                    {/* Campos adicionales si crea en stock */}
-                    {productForm.crear_en_stock && (
-                      <>
-                        <div className="space-y-2">
-                          <Label>Stock Mínimo (alerta)</Label>
-                          <Input type="number" value={productForm.stock_minimo_alerta} onChange={(e) => setProductForm({...productForm, stock_minimo_alerta: e.target.value})} />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Días Alerta Vencimiento</Label>
-                          <Input type="number" value={productForm.dias_alerta_vencimiento_stock} onChange={(e) => setProductForm({...productForm, dias_alerta_vencimiento_stock: e.target.value})} />
-                        </div>
-                      </>
-                    )}
-
                     <div className="col-span-2 space-y-2">
                       <Label>URL Imagen</Label>
                       <Input 
@@ -561,57 +378,23 @@ export default function MenuPage() {
                         </div>
                       )}
                     </div>
-
-                    {/* SECCIÓN DE RECETA */}
-                    {productForm.usar_stock_avanzado && (
-                      <div className="col-span-2 space-y-3 border-t pt-4">
-                        <div className="flex items-center justify-between">
-                          <Label className="text-lg font-semibold">🍳 Receta del Producto</Label>
-                          <Button type="button" size="sm" variant="outline" onClick={addRecetaItem}>
-                            <Plus className="h-4 w-4 mr-1" /> Agregar Insumo
-                          </Button>
-                        </div>
-                        
-                        {recetaItems.length === 0 ? (
-                          <div className="text-center py-4 bg-gray-50 rounded-lg border-2 border-dashed">
-                            <p className="text-gray-500">No hay insumos en la receta. Agrega al menos uno.</p>
-                          </div>
-                        ) : (
-                          <div className="space-y-2">
-                            {recetaItems.map((item, index) => (
-                              <div key={index} className="flex items-center space-x-2 p-3 bg-orange-50 rounded-lg border">
-                                <Select 
-                                  value={item.stock_item_id} 
-                                  onValueChange={(val) => updateRecetaItem(index, 'stock_item_id', val)}
-                                >
-                                  <SelectTrigger className="flex-1">
-                                    <SelectValue placeholder="Seleccionar insumo" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {stockItems.map(stock => (
-                                      <SelectItem key={stock.id} value={stock.id}>{stock.nombre}</SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                                <Input 
-                                  type="number" 
-                                  step="0.01" 
-                                  placeholder="Cantidad" 
-                                  value={item.cantidad}
-                                  onChange={(e) => updateRecetaItem(index, 'cantidad', e.target.value)}
-                                  className="w-32"
-                                />
-                                <Button type="button" size="sm" variant="ghost" onClick={() => removeRecetaItem(index)}>
-                                  <X className="h-4 w-4 text-red-500" />
-                                </Button>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    <div className="col-span-2 flex items-center space-x-2 border-t pt-3">
+                    <div className="space-y-2">
+                      <Label>Tiempo Preparación (min)</Label>
+                      <Input type="number" value={productForm.tiempo_preparacion_min} onChange={(e) => setProductForm({...productForm, tiempo_preparacion_min: parseInt(e.target.value)})} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Días para vencer</Label>
+                      <Input type="number" value={productForm.dias_para_vencer} onChange={(e) => setProductForm({...productForm, dias_para_vencer: e.target.value})} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Días alerta vencimiento</Label>
+                      <Input type="number" value={productForm.dias_alerta_vencimiento} onChange={(e) => setProductForm({...productForm, dias_alerta_vencimiento: e.target.value})} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Fecha compra</Label>
+                      <Input type="date" value={productForm.fecha_compra} onChange={(e) => setProductForm({...productForm, fecha_compra: e.target.value})} />
+                    </div>
+                    <div className="col-span-2 flex items-center space-x-2">
                       <Switch checked={productForm.disponible} onCheckedChange={(checked) => setProductForm({...productForm, disponible: checked})} />
                       <Label>Disponible</Label>
                     </div>
@@ -645,12 +428,6 @@ export default function MenuPage() {
                         <CardTitle className="text-lg">{product.nombre}</CardTitle>
                         {product.menu_categories && (
                           <Badge variant="outline" className="mt-1">{product.menu_categories.nombre}</Badge>
-                        )}
-                        {product.usar_stock_avanzado && (
-                          <Badge className="mt-1 bg-green-500">✨ Stock Avanzado</Badge>
-                        )}
-                        {product.crear_en_stock && (
-                          <Badge className="mt-1 bg-blue-500">📦 En Stock</Badge>
                         )}
                       </div>
                       <Badge variant={product.disponible ? 'default' : 'destructive'}>
