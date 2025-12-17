@@ -226,40 +226,98 @@ export default function CobroPage() {
       let customerId = selectedOrder.customer_id
 
       // Si se va a generar factura, usar esos datos para el cliente
-      const nombreCliente = paymentForm.generar_factura 
-        ? paymentForm.factura_nombre 
-        : paymentForm.customer_nombre
-      
-      const telefonoCliente = paymentForm.generar_factura 
-        ? paymentForm.factura_ruc 
-        : paymentForm.customer_telefono
+      if (paymentForm.generar_factura && paymentForm.factura_nombre && paymentForm.factura_ruc) {
+        // Buscar cliente por RUC
+        let { data: existingCustomer } = await supabase
+          .from('customers')
+          .select('*')
+          .eq('restaurant_id', restaurant.id)
+          .eq('ruc', paymentForm.factura_ruc)
+          .single()
 
-      if (nombreCliente && telefonoCliente) {
+        // Si no existe, buscar por teléfono (compatibilidad)
+        if (!existingCustomer) {
+          const { data: customerByTel } = await supabase
+            .from('customers')
+            .select('*')
+            .eq('restaurant_id', restaurant.id)
+            .eq('telefono', paymentForm.factura_ruc)
+            .single()
+          
+          existingCustomer = customerByTel
+        }
+
+        if (existingCustomer) {
+          // Actualizar cliente existente
+          const updateData = {
+            nombre: paymentForm.factura_nombre,
+            acepta_marketing_whatsapp: paymentForm.acepta_promociones
+          }
+          
+          // Intentar actualizar RUC, si falla solo actualizar nombre
+          try {
+            await supabase
+              .from('customers')
+              .update({ ...updateData, ruc: paymentForm.factura_ruc })
+              .eq('id', existingCustomer.id)
+          } catch (e) {
+            // Si falla (campo no existe), solo actualizar nombre
+            await supabase
+              .from('customers')
+              .update(updateData)
+              .eq('id', existingCustomer.id)
+          }
+          
+          customerId = existingCustomer.id
+        } else {
+          // Crear nuevo cliente
+          const newCustomerData = {
+            restaurant_id: restaurant.id,
+            nombre: paymentForm.factura_nombre,
+            telefono: paymentForm.factura_ruc, // Guardar RUC en teléfono por compatibilidad
+            acepta_marketing_whatsapp: paymentForm.acepta_promociones
+          }
+          
+          // Intentar agregar campo RUC, si falla solo usar teléfono
+          try {
+            newCustomerData.ruc = paymentForm.factura_ruc
+          } catch (e) {
+            console.log('Campo RUC no disponible')
+          }
+          
+          const { data: newCustomer } = await supabase
+            .from('customers')
+            .insert([newCustomerData])
+            .select()
+            .single()
+          
+          customerId = newCustomer?.id
+        }
+      } else if (paymentForm.customer_nombre && paymentForm.customer_telefono) {
+        // Flujo normal sin factura
         const { data: existingCustomer } = await supabase
           .from('customers')
           .select('*')
           .eq('restaurant_id', restaurant.id)
-          .eq('telefono', telefonoCliente)
+          .eq('telefono', paymentForm.customer_telefono)
           .single()
 
         if (existingCustomer) {
-          // Actualizar cliente existente
           await supabase
             .from('customers')
             .update({
-              nombre: nombreCliente,
+              nombre: paymentForm.customer_nombre,
               acepta_marketing_whatsapp: paymentForm.acepta_promociones
             })
             .eq('id', existingCustomer.id)
           customerId = existingCustomer.id
         } else {
-          // Crear nuevo cliente
           const { data: newCustomer } = await supabase
             .from('customers')
             .insert([{
               restaurant_id: restaurant.id,
-              nombre: nombreCliente,
-              telefono: telefonoCliente,
+              nombre: paymentForm.customer_nombre,
+              telefono: paymentForm.customer_telefono,
               acepta_marketing_whatsapp: paymentForm.acepta_promociones
             }])
             .select()
