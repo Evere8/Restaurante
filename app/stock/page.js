@@ -367,7 +367,7 @@ export default function StockPage() {
                       <div className="space-y-2 text-sm">
                         <div className="flex justify-between">
                           <span className="text-gray-600">Cantidad:</span>
-                          <span className="font-bold">{item.cantidad}</span>
+                          <span className="font-bold">{item.cantidad} {item.unidad_medida || 'unidad'}</span>
                         </div>
                         {item.costo && (
                           <div className="flex justify-between">
