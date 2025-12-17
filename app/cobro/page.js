@@ -519,31 +519,36 @@ export default function CobroPage() {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label>Nombre del Cliente (opcional)</Label>
-                  <Input 
-                    value={paymentForm.customer_nombre}
-                    onChange={(e) => setPaymentForm({...paymentForm, customer_nombre: e.target.value})}
-                    placeholder="Juan Pérez"
-                  />
-                </div>
+                {/* Solo mostrar estos campos si NO está activada la factura */}
+                {!paymentForm.generar_factura && (
+                  <>
+                    <div className="space-y-2">
+                      <Label>Nombre del Cliente (opcional)</Label>
+                      <Input 
+                        value={paymentForm.customer_nombre}
+                        onChange={(e) => setPaymentForm({...paymentForm, customer_nombre: e.target.value})}
+                        placeholder="Juan Pérez"
+                      />
+                    </div>
 
-                <div className="space-y-2">
-                  <Label>Teléfono/WhatsApp (opcional)</Label>
-                  <Input 
-                    value={paymentForm.customer_telefono}
-                    onChange={(e) => setPaymentForm({...paymentForm, customer_telefono: e.target.value})}
-                    placeholder="+34 600 000 000"
-                  />
-                </div>
+                    <div className="space-y-2">
+                      <Label>Teléfono/WhatsApp (opcional)</Label>
+                      <Input 
+                        value={paymentForm.customer_telefono}
+                        onChange={(e) => setPaymentForm({...paymentForm, customer_telefono: e.target.value})}
+                        placeholder="+34 600 000 000"
+                      />
+                    </div>
 
-                <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    checked={paymentForm.acepta_promociones}
-                    onCheckedChange={(checked) => setPaymentForm({...paymentForm, acepta_promociones: checked})}
-                  />
-                  <Label>Acepta recibir promociones por WhatsApp</Label>
-                </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox 
+                        checked={paymentForm.acepta_promociones}
+                        onCheckedChange={(checked) => setPaymentForm({...paymentForm, acepta_promociones: checked})}
+                      />
+                      <Label>Acepta recibir promociones por WhatsApp</Label>
+                    </div>
+                  </>
+                )}
 
                 {/* Switch Generar Factura */}
                 <div className="border-t pt-4">
