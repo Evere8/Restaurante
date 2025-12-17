@@ -167,6 +167,40 @@ export default function CobroPage() {
     return Math.max(0, selectedOrder.total - discount)
   }
 
+  const buscarClientePorRUC = async (ruc) => {
+    if (!ruc || ruc.length < 3) return
+
+    try {
+      const { data: cliente, error } = await supabase
+        .from('customers')
+        .select('*')
+        .eq('restaurant_id', restaurant.id)
+        .or(`telefono.eq.${ruc},nombre.ilike.%${ruc}%`)
+        .limit(1)
+        .single()
+
+      if (!error && cliente) {
+        setPaymentForm({
+          ...paymentForm,
+          factura_ruc: ruc,
+          factura_nombre: cliente.nombre || '',
+          customer_nombre: cliente.nombre || '',
+          customer_telefono: cliente.telefono || ''
+        })
+        toast.success('Cliente encontrado')
+      } else {
+        setPaymentForm({
+          ...paymentForm,
+          factura_ruc: ruc,
+          factura_nombre: ''
+        })
+        toast.info('Cliente no encontrado. Complete los datos para registrarlo.')
+      }
+    } catch (error) {
+      console.error('Error buscando cliente:', error)
+    }
+  }
+
   const handleProcessPayment = async () => {
     if (!paymentForm.metodo_pago) {
       toast.error('Selecciona un método de pago')
