@@ -169,36 +169,36 @@ export default function DashboardPage() {
   }
 
   const loadExpiringProducts = async () => {
-    const { data: products } = await supabase
-      .from('menu_items')
-      .select('*')
-      .eq('restaurant_id', restaurant.id)
-      .not('fecha_compra', 'is', null)
-      .not('dias_para_vencer', 'is', null)
+    try {
+      // Usar la función stock_alertas de Supabase
+      const { data: alertas, error } = await supabase
+        .rpc('stock_alertas', { rest_id: restaurant.id })
 
-    if (products) {
-      const now = new Date()
-      const allProducts = products
-        .map(p => {
-          const compra = new Date(p.fecha_compra)
-          const vencimiento = new Date(compra)
-          vencimiento.setDate(vencimiento.getDate() + p.dias_para_vencer)
-          const diasRestantes = Math.ceil((vencimiento - now) / (1000 * 60 * 60 * 24))
-          return { ...p, diasRestantes, fechaVencimiento: vencimiento }
-        })
+      if (error) {
+        console.error('Error cargando alertas de stock:', error)
+        return
+      }
 
-      // Productos vencidos (días negativos)
-      const expired = allProducts
-        .filter(p => p.diasRestantes < 0)
-        .sort((a, b) => a.diasRestantes - b.diasRestantes)
+      // Mapear productos próximos a vencer
+      const expiring = (alertas.proximos_vencer || []).map(item => ({
+        id: item.id,
+        nombre: item.nombre,
+        fechaVencimiento: new Date(item.vencimiento),
+        diasRestantes: item.dias_restantes
+      }))
 
-      // Productos próximos a vencer (dentro del rango de alerta)
-      const expiring = allProducts
-        .filter(p => p.diasRestantes >= 0 && p.diasRestantes <= p.dias_alerta_vencimiento)
-        .sort((a, b) => a.diasRestantes - b.diasRestantes)
+      // Mapear productos vencidos
+      const expired = (alertas.vencidos || []).map(item => ({
+        id: item.id,
+        nombre: item.nombre,
+        fechaVencimiento: new Date(item.vencimiento),
+        diasRestantes: -item.dias_vencido
+      }))
 
-      setExpiredProducts(expired)
       setExpiringProducts(expiring)
+      setExpiredProducts(expired)
+    } catch (error) {
+      console.error('Error en loadExpiringProducts:', error)
     }
   }
 
