@@ -328,7 +328,9 @@ export default function MenuPage() {
       usar_stock_avanzado: false,
       crear_en_stock: false,
       stock_minimo_alerta: 1,
-      dias_alerta_vencimiento_stock: 7
+      dias_alerta_vencimiento_stock: 7,
+      cantidad_inicial: '',
+      unidad_medida: 'unidad'
     })
     setRecetaItems([])
     setEditingProduct(null)
