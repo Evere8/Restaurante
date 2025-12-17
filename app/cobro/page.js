@@ -171,15 +171,29 @@ export default function CobroPage() {
     if (!ruc || ruc.length < 3) return
 
     try {
-      const { data: cliente, error } = await supabase
+      // Intentar buscar por campo ruc primero, si falla buscar por teléfono
+      let { data: cliente, error } = await supabase
         .from('customers')
         .select('*')
         .eq('restaurant_id', restaurant.id)
-        .or(`telefono.eq.${ruc},nombre.ilike.%${ruc}%`)
+        .eq('ruc', ruc)
         .limit(1)
         .single()
 
-      if (!error && cliente) {
+      // Si no encontró por RUC, buscar por teléfono (compatibilidad)
+      if (error || !cliente) {
+        const { data: clienteTel } = await supabase
+          .from('customers')
+          .select('*')
+          .eq('restaurant_id', restaurant.id)
+          .eq('telefono', ruc)
+          .limit(1)
+          .single()
+        
+        cliente = clienteTel
+      }
+
+      if (cliente) {
         setPaymentForm({
           ...paymentForm,
           factura_ruc: ruc,
