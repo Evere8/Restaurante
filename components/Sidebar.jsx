@@ -16,6 +16,7 @@ export default function Sidebar() {
   const menuItems = [
     { href: '/dashboard', label: 'Dashboard', icon: Home, permission: 'dashboard' },
     { href: '/menu', label: 'Menú', icon: Utensils, permission: 'menu' },
+    { href: '/stock', label: 'Stock', icon: Package, permission: 'stock' },
     { href: '/pedidos', label: 'Pedidos', icon: ShoppingCart, permission: 'pedidos' },
     { href: '/kds', label: 'Cocina', icon: ChefHat, permission: 'kds' },
     { href: '/cobro', label: 'Cobro', icon: CreditCard, permission: 'cobro' },
