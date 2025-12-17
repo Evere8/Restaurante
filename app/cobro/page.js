@@ -211,12 +211,21 @@ export default function CobroPage() {
       // 1. Crear o actualizar cliente si se proporcionó info
       let customerId = selectedOrder.customer_id
 
-      if (paymentForm.customer_nombre && paymentForm.customer_telefono) {
+      // Si se va a generar factura, usar esos datos para el cliente
+      const nombreCliente = paymentForm.generar_factura 
+        ? paymentForm.factura_nombre 
+        : paymentForm.customer_nombre
+      
+      const telefonoCliente = paymentForm.generar_factura 
+        ? paymentForm.factura_ruc 
+        : paymentForm.customer_telefono
+
+      if (nombreCliente && telefonoCliente) {
         const { data: existingCustomer } = await supabase
           .from('customers')
           .select('*')
           .eq('restaurant_id', restaurant.id)
-          .eq('telefono', paymentForm.customer_telefono)
+          .eq('telefono', telefonoCliente)
           .single()
 
         if (existingCustomer) {
@@ -224,7 +233,7 @@ export default function CobroPage() {
           await supabase
             .from('customers')
             .update({
-              nombre: paymentForm.customer_nombre,
+              nombre: nombreCliente,
               acepta_marketing_whatsapp: paymentForm.acepta_promociones
             })
             .eq('id', existingCustomer.id)
@@ -235,13 +244,13 @@ export default function CobroPage() {
             .from('customers')
             .insert([{
               restaurant_id: restaurant.id,
-              nombre: paymentForm.customer_nombre,
-              telefono: paymentForm.customer_telefono,
+              nombre: nombreCliente,
+              telefono: telefonoCliente,
               acepta_marketing_whatsapp: paymentForm.acepta_promociones
             }])
             .select()
             .single()
-          customerId = newCustomer.id
+          customerId = newCustomer?.id
         }
       }
 
