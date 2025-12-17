@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
-import { CreditCard, DollarSign, X, Tag, CheckCircle } from 'lucide-react'
+import { CreditCard, DollarSign, X, Tag, CheckCircle, FileText } from 'lucide-react'
 import { toast } from 'sonner'
 
 export default function CobroPage() {
