@@ -25,6 +25,7 @@ export default function ClientesPage() {
 
   const [customerForm, setCustomerForm] = useState({
     nombre: '',
+    ruc: '',
     telefono: '',
     email: '',
     direccion_principal: '',
