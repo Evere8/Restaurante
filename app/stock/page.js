@@ -170,6 +170,7 @@ export default function StockPage() {
       nombre: item.nombre,
       tipo: item.tipo,
       cantidad: item.cantidad,
+      unidad_medida: item.unidad_medida || 'unidad',
       costo: item.costo || '',
       vencimiento: item.vencimiento || '',
       stock_minimo_alerta: item.stock_minimo_alerta,
