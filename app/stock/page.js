@@ -90,13 +90,16 @@ export default function StockPage() {
   const handleSaveItem = async () => {
     try {
       const dataToSave = {
-        ...stockForm,
+        nombre: stockForm.nombre,
+        tipo: stockForm.tipo,
         restaurant_id: restaurant.id,
         cantidad: parseFloat(stockForm.cantidad) || 0,
         costo: stockForm.costo ? parseFloat(stockForm.costo) : null,
         vencimiento: stockForm.vencimiento || null,
         stock_minimo_alerta: parseFloat(stockForm.stock_minimo_alerta),
-        dias_alerta_vencimiento: parseInt(stockForm.dias_alerta_vencimiento)
+        dias_alerta_vencimiento: parseInt(stockForm.dias_alerta_vencimiento),
+        utilizable_en_receta: stockForm.utilizable_en_receta,
+        activo: stockForm.activo
       }
 
       if (editingItem) {
