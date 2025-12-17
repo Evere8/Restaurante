@@ -556,6 +556,31 @@ export default function MenuPage() {
                     {productForm.crear_en_stock && (
                       <>
                         <div className="space-y-2">
+                          <Label>Cantidad Inicial *</Label>
+                          <Input 
+                            type="number" 
+                            step="0.01"
+                            value={productForm.cantidad_inicial} 
+                            onChange={(e) => setProductForm({...productForm, cantidad_inicial: e.target.value})} 
+                            placeholder="Ej: 100"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Unidad de Medida</Label>
+                          <Select value={productForm.unidad_medida} onValueChange={(val) => setProductForm({...productForm, unidad_medida: val})}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="unidad">Unidad</SelectItem>
+                              <SelectItem value="kg">Kilogramo (kg)</SelectItem>
+                              <SelectItem value="litro">Litro (L)</SelectItem>
+                              <SelectItem value="gramo">Gramo (g)</SelectItem>
+                              <SelectItem value="ml">Mililitro (ml)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
                           <Label>Stock Mínimo (alerta)</Label>
                           <Input type="number" value={productForm.stock_minimo_alerta} onChange={(e) => setProductForm({...productForm, stock_minimo_alerta: e.target.value})} />
                         </div>
