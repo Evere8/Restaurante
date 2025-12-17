@@ -151,8 +151,14 @@ export default function FacturaTestPage() {
     valorVenta: item.precioUnitario * item.cantidad
   })))
 
+  if (authLoading || !user) {
+    return <div className="flex items-center justify-center min-h-screen">Cargando...</div>
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="flex min-h-screen bg-gray-50">
+      <Sidebar />
+      <div className="flex-1 overflow-auto p-6">
       <div className="max-w-6xl mx-auto">
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-gray-800">🧾 Generador de Factura Pre-Impresa</h1>
