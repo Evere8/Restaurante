@@ -141,6 +141,7 @@ export default function ClientesPage() {
     setEditingCustomer(customer)
     setCustomerForm({
       nombre: customer.nombre,
+      ruc: customer.ruc || '',
       telefono: customer.telefono || '',
       email: customer.email || '',
       direccion_principal: customer.direccion_principal || '',
