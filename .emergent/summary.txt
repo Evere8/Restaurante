@@ -1,102 +1,174 @@
 <analysis>
-The trajectory details the development of a Restaurant CRM from its initial scaffolding to a feature-rich application. The process was highly iterative, driven by extensive user feedback and requests. The initial phase focused on building the 14-page application structure with Next.js and Supabase. A significant portion of the work involved major UI/UX refactoring, such as implementing a persistent, responsive sidebar and redesigning specific panels.
 
-A key development cycle involved adding a global currency management system. This required creating a new database column, a React Context (), and refactoring multiple pages to consume this context, replacing hardcoded currency symbols.
+**original_problem_statement**: The user's overall goal is to implement an advanced stock and recipe management system integrated with ordering and reporting. This includes tracking ingredients, managing stock levels, setting alerts for low stock and expiration dates, and generating reports on costs and consumption.
 
-The most recent and intensive phase involved tackling two large batches of user-requested features and bug fixes. These included implementing granular user permissions, creating a new restaurant creation flow in the developer panel, redesigning the KDS with tabs, adding a CSV export for customers, improving mobile responsiveness (especially for modals), and resolving a persistent issue with displaying images from external URLs. The AI engineer engaged in deep debugging, particularly with syntax errors in JSX, user permission logic in , and image loading ( handling). The final actions involved refactoring the Pedidos (Orders) page with a tabbed interface and fixing the Edit functionality in the KDS.
+The most recent and urgent task is to implement a PDF invoice generator. This is not a standard invoice; the system must generate a PDF with only the variable data (date, customer info, order items, totals) positioned with millimeter precision to be printed onto **pre-printed physical invoice forms**. The user has provided several annotated PDF files to specify the exact coordinates for each field.
 
-The user's primary language is Spanish. The next agent must respond in **Spanish**.
+Additionally, a  (tax ID) field needs to be added for customers. This involves updating the database schema, the customer management page, and the logic for creating new customers during the billing process.
+
+**User's preferred language**: Spanish. The next agent MUST respond in Spanish.
+
+**what currently exists?**
+The application is a Next.js Restaurant CRM using Supabase. A significant amount of work has been done to implement the advanced stock and recipe system, including new database tables (, , ), Supabase functions (), and a new frontend page at .
+
+For the invoicing feature, the  library has been installed. A  file exists which contains the logic to generate the PDF. The  (Billing) page has been modified to include a modal workflow: when processing a payment, the user can check a Generate Invoice box, which reveals fields for customer RUC and name, and triggers the PDF generation upon payment. A helper  was also created to convert the total amount into words for the invoice.
+
+**Last working item**:
+-   **Last item agent was working**: The agent was attempting to correct the positions of data fields in the generated PDF invoice based on explicit visual feedback from the user. The user provided a PDF with annotations in red (incorrect placement) and green (correct placement) to guide the agent. Simultaneously, the agent was tasked with correctly implementing the  field in the customer management module, as it was not being saved or displayed correctly.
+-   **Status**: 
+-   **Agent Testing Done**: N (The agent's generated PDF was immediately rejected by the user for incorrect formatting).
+-   **Which testing method agent to use?**: Manual testing. The agent must generate a new PDF using the  and visually compare it against the user's annotated PDF () to ensure all data fields align perfectly with the pre-printed form layout.
+-   **User Testing Done**: N (User is waiting for a corrected version to test).
+
+**All Pending/In progress Issue list**:
+-   Issue 1: Pixel-Perfect PDF Invoice Generation (P0)
+-   Issue 2: Full Implementation of RUC Field for Customers (P1)
+
+  **Issues Detail**:
+-   **Issue 1: Pixel-Perfect PDF Invoice Generation (P0)**
+    -   **Attempted fixes**: The agent modified  multiple times, attempting to adjust the (x, y) coordinates for each data field using . The agent tried to analyze the user's PDF to extract coordinates, but the conversion to the PDF library's coordinate system was inaccurate, leading to misaligned text.
+    -   **Next debug checklist**:
+        1.  **Crucially, analyze the user's latest annotated PDF:** . This file is the single source of truth.
+        2.  **Update :** Replace all hardcoded coordinates with the new, precise coordinates derived from the user's green annotations. Pay close attention to:
+            -   Fecha de emisión (Date)
+            -   Nombre o Razón Social (Customer Name)
+            -   RUC/CI. N° (Customer Tax ID)
+            -   The 'X' for  must be placed exactly inside the parentheses.
+            -   Item list columns (Cantidad, Descripción, Precio Unitario, IVA 10%).
+            -   Total a pagar (in letters, using ).
+            -   Sub-totals and IVA (VAT) calculations (Total / 11 for Paraguayan VAT).
+        3.  **Coordinate System**: Be very careful with the coordinate system.  uses points (72 points = 1 inch) from the bottom-left corner. The agent's previous analysis might have used pixels from the top-left, causing errors. A fresh, careful analysis is needed.
+    -   **Why fix this issue and what will be achieved with the fix?**: This is the user's highest priority blocker. The entire billing workflow depends on generating a correctly formatted PDF that can be printed on physical forms.
+    -   **Status**: 
+    -   **Is recurring issue?**: Y
+    -   **Should Test frontend/backend/both after fix?**: Frontend. The agent must test by triggering the PDF generation and visually inspecting the output.
+    -   **Blocked on other issue**: None.
+
+-   **Issue 2: Full Implementation of RUC Field for Customers (P1)**
+    -   **Attempted fixes**: The agent created  to add the  column to the  table. The agent also added UI elements to  and logic to  to handle the new field. However, the user reported it's still not working: the RUC field is not visible on the customers page, and it cannot be added when creating a new customer. A likely cause is that the SQL script was never executed by the user.
+    -   **Next debug checklist**:
+        1.  **Instruct user to run SQL**: First, provide the SQL from  to the user and confirm they have executed it in their Supabase SQL Editor.
+        2.  **Verify **: Double-check the code to ensure the  field is present in the customer creation/edit form () and displayed on the customer cards.
+        3.  **Verify **: Review the  function to ensure that when a new customer is created via the billing modal, the RUC from the form is correctly saved to the  column. The previous logic was incorrectly saving it to the  field.
+    -   **Why fix this issue and what will be achieved with the fix?**: It's a key part of the invoicing requirement to correctly identify and save customer tax information.
+    -   **Status**: 
+    -   **Is recurring issue?**: Y
+    -   **Should Test frontend/backend/both after fix?**: Both. The backend change (schema) must be verified, and the frontend UI on both  and the  modal must be tested.
+    -   **Blocked on other issue**: Blocked on the user running the SQL migration script.
+
+**In progress Task List**:
+The two issues listed above cover all in-progress work.
+
+**Upcoming and Future Tasks**
+-   **User Validation of Stock System (P2)**: Once the critical invoice feature is working, the user needs to test the comprehensive stock, recipe, and reporting system that was built.
+-   **Reporting Module Enhancements (P3)**: The  page was created but needs to be fully fleshed out with the originally requested reports:
+    -   Products whose cost changed.
+    -   Cost evolution over time.
+    -   Ingredient consumption by recipe.
+    -   Most profitable products.
+
+**Completed work in this session**
+- **Advanced Stock & Recipe System**: Implemented the core backend and frontend for a comprehensive inventory management system.
+  - Created DB tables: , , .
+  - Created Supabase function  to deduct stock upon payment.
+  - Created new page  for managing inventory.
+  - Integrated stock system into  and .
+- **Unit of Measure Feature**: Added a  (unit of measure) field (e.g., 'unidad', 'kg', 'litro') to stock items and integrated it into the Menu and Stock pages.
+- **Invoice Generation Foundation**:
+  - Added  dependency.
+  - Created  to handle PDF creation logic.
+  - Refactored the billing modal in  to include a full invoice generation flow, including dynamic fields for customer data (RUC, Name) and a checkbox to trigger the feature.
+  - Eliminated a separate Factura page to integrate the functionality directly into the billing workflow, as requested by the user.
+  - Fixed UI/layout issues in the billing modal to make it scrollable and hide irrelevant fields when generating an invoice.
+
+**Earlier issues found/mentioned but not fixed**
+The issues currently in progress are the ones that were found and not fully fixed.
+
+**Known issue recurrence from previous fork**
+-   None from a previous fork, but the **PDF positioning** is a recurring issue within this session, having been attempted and failed multiple times.
+
+**Code Architecture**
+
+
+**Key Technical Concepts**
+-   **Frameworks**: Next.js 14 (App Router), React
+-   **UI**: Tailwind CSS, Shadcn/UI
+-   **Backend/DB**: Supabase (PostgreSQL, Auth)
+-   **PDF Generation**:  library
+-   **Architecture**: Client-side components fetching data directly from Supabase. Backend logic is encapsulated in Supabase SQL functions and triggers.
+
+**key DB schema**
+-   : uid=0(root) gid=0(root) groups=0(root), , , , needs  (TEXT).
+-   : uid=0(root) gid=0(root) groups=0(root), , , , , , , .
+-   : Joins  and .
+-   : uid=0(root) gid=0(root) groups=0(root), ,  ('ingreso', 'egreso'), .
+
+**changes in tech stack**
+-   Addition of  for PDF generation.
+
+**All files of reference**
+-   **/app/lib/facturaGenerator.js**: The most critical file. Contains the PDF generation logic and requires precise coordinate adjustments.
+-   **/app/app/cobro/page.js**: Contains the UI modal that triggers the invoice generation and saves new customers.
+-   **/app/app/clientes/page.js**: The customer management UI that needs to be updated to correctly handle the  field.
+-   **/app/SQL_AGREGAR_RUC_CLIENTES.sql**: The SQL script the user must run to update their database schema.
+-   **User Artifact**:  (Public URL: ). **This is the most important reference document for fixing the PDF layout.**
+
+**Areas that need refactoring**:
+-   The coordinate handling in  is very brittle. A more robust solution could involve a configuration object for coordinates, but for now, the priority is to get the current hardcoded values right.
+
+**key api endpoints**
+-   All database interactions are done via the  client library.
+-   Key Supabase RPC calls: , .
+
+**Critical Info for New Agent**
+-   **Your absolute top priority is to fix the PDF invoice layout.** Use the user's annotated PDF () as the pixel-perfect guide. Do not deviate.
+-   **The user's invoices are pre-printed.** You are only adding the variable data on top. The generated PDF should have a transparent background with text placed at exact coordinates.
+-   **The  table is missing the  column.** You must guide the user to execute the SQL script in  before your code changes for the RUC field will work.
+-   **Do not save generated invoices to the database.** The user explicitly requested they only be generated and downloaded on the fly.
+-   Communicate exclusively in **Spanish**.
+
+**documents created in this job**
+-   /app/SQL_STOCK_SISTEMA.sql
+-   /app/INSTRUCCIONES_STOCK.md
+-   /app/SQL_UPDATE_STOCK_UNIDADES.sql
+-   /app/CORRECCIONES_STOCK_APLICADAS.md
+-   /app/SQL_AGREGAR_RUC_CLIENTES.sql
+-   /app/lib/numeroALetras.js
+-   /app/SISTEMA_COMPLETO_FINAL.md
+
+**Last 10 User Messages and any pending user messages**
+1.  **User**: The design breaks when Generate Invoice is checked. Also, hide the extra name field and remove the Condition of Sale dropdown (it should always be Contado).
+2.  **Agent**: Acknowledges and implements fixes for the modal layout (scroll, hiding fields).
+3.  **User**: Provides a new PDF and a screenshot. The generated invoice is still wrong. The positioning of all fields (date, name, RUC, totals, VAT) is incorrect. The total needs to be in words. The VAT calculation is specific to Paraguay. Also, the  field is still not working in the Customers section.
+4.  **Agent**: Acknowledges the detailed feedback and starts working on the PDF generator and the  field implementation.
+5.  **User**: Asks for the SQL to run in Supabase.
+6.  **Agent**: Provides the SQL to add the  column to the  table.
+7.  **User**: The invoice data is still not aligned correctly. Provides another detailed PDF with corrections marked in red (wrong) and green (correct), showing exactly where each piece of data should go. Reiterates that the  section in the customer page is still not fixed.
+8.  **Agent**: Acknowledges the extremely detailed feedback and promises to fix it with precision.
+9.  **User**: The final, most detailed correction: provides a 2-page PDF showing the agent's incorrect output vs. the desired correct layout on the pre-printed form. Emphasizes the need for milimetric precision.
+10. **Agent**: Acknowledges the final correction PDF and begins analysis.
+
+**Project Health Check:**
+-   **Broken**:
+    -   PDF Invoice Generation: The core functionality is not meeting the user's primary requirement of precise alignment.
+    -   Customer  management: The workflow for adding/viewing a customer's RUC is not functional, pending a DB migration and code verification.
+-   **Mocked**: None.
+
+**3rd Party Integrations**
+-   Supabase (Database, Auth, Serverless Functions)
+
+**Testing status**
+-   Testing agent used after significant changes: NO
+-   Troubleshoot agent used after agent stuck in loop: NO
+-   Test files created: None for the invoice feature.
+-   Known regressions: None.
+
+**Credentials to test flow:**
+-   **Username**: 
+-   **Password**: 
+
+**What agent forgot to execute**
+-   The agent failed to ensure the user executed the necessary SQL migration () to add the  column, which caused a cascade of issues with the customer management features.
+-   The agent repeatedly failed to correctly interpret the user's explicit visual instructions for the PDF layout, leading to multiple cycles of rework.
+
 </analysis>
-<product_requirements>
-The project is a comprehensive, multi-tenant Restaurant CRM built with Next.js and Supabase.
-
-**Core Features:**
-- Role-based authentication (Developer, Admin, etc.).
-- A main dashboard with real-time KPIs.
-- Management modules for Menu, Customers, and Coupons.
-- A full order creation and management system ().
-- A real-time Kitchen Display System (KDS).
-- A billing interface ().
-- A settings page () for restaurant and user management.
-- A separate  for developers to manage their client restaurants.
-
-**Implemented Enhancements & Fixes:**
-- **UI/UX:** A persistent, responsive sidebar was added. The KDS was changed from columns to tabs. Mobile responsiveness was improved, specifically for modals to ensure content is scrollable.
-- **Functionality:**
-    - **Currency:** A global currency setting was implemented, allowing admins to choose between EUR, USD, and Gs, with the selection reflected across the app.
-    - **User Management:** Granular page-level permissions for users were fixed. A Create Restaurant feature, which also creates an associated admin user, was added to the developer panel.
-    - **Data:** A CSV export feature was added to the customer list. Orders in the  and  pages are now filtered to show only the last 48 hours.
-    - **Orders:** The  page now has tabs for Preparing, Ready, and Delivered statuses, and orders can be edited.
-    - **Images:** A fix was implemented to correctly parse and display images from various URL formats, including Google search result links.
-</product_requirements>
-<key_technical_concepts>
-- **Framework/Libraries:** Next.js 14 (App Router), React, Shadcn/UI, Tailwind CSS.
-- **Backend:** Supabase (PostgreSQL, Auth, Realtime Subscriptions).
-- **Architecture:** Client-side data fetching () using the  library. No custom Next.js API routes are used.
-- **State Management:** Primarily React , , and  for global state (, ).
-- **Database:** PostgreSQL on Supabase. Schema managed via  and subsequent update scripts.
-</key_technical_concepts>
-<code_architecture>
-The application utilizes a standard Next.js App Router structure. Logic is co-located within client components, which directly communicate with Supabase for data operations. Global state is managed via React Context.
-
-**Directory Structure:**
-
-
-- ****
-    - **Importance:** Manages global user session, authentication status, and restaurant data. It's crucial for securing pages and providing user/restaurant info throughout the app.
-    - **Changes:** Significantly modified to include  (permissions) in the user session object upon login. A  function was added to allow components to refetch restaurant data after updates (e.g., changing the name/logo).
-
-- ****
-    - **Importance:** A new context created to provide the selected currency and a formatting function globally.
-    - **Changes:** Created from scratch to solve the global currency requirement. It fetches the restaurant's  preference and makes it available to all child components.
-
-- ****
-    - **Importance:** The main admin settings page for managing users, restaurant details, and preferences.
-    - **Changes:** Heavily modified. The user creation form's permission-saving logic was fixed. Logic was added to save the selected currency () to the database and to call  from  on successful save.
-
-- ****
-    - **Importance:** The interface for the developer role to manage client restaurants.
-    - **Changes:** A major feature was added: a New Client button and a dialog form to create a new restaurant and its associated admin user. This involved adding new state management and a complex  function that performs multiple Supabase operations.
-
-- ****
-    - **Importance:** The real-time Kitchen Display System.
-    - **Changes:** The entire UI was refactored from a three-column layout to a -based interface ('NUEVO', 'EN PREPARACION', 'LISTO'). The Edit button was fixed to open a read-only details modal instead of incorrectly redirecting.
-
-- ****
-    - **Importance:** Core page for creating and viewing orders.
-    - **Changes:** Underwent a massive refactor. It now features a  layout for orders ('En Preparación', 'Listos para Entregar', 'Entregados'). Functionality was added to allow editing of existing orders (opens the create/edit modal) and to mark orders as Delivered.
-
-- ****
-    - **Importance:** Manages the customer list.
-    - **Changes:** A critical syntax bug that crashed the page was fixed after extensive debugging. A  function and a corresponding Export CSV button were added.
-
-- ****
-    - **Importance:** Manages menu products.
-    - **Changes:** A function was added to automatically extract direct image URLs from Google search links. The image rendering logic was made more robust by using component state to handle  events, preventing React tree corruption and ensuring a fallback placeholder is shown for broken images.
-
-- ****
-    - **Importance:** The root layout for the entire application.
-    - **Changes:** Wrapped with the newly created  to make global currency state available everywhere.
-</code_architecture>
-<pending_tasks>
-- **Theme Customization:** An early user request to allow changing the CRM's primary color from the settings page was acknowledged but never implemented.
-- **Final Verification:** The last set of implemented changes was complex. A thorough test of all implemented features (especially user permissions, image handling, and the new Orders/KDS flows) is required.
-</pending_tasks>
-<current_work>
-The AI engineer has just completed a large and complex batch of bug fixes and feature implementations based on user feedback. The final pieces of work were focused on the order management flow:
-
-1.  **Refactoring  (Orders Page):**
-    -   The page was redesigned to use a tabbed interface (, , ) to better organize orders.
-    -   Functionality to **edit an existing order** was added. An Edit button now opens a modal pre-filled with the order's details.
-    -   A Mark as Delivered button was added to move orders to the 'Entregados' tab.
-    -   This required adding new state, new data-handling functions (, ), and completely rewriting the JSX that renders the list of orders.
-
-2.  **Fixing  (KDS Page):**
-    -   The Edit button on KDS order cards, which previously redirected the user, was fixed.
-    -   It now opens a read-only modal () showing the order's details directly within the KDS page, preventing context switching. This involved adding state for the modal and its content, and creating the new modal component in the JSX.
-
-Immediately after completing these implementations, the AI engineer initiated the process of creating this summary, indicating that the development cycle for this batch of tasks is complete.
-</current_work>
-<optional_next_step>
-Present the implemented changes and fixes to the user for testing and ask for feedback, particularly on the new Orders/KDS flow, the image handling in the Menu, and the mobile responsiveness of modals.
-</optional_next_step>
