@@ -536,6 +536,64 @@ export default function CobroPage() {
                   <Label>Acepta recibir promociones por WhatsApp</Label>
                 </div>
 
+                {/* Switch Generar Factura */}
+                <div className="border-t pt-4">
+                  <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                    <div className="flex items-center space-x-2">
+                      <FileText className="h-5 w-5 text-blue-600" />
+                      <Label className="font-semibold cursor-pointer">Generar Factura</Label>
+                    </div>
+                    <Checkbox 
+                      checked={paymentForm.generar_factura}
+                      onCheckedChange={(checked) => setPaymentForm({...paymentForm, generar_factura: checked})}
+                    />
+                  </div>
+                </div>
+
+                {/* Campos de Factura - Solo si está activado */}
+                {paymentForm.generar_factura && (
+                  <div className="space-y-3 border border-blue-200 p-4 rounded-lg bg-blue-50/50">
+                    <p className="text-sm font-semibold text-blue-800 mb-2">📋 Datos para la Factura</p>
+                    
+                    <div className="space-y-2">
+                      <Label>RUC / C.I. N° *</Label>
+                      <Input 
+                        value={paymentForm.factura_ruc}
+                        onChange={(e) => setPaymentForm({...paymentForm, factura_ruc: e.target.value})}
+                        onBlur={(e) => buscarClientePorRUC(e.target.value)}
+                        placeholder="12345678-9"
+                        className="bg-white"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Nombre / Razón Social *</Label>
+                      <Input 
+                        value={paymentForm.factura_nombre}
+                        onChange={(e) => setPaymentForm({...paymentForm, factura_nombre: e.target.value})}
+                        placeholder="JUAN PÉREZ"
+                        className="bg-white"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Condición de Venta</Label>
+                      <Select 
+                        value={paymentForm.factura_condicion} 
+                        onValueChange={(val) => setPaymentForm({...paymentForm, factura_condicion: val})}
+                      >
+                        <SelectTrigger className="bg-white">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="CONTADO">CONTADO</SelectItem>
+                          <SelectItem value="CREDITO">CRÉDITO</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                )}
+
                 {/* Sistema de Cupones */}
                 <div className="border-t pt-4 space-y-3">
                   <Label className="flex items-center">
