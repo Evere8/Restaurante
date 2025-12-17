@@ -32,7 +32,11 @@ export default function CobroPage() {
     customer_telefono: '',
     acepta_promociones: false,
     metodo_pago: '',
-    cupon_codigo: ''
+    cupon_codigo: '',
+    generar_factura: false,
+    factura_ruc: '',
+    factura_nombre: '',
+    factura_condicion: 'CONTADO'
   })
 
   const [appliedCoupon, setAppliedCoupon] = useState(null)
