@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
+import { useCurrency } from '@/contexts/CurrencyContext'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import Sidebar from '@/components/Sidebar'
@@ -9,17 +10,26 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
-import { FileText, Download } from 'lucide-react'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Badge } from '@/components/ui/badge'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts'
+import { FileText, Download, TrendingUp, TrendingDown } from 'lucide-react'
 import { toast } from 'sonner'
 
 export default function ReportesPage() {
   const { user, restaurant, loading: authLoading } = useAuth()
+  const { formatCurrency } = useCurrency()
   const router = useRouter()
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
-  const [reportData, setReportData] = useState(null)
   const [loading, setLoading] = useState(false)
+
+  // Estados para reportes
+  const [ventasGeneral, setVentasGeneral] = useState(null)
+  const [evolucionCostos, setEvolucionCostos] = useState([])
+  const [productosRentables, setProductosRentables] = useState([])
+  const [consumoInsumos, setConsumoInsumos] = useState([])
+  const [productosVencidos, setProductosVencidos] = useState([])
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -28,16 +38,15 @@ export default function ReportesPage() {
   }, [user, authLoading, router])
 
   useEffect(() => {
-    // Establecer fechas por defecto (últimos 7 días)
     const today = new Date()
     const weekAgo = new Date()
-    weekAgo.setDate(weekAgo.getDate() - 7)
+    weekAgo.setDate(weekAgo.getDate() - 30)
 
     setDateTo(today.toISOString().split('T')[0])
     setDateFrom(weekAgo.toISOString().split('T')[0])
   }, [])
 
-  const generateReport = async () => {
+  const generateAllReports = async () => {
     if (!dateFrom || !dateTo) {
       toast.error('Selecciona rango de fechas')
       return
@@ -45,12 +54,28 @@ export default function ReportesPage() {
 
     setLoading(true)
     try {
+      await Promise.all([
+        generateVentasReport(),
+        generateEvolucionCostos(),
+        generateProductosRentables(),
+        generateConsumoInsumos(),
+        generateProductosVencidos()
+      ])
+      toast.success('Reportes generados exitosamente')
+    } catch (error) {
+      console.error('Error generando reportes:', error)
+      toast.error('Error generando reportes')
+    }
+    setLoading(false)
+  }
+
+  const generateVentasReport = async () => {
+    try {
       const from = new Date(dateFrom)
       from.setHours(0, 0, 0, 0)
       const to = new Date(dateTo)
       to.setHours(23, 59, 59, 999)
 
-      // Obtener pedidos del periodo
       const { data: orders, error } = await supabase
         .from('orders')
         .select('*, order_items(*)')
@@ -61,12 +86,10 @@ export default function ReportesPage() {
 
       if (error) throw error
 
-      // Calcular totales
       const totalVentas = orders.reduce((sum, o) => sum + parseFloat(o.total), 0)
       const totalPedidos = orders.length
       const ticketPromedio = totalPedidos > 0 ? totalVentas / totalPedidos : 0
 
-      // Productos más vendidos
       const productSales = {}
       orders.forEach(order => {
         order.order_items.forEach(item => {
@@ -78,7 +101,7 @@ export default function ReportesPage() {
             }
           }
           productSales[item.nombre_item_snapshot].cantidad += item.cantidad
-          productSales[item.nombre_item_snapshot].total += parseFloat(item.total_item)
+          productSales[item.nombre_item_snapshot].total += parseFloat(item.total_item || 0)
         })
       })
 
@@ -86,243 +109,417 @@ export default function ReportesPage() {
         .sort((a, b) => b.cantidad - a.cantidad)
         .slice(0, 10)
 
-      // Métodos de pago
-      const paymentMethods = {}
-      orders.forEach(order => {
-        const method = order.metodo_pago || 'Sin especificar'
-        if (!paymentMethods[method]) {
-          paymentMethods[method] = { nombre: method, cantidad: 0, total: 0 }
-        }
-        paymentMethods[method].cantidad++
-        paymentMethods[method].total += parseFloat(order.total)
-      })
-
-      const paymentMethodsData = Object.values(paymentMethods)
-
-      // Ventas por día
-      const salesByDay = {}
-      orders.forEach(order => {
-        const date = new Date(order.fecha_pago).toLocaleDateString('es-ES')
-        if (!salesByDay[date]) {
-          salesByDay[date] = { fecha: date, ventas: 0, pedidos: 0 }
-        }
-        salesByDay[date].ventas += parseFloat(order.total)
-        salesByDay[date].pedidos++
-      })
-
-      const salesChartData = Object.values(salesByDay).sort((a, b) => {
-        return new Date(a.fecha) - new Date(b.fecha)
-      })
-
-      setReportData({
+      setVentasGeneral({
         totalVentas,
         totalPedidos,
         ticketPromedio,
-        topProducts,
-        paymentMethods: paymentMethodsData,
-        salesByDay: salesChartData
+        topProducts
       })
-
-      toast.success('Reporte generado')
     } catch (error) {
-      console.error('Error generando reporte:', error)
-      toast.error('Error al generar reporte')
+      console.error('Error en reporte de ventas:', error)
     }
-    setLoading(false)
   }
 
-  useEffect(() => {
-    if (user && restaurant && dateFrom && dateTo) {
-      generateReport()
+  const generateEvolucionCostos = async () => {
+    try {
+      const { data: historial, error } = await supabase
+        .from('stock_costo_historial')
+        .select('*, stock_items!inner(nombre, restaurant_id)')
+        .eq('stock_items.restaurant_id', restaurant.id)
+        .order('created_at', { ascending: false })
+        .limit(50)
+
+      if (error) throw error
+
+      const evolucion = historial.map(h => ({
+        nombre: h.stock_items.nombre,
+        fecha: new Date(h.created_at).toLocaleDateString('es-ES'),
+        costo_anterior: h.costo_anterior,
+        costo_nuevo: h.costo_nuevo,
+        cambio: h.costo_nuevo - h.costo_anterior,
+        porcentaje: h.costo_anterior > 0 ? ((h.costo_nuevo - h.costo_anterior) / h.costo_anterior * 100).toFixed(2) : 0
+      }))
+
+      setEvolucionCostos(evolucion)
+    } catch (error) {
+      console.error('Error en evolución de costos:', error)
     }
-  }, [user, restaurant])
+  }
+
+  const generateProductosRentables = async () => {
+    try {
+      const from = new Date(dateFrom)
+      from.setHours(0, 0, 0, 0)
+      const to = new Date(dateTo)
+      to.setHours(23, 59, 59, 999)
+
+      // Obtener productos del menú con costos
+      const { data: menuItems, error: menuError } = await supabase
+        .from('menu_items')
+        .select('id, nombre, precio_base, coste')
+        .eq('restaurant_id', restaurant.id)
+        .not('coste', 'is', null)
+
+      if (menuError) throw menuError
+
+      // Obtener ventas por producto
+      const { data: orders, error: ordersError } = await supabase
+        .from('orders')
+        .select('order_items(menu_item_id, cantidad)')
+        .eq('restaurant_id', restaurant.id)
+        .eq('estado', 'PAGADO')
+        .gte('fecha_pago', from.toISOString())
+        .lte('fecha_pago', to.toISOString())
+
+      if (ordersError) throw ordersError
+
+      const ventasPorProducto = {}
+      orders.forEach(order => {
+        if (order.order_items) {
+          order.order_items.forEach(item => {
+            if (!ventasPorProducto[item.menu_item_id]) {
+              ventasPorProducto[item.menu_item_id] = 0
+            }
+            ventasPorProducto[item.menu_item_id] += item.cantidad
+          })
+        }
+      })
+
+      const rentabilidad = menuItems.map(item => {
+        const cantidadVendida = ventasPorProducto[item.id] || 0
+        const margen = parseFloat(item.precio_base) - parseFloat(item.coste)
+        const gananciaTotal = margen * cantidadVendida
+        const margenPorcentaje = parseFloat(item.coste) > 0 ? (margen / parseFloat(item.coste) * 100).toFixed(2) : 0
+
+        return {
+          nombre: item.nombre,
+          precio: parseFloat(item.precio_base),
+          costo: parseFloat(item.coste),
+          margen: margen,
+          margenPorcentaje: parseFloat(margenPorcentaje),
+          cantidadVendida,
+          gananciaTotal
+        }
+      }).filter(p => p.cantidadVendida > 0)
+        .sort((a, b) => b.gananciaTotal - a.gananciaTotal)
+        .slice(0, 15)
+
+      setProductosRentables(rentabilidad)
+    } catch (error) {
+      console.error('Error en productos rentables:', error)
+    }
+  }
+
+  const generateConsumoInsumos = async () => {
+    try {
+      const from = new Date(dateFrom)
+      from.setHours(0, 0, 0, 0)
+      const to = new Date(dateTo)
+      to.setHours(23, 59, 59, 999)
+
+      const { data: movimientos, error } = await supabase
+        .from('stock_movimientos')
+        .select('*, stock_items!inner(nombre, restaurant_id)')
+        .eq('stock_items.restaurant_id', restaurant.id)
+        .eq('tipo', 'egreso')
+        .gte('created_at', from.toISOString())
+        .lte('created_at', to.toISOString())
+
+      if (error) throw error
+
+      const consumo = {}
+      movimientos.forEach(mov => {
+        const nombre = mov.stock_items.nombre
+        if (!consumo[nombre]) {
+          consumo[nombre] = { nombre, cantidad: 0 }
+        }
+        consumo[nombre].cantidad += parseFloat(mov.cantidad)
+      })
+
+      const consumoArray = Object.values(consumo)
+        .sort((a, b) => b.cantidad - a.cantidad)
+        .slice(0, 15)
+
+      setConsumoInsumos(consumoArray)
+    } catch (error) {
+      console.error('Error en consumo de insumos:', error)
+    }
+  }
+
+  const generateProductosVencidos = async () => {
+    try {
+      const { data: alertas, error } = await supabase
+        .rpc('stock_alertas', { rest_id: restaurant.id })
+
+      if (error) throw error
+
+      const vencidos = (alertas.vencidos || []).map(item => ({
+        nombre: item.nombre,
+        fechaVencimiento: new Date(item.vencimiento).toLocaleDateString('es-ES'),
+        diasVencido: item.dias_vencido
+      }))
+
+      setProductosVencidos(vencidos)
+    } catch (error) {
+      console.error('Error en productos vencidos:', error)
+    }
+  }
 
   if (authLoading || !user) {
     return <div className="flex items-center justify-center min-h-screen">Cargando...</div>
   }
 
-  const COLORS = ['#f97316', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6']
+  const COLORS = ['#f97316', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#f43f5e']
 
   return (
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar />
       <div className="flex-1 overflow-auto">
-      <div className="container mx-auto px-4 py-6">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-800">Reportes y Análisis</h1>
-          <p className="text-gray-600">Analiza el rendimiento de tu restaurante</p>
-        </div>
+        <div className="container mx-auto px-4 py-6">
+          <div className="mb-6">
+            <h1 className="text-3xl font-bold text-gray-800">Reportes y Análisis</h1>
+            <p className="text-gray-600">Análisis de ventas, costos, rentabilidad y consumo</p>
+          </div>
 
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Filtros</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-end space-x-4">
-              <div className="space-y-2 flex-1">
-                <Label>Fecha Desde</Label>
-                <Input 
-                  type="date"
-                  value={dateFrom}
-                  onChange={(e) => setDateFrom(e.target.value)}
-                />
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>Configuración de Reportes</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label>Fecha Desde</Label>
+                  <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Fecha Hasta</Label>
+                  <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+                </div>
+                <div className="flex items-end">
+                  <Button 
+                    className="w-full bg-orange-500 hover:bg-orange-600" 
+                    onClick={generateAllReports}
+                    disabled={loading}
+                  >
+                    <FileText className="mr-2 h-4 w-4" />
+                    {loading ? 'Generando...' : 'Generar Reportes'}
+                  </Button>
+                </div>
               </div>
-              <div className="space-y-2 flex-1">
-                <Label>Fecha Hasta</Label>
-                <Input 
-                  type="date"
-                  value={dateTo}
-                  onChange={(e) => setDateTo(e.target.value)}
-                />
-              </div>
-              <Button 
-                className="bg-orange-500 hover:bg-orange-600"
-                onClick={generateReport}
-                disabled={loading}
-              >
-                <FileText className="mr-2 h-4 w-4" />
-                {loading ? 'Generando...' : 'Generar Reporte'}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        {reportData && (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium text-gray-600">Total Ventas</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-orange-600">€{reportData.totalVentas.toFixed(2)}</div>
-                </CardContent>
-              </Card>
+          <Tabs defaultValue="ventas" className="space-y-4">
+            <TabsList className="grid w-full grid-cols-5">
+              <TabsTrigger value="ventas">Ventas</TabsTrigger>
+              <TabsTrigger value="costos">Costos</TabsTrigger>
+              <TabsTrigger value="rentabilidad">Rentabilidad</TabsTrigger>
+              <TabsTrigger value="consumo">Consumo</TabsTrigger>
+              <TabsTrigger value="desperdicio">Desperdicio</TabsTrigger>
+            </TabsList>
 
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium text-gray-600">Total Pedidos</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-blue-600">{reportData.totalPedidos}</div>
-                </CardContent>
-              </Card>
+            {/* TAB VENTAS */}
+            <TabsContent value="ventas">
+              {ventasGeneral ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-sm">Total Ventas</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-3xl font-bold text-orange-600">{formatCurrency(ventasGeneral.totalVentas)}</p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-sm">Total Pedidos</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-3xl font-bold">{ventasGeneral.totalPedidos}</p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-sm">Ticket Promedio</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-3xl font-bold text-green-600">{formatCurrency(ventasGeneral.ticketPromedio)}</p>
+                      </CardContent>
+                    </Card>
+                  </div>
 
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium text-gray-600">Ticket Promedio</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-green-600">€{reportData.ticketPromedio.toFixed(2)}</div>
-                </CardContent>
-              </Card>
-            </div>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Top 10 Productos Más Vendidos</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ResponsiveContainer width="100%" height={400}>
+                        <BarChart data={ventasGeneral.topProducts}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="nombre" angle={-45} textAnchor="end" height={100} />
+                          <YAxis />
+                          <Tooltip />
+                          <Bar dataKey="cantidad" fill="#f97316" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
+                </div>
+              ) : (
+                <Card>
+                  <CardContent className="py-12 text-center">
+                    <FileText className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                    <p className="text-gray-600">Genera los reportes para ver estadísticas</p>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Ventas por Día</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={reportData.salesByDay}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="fecha" />
-                      <YAxis />
-                      <Tooltip />
-                      <Bar dataKey="ventas" fill="#f97316" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Métodos de Pago</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <PieChart>
-                      <Pie
-                        data={reportData.paymentMethods}
-                        dataKey="cantidad"
-                        nameKey="nombre"
-                        cx="50%"
-                        cy="50%"
-                        outerRadius={100}
-                        label={(entry) => `${entry.nombre} (${entry.cantidad})`}
-                      >
-                        {reportData.paymentMethods.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* TAB COSTOS */}
+            <TabsContent value="costos">
               <Card>
                 <CardHeader>
-                  <CardTitle>Top 10 Productos Más Vendidos</CardTitle>
+                  <CardTitle>Evolución de Costos de Insumos</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-3">
-                    {reportData.topProducts.map((product, idx) => (
-                      <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center font-bold text-orange-600">
-                            {idx + 1}
+                  {evolucionCostos.length > 0 ? (
+                    <div className="space-y-2">
+                      {evolucionCostos.map((item, index) => (
+                        <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                          <div className="flex-1">
+                            <p className="font-semibold">{item.nombre}</p>
+                            <p className="text-xs text-gray-500">{item.fecha}</p>
                           </div>
+                          <div className="flex items-center space-x-4">
+                            <div className="text-right">
+                              <p className="text-sm text-gray-600">Anterior: {formatCurrency(item.costo_anterior)}</p>
+                              <p className="text-sm font-bold">Nuevo: {formatCurrency(item.costo_nuevo)}</p>
+                            </div>
+                            <div className="text-right">
+                              {item.cambio > 0 ? (
+                                <Badge className="bg-red-500">
+                                  <TrendingUp className="h-3 w-3 mr-1" />
+                                  +{item.porcentaje}%
+                                </Badge>
+                              ) : (
+                                <Badge className="bg-green-500">
+                                  <TrendingDown className="h-3 w-3 mr-1" />
+                                  {item.porcentaje}%
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-center py-8 text-gray-500">No hay cambios de costos registrados</p>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* TAB RENTABILIDAD */}
+            <TabsContent value="rentabilidad">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Productos Más Rentables</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {productosRentables.length > 0 ? (
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b">
+                            <th className="text-left p-2">Producto</th>
+                            <th className="text-right p-2">Precio</th>
+                            <th className="text-right p-2">Costo</th>
+                            <th className="text-right p-2">Margen</th>
+                            <th className="text-right p-2">%</th>
+                            <th className="text-right p-2">Vendidos</th>
+                            <th className="text-right p-2">Ganancia Total</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {productosRentables.map((item, index) => (
+                            <tr key={index} className="border-b hover:bg-gray-50">
+                              <td className="p-2 font-medium">{item.nombre}</td>
+                              <td className="p-2 text-right">{formatCurrency(item.precio)}</td>
+                              <td className="p-2 text-right">{formatCurrency(item.costo)}</td>
+                              <td className="p-2 text-right font-semibold">{formatCurrency(item.margen)}</td>
+                              <td className="p-2 text-right">
+                                <Badge className={item.margenPorcentaje > 50 ? 'bg-green-500' : 'bg-yellow-500'}>
+                                  {item.margenPorcentaje}%
+                                </Badge>
+                              </td>
+                              <td className="p-2 text-right">{item.cantidadVendida}</td>
+                              <td className="p-2 text-right font-bold text-green-600">{formatCurrency(item.gananciaTotal)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <p className="text-center py-8 text-gray-500">Genera los reportes para ver rentabilidad</p>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* TAB CONSUMO */}
+            <TabsContent value="consumo">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Consumo de Insumos</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {consumoInsumos.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={400}>
+                      <BarChart data={consumoInsumos}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="nombre" angle={-45} textAnchor="end" height={100} />
+                        <YAxis />
+                        <Tooltip />
+                        <Bar dataKey="cantidad" fill="#10b981" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <p className="text-center py-8 text-gray-500">No hay movimientos de stock en el período seleccionado</p>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* TAB DESPERDICIO */}
+            <TabsContent value="desperdicio">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Productos Vencidos (Desperdicio)</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {productosVencidos.length > 0 ? (
+                    <div className="space-y-2">
+                      {productosVencidos.map((item, index) => (
+                        <div key={index} className="flex items-center justify-between p-3 bg-red-50 rounded-lg border border-red-200">
                           <div>
-                            <p className="font-medium">{product.nombre}</p>
-                            <p className="text-sm text-gray-600">{product.cantidad} unidades</p>
+                            <p className="font-semibold text-red-900">{item.nombre}</p>
+                            <p className="text-sm text-red-600">Venció: {item.fechaVencimiento}</p>
                           </div>
+                          <Badge className="bg-red-600">Hace {item.diasVencido} días</Badge>
                         </div>
-                        <div className="text-right">
-                          <p className="font-bold text-orange-600">€{product.total.toFixed(2)}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <p className="text-green-600 font-semibold">✅ No hay productos vencidos</p>
+                      <p className="text-gray-500 text-sm">¡Excelente gestión de inventario!</p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Desglose Métodos de Pago</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {reportData.paymentMethods.map((method, idx) => (
-                      <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <div>
-                          <p className="font-medium">{method.nombre}</p>
-                          <p className="text-sm text-gray-600">{method.cantidad} transacciones</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-bold text-blue-600">€{method.total.toFixed(2)}</p>
-                          <p className="text-xs text-gray-500">
-                            {((method.total / reportData.totalVentas) * 100).toFixed(1)}%
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            <div className="mt-6 flex justify-end">
-              <Button variant="outline" className="flex items-center">
-                <Download className="mr-2 h-4 w-4" />
-                Exportar Reporte (Próximamente)
-              </Button>
-            </div>
-          </>
-        )}
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
     </div>
