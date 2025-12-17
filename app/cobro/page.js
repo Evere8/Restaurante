@@ -286,7 +286,61 @@ export default function CobroPage() {
         console.error('Error en descuento de stock:', stockErr)
       }
 
-      toast.success('¡Pago procesado exitosamente y stock actualizado!')
+      // 5. Generar factura si está marcada
+      if (paymentForm.generar_factura) {
+        try {
+          const { generarFacturaPDF, calcularTotalesFactura } = await import('@/lib/facturaGenerator')
+          
+          // Obtener items del pedido
+          const { data: orderItems } = await supabase
+            .from('order_items')
+            .select('*')
+            .eq('order_id', selectedOrder.id)
+
+          if (orderItems && orderItems.length > 0) {
+            const itemsFactura = orderItems.map((item, index) => ({
+              codigo: String(index + 1).padStart(3, '0'),
+              cantidad: item.cantidad,
+              descripcion: item.nombre_item_snapshot,
+              precioUnitario: Math.round(item.precio_unitario),
+              tipoIva: 'IVA_10',
+              valorVenta: Math.round(item.precio_unitario * item.cantidad)
+            }))
+
+            const totales = calcularTotalesFactura(itemsFactura)
+
+            const facturaData = {
+              cliente: {
+                nombre: paymentForm.factura_nombre || paymentForm.customer_nombre,
+                ruc: paymentForm.factura_ruc,
+                telefono: paymentForm.customer_telefono
+              },
+              fecha: new Date().toISOString(),
+              condicionVenta: paymentForm.factura_condicion,
+              items: itemsFactura,
+              ...totales
+            }
+
+            const pdfBlob = generarFacturaPDF(facturaData)
+            const url = URL.createObjectURL(pdfBlob)
+            const link = document.createElement('a')
+            link.href = url
+            link.download = `factura_${selectedOrder.id.slice(0, 8)}_${Date.now()}.pdf`
+            document.body.appendChild(link)
+            link.click()
+            document.body.removeChild(link)
+            URL.revokeObjectURL(url)
+
+            toast.success('¡Pago procesado y factura descargada!')
+          }
+        } catch (facturaError) {
+          console.error('Error generando factura:', facturaError)
+          toast.warning('Pago procesado pero error al generar factura')
+        }
+      } else {
+        toast.success('¡Pago procesado exitosamente y stock actualizado!')
+      }
+
       setPaymentDialogOpen(false)
       loadOrders()
     } catch (error) {
