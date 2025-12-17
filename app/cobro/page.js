@@ -590,20 +590,8 @@ export default function CobroPage() {
                       />
                     </div>
 
-                    <div className="space-y-2">
-                      <Label>Condición de Venta</Label>
-                      <Select 
-                        value={paymentForm.factura_condicion} 
-                        onValueChange={(val) => setPaymentForm({...paymentForm, factura_condicion: val})}
-                      >
-                        <SelectTrigger className="bg-white">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="CONTADO">CONTADO</SelectItem>
-                          <SelectItem value="CREDITO">CRÉDITO</SelectItem>
-                        </SelectContent>
-                      </Select>
+                    <div className="text-xs text-gray-600 bg-white p-2 rounded border">
+                      <span className="font-semibold">Condición de Venta:</span> CONTADO
                     </div>
                   </div>
                 )}
