@@ -282,6 +282,22 @@ export default function StockPage() {
                       </div>
 
                       <div className="space-y-2">
+                        <Label>Unidad de Medida</Label>
+                        <Select value={stockForm.unidad_medida} onValueChange={(val) => setStockForm({...stockForm, unidad_medida: val})}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="unidad">Unidad</SelectItem>
+                            <SelectItem value="kg">Kilogramo (kg)</SelectItem>
+                            <SelectItem value="litro">Litro (L)</SelectItem>
+                            <SelectItem value="gramo">Gramo (g)</SelectItem>
+                            <SelectItem value="ml">Mililitro (ml)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
                         <Label>Costo</Label>
                         <Input type="number" step="0.01" value={stockForm.costo} onChange={(e) => setStockForm({...stockForm, costo: e.target.value})} />
                       </div>
