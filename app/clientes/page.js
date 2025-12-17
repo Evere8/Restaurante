@@ -116,6 +116,7 @@ export default function ClientesPage() {
   const resetCustomerForm = () => {
     setCustomerForm({
       nombre: '',
+      ruc: '',
       telefono: '',
       email: '',
       direccion_principal: '',
