@@ -153,6 +153,7 @@ export default function StockPage() {
       nombre: '',
       tipo: 'insumo',
       cantidad: '',
+      unidad_medida: 'unidad',
       costo: '',
       vencimiento: '',
       stock_minimo_alerta: 1,
