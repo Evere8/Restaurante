@@ -679,8 +679,19 @@ export default function CobroPage() {
                 <Button 
                   className="w-full bg-orange-500 hover:bg-orange-600 py-6 text-lg"
                   onClick={handleProcessPayment}
+                  disabled={paymentForm.generar_factura && (!paymentForm.factura_ruc || !paymentForm.factura_nombre)}
                 >
-                  <CreditCard className="mr-2 h-5 w-5" /> Procesar Pago - {formatCurrency(calculateFinalTotal())}
+                  {paymentForm.generar_factura ? (
+                    <>
+                      <FileText className="mr-2 h-5 w-5" /> 
+                      Procesar Pago - {formatCurrency(calculateFinalTotal())} y Descargar Factura
+                    </>
+                  ) : (
+                    <>
+                      <CreditCard className="mr-2 h-5 w-5" /> 
+                      Procesar Pago - {formatCurrency(calculateFinalTotal())}
+                    </>
+                  )}
                 </Button>
               </div>
             )}
