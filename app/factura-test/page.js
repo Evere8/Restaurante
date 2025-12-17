@@ -15,6 +15,11 @@ import { toast } from 'sonner'
 import { FileText, Plus, Trash2, Download } from 'lucide-react'
 
 export default function FacturaTestPage() {
+  const { user, restaurant, loading: authLoading } = useAuth()
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const orderId = searchParams?.get('order')
+
   const [cliente, setCliente] = useState({
     nombre: '',
     ruc: '',
@@ -27,6 +32,58 @@ export default function FacturaTestPage() {
   const [items, setItems] = useState([
     { codigo: '001', cantidad: 2, descripcion: 'Hamburguesa Doble', precioUnitario: 45000, tipoIva: 'IVA_10' }
   ])
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/login')
+    }
+  }, [user, authLoading, router])
+
+  useEffect(() => {
+    if (orderId && restaurant) {
+      cargarDatosPedido(orderId)
+    }
+  }, [orderId, restaurant])
+
+  const cargarDatosPedido = async (orderId) => {
+    try {
+      const { data: order, error } = await supabase
+        .from('orders')
+        .select('*, order_items(*), customers(*)')
+        .eq('id', orderId)
+        .single()
+
+      if (error) throw error
+
+      if (order) {
+        // Cargar datos del cliente si existe
+        if (order.customers) {
+          setCliente({
+            nombre: order.customers.nombre || '',
+            ruc: order.customers.telefono || '', // Usar teléfono como RUC por defecto
+            telefono: order.customers.telefono || ''
+          })
+        }
+
+        // Cargar items del pedido
+        if (order.order_items && order.order_items.length > 0) {
+          const itemsFactura = order.order_items.map((item, index) => ({
+            codigo: String(index + 1).padStart(3, '0'),
+            cantidad: item.cantidad,
+            descripcion: item.nombre_item_snapshot,
+            precioUnitario: Math.round(item.precio_unitario),
+            tipoIva: 'IVA_10' // Por defecto IVA 10%
+          }))
+          setItems(itemsFactura)
+        }
+
+        toast.success('Datos del pedido cargados')
+      }
+    } catch (error) {
+      console.error('Error cargando pedido:', error)
+      toast.error('Error cargando datos del pedido')
+    }
+  }
 
   const agregarItem = () => {
     setItems([...items, {
