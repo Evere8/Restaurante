@@ -20,6 +20,7 @@ export default function Sidebar() {
     { href: '/pedidos', label: 'Pedidos', icon: ShoppingCart, permission: 'pedidos' },
     { href: '/kds', label: 'Cocina', icon: ChefHat, permission: 'kds' },
     { href: '/cobro', label: 'Cobro', icon: CreditCard, permission: 'cobro' },
+    { href: '/factura-test', label: 'Facturas', icon: FileText, permission: 'cobro' },
     { href: '/clientes', label: 'Clientes', icon: Users, permission: 'clientes' },
     { href: '/cupones', label: 'Cupones', icon: Tag, permission: 'cupones' },
     { href: '/reportes', label: 'Reportes', icon: BarChart3, permission: 'reportes' },
