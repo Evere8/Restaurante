@@ -95,6 +95,7 @@ export default function StockPage() {
         tipo: stockForm.tipo,
         restaurant_id: restaurant.id,
         cantidad: parseFloat(stockForm.cantidad) || 0,
+        unidad_medida: stockForm.unidad_medida || 'unidad',
         costo: stockForm.costo ? parseFloat(stockForm.costo) : null,
         vencimiento: stockForm.vencimiento || null,
         stock_minimo_alerta: parseFloat(stockForm.stock_minimo_alerta),
