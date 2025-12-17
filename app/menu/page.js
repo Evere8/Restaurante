@@ -160,6 +160,40 @@ export default function MenuPage() {
         toast.success('Producto creado')
       }
 
+      // Si crear_en_stock está activado, crear producto en stock_items MANUALMENTE
+      if (productForm.crear_en_stock && !editingProduct) {
+        try {
+          const stockData = {
+            restaurant_id: restaurant.id,
+            nombre: productForm.nombre,
+            tipo: 'vendible',
+            cantidad: productForm.cantidad_inicial ? parseFloat(productForm.cantidad_inicial) : 0,
+            unidad_medida: productForm.unidad_medida || 'unidad',
+            costo: productForm.coste ? parseFloat(productForm.coste) : null,
+            vencimiento: productForm.fecha_compra && productForm.dias_para_vencer 
+              ? new Date(new Date(productForm.fecha_compra).getTime() + productForm.dias_para_vencer * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+              : null,
+            stock_minimo_alerta: parseFloat(productForm.stock_minimo_alerta) || 1,
+            dias_alerta_vencimiento: parseInt(productForm.dias_alerta_vencimiento_stock) || 7,
+            utilizable_en_receta: false,
+            activo: true
+          }
+
+          const { error: stockError } = await supabase
+            .from('stock_items')
+            .insert([stockData])
+
+          if (stockError) {
+            console.error('Error creando en stock:', stockError)
+            toast.warning('Producto creado en menú pero no en stock: ' + stockError.message)
+          } else {
+            toast.success('✅ Producto creado en Menú y Stock automáticamente')
+          }
+        } catch (stockErr) {
+          console.error('Error en crear_en_stock:', stockErr)
+        }
+      }
+
       // Si usa stock avanzado, guardar receta
       if (productForm.usar_stock_avanzado && recetaItems.length > 0) {
         // Eliminar recetas anteriores si está editando
