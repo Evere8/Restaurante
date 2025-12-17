@@ -385,17 +385,6 @@ export default function CobroPage() {
                       <span className="font-bold">Total:</span>
                       <span className="text-xl font-bold text-gray-700">{formatCurrency(order.total)}</span>
                     </div>
-
-                    <div className="mt-3">
-                      <Button 
-                        className="w-full bg-blue-500 hover:bg-blue-600" 
-                        size="sm"
-                        onClick={() => router.push(`/factura-test?order=${order.id}`)}
-                      >
-                        <FileText className="mr-2 h-4 w-4" />
-                        Generar Factura
-                      </Button>
-                    </div>
                   </CardContent>
                 </Card>
               ))}
