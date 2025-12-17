@@ -232,7 +232,23 @@ export default function CobroPage() {
           .eq('id', appliedCoupon.id)
       }
 
-      toast.success('¡Pago procesado exitosamente!')
+      // 4. Procesar descuento de stock
+      try {
+        const { data: stockResult, error: stockError } = await supabase
+          .rpc('procesar_cobro_pedido', { pedido_id: selectedOrder.id })
+
+        if (stockError) {
+          console.error('Error procesando stock:', stockError)
+          toast.warning('Pago procesado, pero hubo un problema con el stock')
+        } else if (stockResult?.alertas && stockResult.alertas.length > 0) {
+          const alertasTexto = stockResult.alertas.map(a => `${a.producto}: ${a.cantidad_actual}`).join(', ')
+          toast.warning(`Stock bajo detectado: ${alertasTexto}`)
+        }
+      } catch (stockErr) {
+        console.error('Error en descuento de stock:', stockErr)
+      }
+
+      toast.success('¡Pago procesado exitosamente y stock actualizado!')
       setPaymentDialogOpen(false)
       loadOrders()
     } catch (error) {
