@@ -24,6 +24,7 @@ export default function Sidebar() {
     { href: '/cupones', label: 'Cupones', icon: Tag, permission: 'cupones' },
     { href: '/reportes', label: 'Reportes', icon: BarChart3, permission: 'reportes' },
     { href: '/configuracion', label: 'Configuración', icon: Settings, permission: 'configuracion' },
+    { href: '/configuracion-factura', label: 'Config. Factura', icon: FileText, permission: 'configuracion' },
   ]
 
   if (user?.rol === 'DESARROLLADOR') {
