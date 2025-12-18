@@ -370,7 +370,18 @@ export default function CobroPage() {
       // 5. Generar factura si está marcada
       if (paymentForm.generar_factura) {
         try {
-          const { generarFacturaPDF, calcularTotalesFactura } = await import('@/lib/facturaGenerator')
+          const { generarFacturaPDF, calcularTotalesFactura, DEFAULT_CONFIG } = await import('@/lib/facturaGenerator')
+          
+          // Cargar configuración guardada de localStorage
+          let facturaConfig = DEFAULT_CONFIG
+          try {
+            const savedConfig = localStorage.getItem('facturaConfig')
+            if (savedConfig) {
+              facturaConfig = JSON.parse(savedConfig)
+            }
+          } catch (e) {
+            console.log('Usando configuración por defecto')
+          }
           
           // Obtener items del pedido
           const { data: orderItems } = await supabase
@@ -402,7 +413,7 @@ export default function CobroPage() {
               ...totales
             }
 
-            const pdfBlob = generarFacturaPDF(facturaData)
+            const pdfBlob = generarFacturaPDF(facturaData, facturaConfig)
             const url = URL.createObjectURL(pdfBlob)
             const link = document.createElement('a')
             link.href = url
