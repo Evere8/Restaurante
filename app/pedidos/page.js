@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useCurrency } from '@/contexts/CurrencyContext'
 import { useRouter } from 'next/navigation'
@@ -15,7 +15,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Minus, ShoppingCart, Search, Trash2, Edit } from 'lucide-react'
+import { Switch } from '@/components/ui/switch'
+import { Plus, Minus, ShoppingCart, Search, Trash2, Edit, Play, CheckCircle, Volume2, VolumeX } from 'lucide-react'
 import { toast } from 'sonner'
 
 export default function PedidosPage() {
@@ -34,6 +35,9 @@ export default function PedidosPage() {
     entregados: []
   })
   const [editingOrder, setEditingOrder] = useState(null)
+  const [previousOrderCount, setPreviousOrderCount] = useState(0)
+  const [soundEnabled, setSoundEnabled] = useState(true)
+  const audioRef = useRef(null)
 
   const [orderForm, setOrderForm] = useState({
     tipo: 'SALA',
