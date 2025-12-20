@@ -19,25 +19,31 @@ const DEFAULT_RECIBO_CONFIG = {
   pageHeight: 200,
   marginLeft: 5,
   marginTop: 5,
-  fontSize: 8,
-  lineHeight: 4,
-  restauranteNombre: { y: 5, fontSize: 12 },
-  restauranteDireccion: { y: 10, fontSize: 8 },
-  restauranteTelefono: { y: 14, fontSize: 8 },
-  fecha: { y: 22, fontSize: 8 },
-  cliente: { y: 30, fontSize: 8 },
-  tablaInicio: { y: 40, altoFila: 4 },
-  total: { y: 0, fontSize: 10 },
-  mensaje: { fontSize: 8 }
+  restaurante: {
+    nombre: { y: 8, fontSize: 12 },
+    direccion: { y: 14, fontSize: 8 },
+    telefono: { y: 18, fontSize: 8 }
+  },
+  fecha: { y: 26, fontSize: 8 },
+  hora: { y: 30, fontSize: 8 },
+  cliente: { y: 36, fontSize: 8 },
+  tabla: {
+    inicioY: 45,
+    altoFila: 5,
+    columnas: {
+      cantidad: { x: 5 },
+      descripcion: { x: 15 },
+      total: { x: 75 }
+    }
+  },
+  totalLabel: { fontSize: 10 },
+  mensaje: { fontSize: 8, texto: '¡Gracias por su compra!' }
 }
 
-// Datos de ejemplo para la vista previa
+// Datos de ejemplo
 const EJEMPLO_DATA = {
   fecha: new Date().toISOString(),
-  cliente: {
-    nombre: 'EDGAR LOPEZ',
-    ruc: '4126977-2'
-  },
+  cliente: { nombre: 'EDGAR LOPEZ', ruc: '4126977-2' },
   items: [
     { cantidad: 1, descripcion: 'batido', precioUnitario: 20000 },
     { cantidad: 1, descripcion: 'empanada', precioUnitario: 5000 },
@@ -49,8 +55,9 @@ export default function ConfiguracionFacturaPage() {
   const { user, restaurant, loading: authLoading } = useAuth()
   const router = useRouter()
   
-  const [config, setConfig] = useState(DEFAULT_CONFIG)
-  const [previewKey, setPreviewKey] = useState(0)
+  const [facturaConfig, setFacturaConfig] = useState(DEFAULT_CONFIG)
+  const [reciboConfig, setReciboConfig] = useState(DEFAULT_RECIBO_CONFIG)
+  const [activeTab, setActiveTab] = useState('factura')
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -59,42 +66,52 @@ export default function ConfiguracionFacturaPage() {
   }, [user, authLoading, router])
 
   useEffect(() => {
-    // Cargar configuración guardada
-    const saved = localStorage.getItem('facturaConfig')
-    if (saved) {
+    // Cargar configuraciones guardadas
+    const savedFactura = localStorage.getItem('facturaConfig')
+    if (savedFactura) {
       try {
-        setConfig(JSON.parse(saved))
+        setFacturaConfig(JSON.parse(savedFactura))
       } catch (e) {
-        console.error('Error cargando config:', e)
+        console.error('Error cargando config factura:', e)
+      }
+    }
+    
+    const savedRecibo = localStorage.getItem('reciboConfig')
+    if (savedRecibo) {
+      try {
+        setReciboConfig(JSON.parse(savedRecibo))
+      } catch (e) {
+        console.error('Error cargando config recibo:', e)
       }
     }
   }, [])
 
-  const updateConfig = (path, value) => {
-    const newConfig = { ...config }
+  // Funciones para Factura
+  const updateFacturaConfig = (path, value) => {
+    const newConfig = { ...facturaConfig }
     const keys = path.split('.')
     let obj = newConfig
     for (let i = 0; i < keys.length - 1; i++) {
       obj = obj[keys[i]]
     }
     obj[keys[keys.length - 1]] = parseFloat(value) || 0
-    setConfig(newConfig)
+    setFacturaConfig(newConfig)
   }
 
-  const saveConfig = () => {
-    localStorage.setItem('facturaConfig', JSON.stringify(config))
-    toast.success('Configuración guardada')
+  const saveFacturaConfig = () => {
+    localStorage.setItem('facturaConfig', JSON.stringify(facturaConfig))
+    toast.success('Configuración de factura guardada')
   }
 
-  const resetConfig = () => {
-    setConfig(DEFAULT_CONFIG)
+  const resetFacturaConfig = () => {
+    setFacturaConfig(DEFAULT_CONFIG)
     localStorage.removeItem('facturaConfig')
-    toast.success('Configuración restaurada')
+    toast.success('Configuración de factura restaurada')
   }
 
-  const downloadTestPDF = () => {
+  const downloadTestFacturaPDF = () => {
     try {
-      const pdfBlob = generarFacturaPDF(EJEMPLO_DATA, config)
+      const pdfBlob = generarFacturaPDF(EJEMPLO_DATA, facturaConfig)
       const url = URL.createObjectURL(pdfBlob)
       const link = document.createElement('a')
       link.href = url
@@ -103,11 +120,146 @@ export default function ConfiguracionFacturaPage() {
       link.click()
       document.body.removeChild(link)
       URL.revokeObjectURL(url)
-      toast.success('PDF de prueba descargado')
+      toast.success('PDF de factura de prueba descargado')
     } catch (error) {
       console.error('Error:', error)
-      toast.error('Error generando PDF')
+      toast.error('Error generando PDF de factura')
     }
+  }
+
+  // Funciones para Recibo
+  const updateReciboConfig = (path, value) => {
+    const newConfig = JSON.parse(JSON.stringify(reciboConfig))
+    const keys = path.split('.')
+    let obj = newConfig
+    for (let i = 0; i < keys.length - 1; i++) {
+      obj = obj[keys[i]]
+    }
+    
+    // Si es texto, no convertir a número
+    if (path.includes('texto')) {
+      obj[keys[keys.length - 1]] = value
+    } else {
+      obj[keys[keys.length - 1]] = parseFloat(value) || 0
+    }
+    setReciboConfig(newConfig)
+  }
+
+  const saveReciboConfig = () => {
+    localStorage.setItem('reciboConfig', JSON.stringify(reciboConfig))
+    toast.success('Configuración de recibo guardada')
+  }
+
+  const resetReciboConfig = () => {
+    setReciboConfig(DEFAULT_RECIBO_CONFIG)
+    localStorage.removeItem('reciboConfig')
+    toast.success('Configuración de recibo restaurada')
+  }
+
+  const downloadTestReciboPDF = async () => {
+    try {
+      const { jsPDF } = await import('jspdf')
+      
+      const config = reciboConfig
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: [config.pageWidth, config.pageHeight]
+      })
+
+      doc.setFont('helvetica', 'normal')
+      
+      let y = config.marginTop
+
+      // Nombre del restaurante
+      doc.setFontSize(config.restaurante.nombre.fontSize)
+      doc.setFont('helvetica', 'bold')
+      doc.text(restaurant?.nombre || 'Mi Restaurante', config.pageWidth / 2, config.restaurante.nombre.y, { align: 'center' })
+
+      // Dirección
+      doc.setFontSize(config.restaurante.direccion.fontSize)
+      doc.setFont('helvetica', 'normal')
+      doc.text(restaurant?.direccion || 'Calle Principal 123', config.pageWidth / 2, config.restaurante.direccion.y, { align: 'center' })
+
+      // Teléfono
+      doc.setFontSize(config.restaurante.telefono.fontSize)
+      doc.text(`Tel: ${restaurant?.telefono || '0981 123 456'}`, config.pageWidth / 2, config.restaurante.telefono.y, { align: 'center' })
+
+      // Línea separadora
+      const lineY = config.restaurante.telefono.y + 3
+      doc.line(config.marginLeft, lineY, config.pageWidth - config.marginLeft, lineY)
+
+      // Fecha
+      doc.setFontSize(config.fecha.fontSize)
+      const fecha = new Date()
+      doc.text(`Fecha: ${fecha.toLocaleDateString('es-PY')}`, config.marginLeft, config.fecha.y)
+      
+      // Hora
+      doc.text(`Hora: ${fecha.toLocaleTimeString('es-PY')}`, config.marginLeft, config.hora.y)
+
+      // Cliente
+      doc.text('Cliente: Sin Nombre', config.marginLeft, config.cliente.y)
+
+      // Línea separadora
+      const lineY2 = config.cliente.y + 3
+      doc.line(config.marginLeft, lineY2, config.pageWidth - config.marginLeft, lineY2)
+
+      // Encabezado tabla
+      y = config.tabla.inicioY
+      doc.setFont('helvetica', 'bold')
+      doc.text('Cant.', config.tabla.columnas.cantidad.x, y)
+      doc.text('Descripción', config.tabla.columnas.descripcion.x, y)
+      doc.text('Total', config.tabla.columnas.total.x, y, { align: 'right' })
+      y += config.tabla.altoFila
+      doc.setFont('helvetica', 'normal')
+
+      // Items de ejemplo
+      let totalGeneral = 0
+      EJEMPLO_DATA.items.forEach(item => {
+        const subtotal = item.cantidad * item.precioUnitario
+        totalGeneral += subtotal
+        
+        doc.text(item.cantidad.toString(), config.tabla.columnas.cantidad.x, y)
+        doc.text(item.descripcion, config.tabla.columnas.descripcion.x, y)
+        doc.text(formatNum(subtotal), config.tabla.columnas.total.x, y, { align: 'right' })
+        y += config.tabla.altoFila
+      })
+
+      // Línea antes del total
+      y += 2
+      doc.line(config.marginLeft, y, config.pageWidth - config.marginLeft, y)
+      y += 4
+
+      // Total
+      doc.setFontSize(config.totalLabel.fontSize)
+      doc.setFont('helvetica', 'bold')
+      doc.text('TOTAL:', config.marginLeft, y)
+      doc.text(formatNum(totalGeneral), config.tabla.columnas.total.x, y, { align: 'right' })
+      y += 6
+
+      // Mensaje
+      doc.setFontSize(config.mensaje.fontSize)
+      doc.setFont('helvetica', 'normal')
+      doc.text(config.mensaje.texto, config.pageWidth / 2, y, { align: 'center' })
+
+      const pdfBlob = doc.output('blob')
+      const url = URL.createObjectURL(pdfBlob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `recibo_prueba_${Date.now()}.pdf`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+      toast.success('PDF de recibo de prueba descargado')
+    } catch (error) {
+      console.error('Error:', error)
+      toast.error('Error generando PDF de recibo')
+    }
+  }
+
+  const formatNum = (num) => {
+    return new Intl.NumberFormat('es-PY').format(Math.round(num))
   }
 
   if (authLoading || !user) {
@@ -119,427 +271,466 @@ export default function ConfiguracionFacturaPage() {
       <Sidebar />
       <div className="flex-1 overflow-auto">
         <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-800">Configuración de Factura</h1>
-              <p className="text-gray-600">Ajusta las posiciones del PDF para tu factura pre-impresa</p>
-            </div>
-            <div className="flex space-x-2">
-              <Button variant="outline" onClick={resetConfig}>
-                <RotateCcw className="mr-2 h-4 w-4" /> Restaurar
-              </Button>
-              <Button variant="outline" onClick={saveConfig}>
-                <Save className="mr-2 h-4 w-4" /> Guardar
-              </Button>
-              <Button className="bg-orange-500 hover:bg-orange-600" onClick={downloadTestPDF}>
-                <Download className="mr-2 h-4 w-4" /> Descargar PDF Prueba
-              </Button>
-            </div>
+          <div className="mb-6">
+            <h1 className="text-3xl font-bold text-gray-800">Configuración de Documentos</h1>
+            <p className="text-gray-600">Ajusta las posiciones del PDF para factura y recibo</p>
           </div>
 
-          <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg mb-6">
-            <p className="text-yellow-800">
-              <strong>📐 Instrucciones:</strong> Ajusta los valores X (horizontal) e Y (vertical) en milímetros. 
-              El punto (0,0) es la esquina superior izquierda de la página. 
-              Página: <strong>140mm x 215mm</strong>
-            </p>
-          </div>
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="grid w-full grid-cols-2 mb-6">
+              <TabsTrigger value="factura" className="flex items-center">
+                <FileText className="mr-2 h-4 w-4" /> Factura
+              </TabsTrigger>
+              <TabsTrigger value="recibo" className="flex items-center">
+                <Receipt className="mr-2 h-4 w-4" /> Recibo
+              </TabsTrigger>
+            </TabsList>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Panel de Configuración */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <FileText className="mr-2 h-5 w-5" />
-                  Posiciones (en mm)
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Tabs defaultValue="encabezado">
-                  <TabsList className="grid w-full grid-cols-4">
-                    <TabsTrigger value="encabezado">Encabezado</TabsTrigger>
-                    <TabsTrigger value="tabla">Tabla</TabsTrigger>
-                    <TabsTrigger value="totales">Totales</TabsTrigger>
-                    <TabsTrigger value="iva">IVA</TabsTrigger>
-                  </TabsList>
-
-                  <TabsContent value="encabezado" className="space-y-4 mt-4">
-                    {/* Fecha */}
-                    <div className="p-3 bg-blue-50 rounded-lg">
-                      <Label className="font-bold text-blue-800">📅 Fecha de Emisión</Label>
-                      <div className="grid grid-cols-3 gap-2 mt-2">
-                        <div>
-                          <Label className="text-xs">X (mm)</Label>
-                          <Input 
-                            type="number" 
-                            value={config.fecha.x} 
-                            onChange={(e) => updateConfig('fecha.x', e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-xs">Y (mm)</Label>
-                          <Input 
-                            type="number" 
-                            value={config.fecha.y} 
-                            onChange={(e) => updateConfig('fecha.y', e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-xs">Tamaño</Label>
-                          <Input 
-                            type="number" 
-                            value={config.fecha.fontSize} 
-                            onChange={(e) => updateConfig('fecha.fontSize', e.target.value)}
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Nombre Cliente */}
-                    <div className="p-3 bg-green-50 rounded-lg">
-                      <Label className="font-bold text-green-800">👤 Nombre del Cliente</Label>
-                      <div className="grid grid-cols-3 gap-2 mt-2">
-                        <div>
-                          <Label className="text-xs">X (mm)</Label>
-                          <Input 
-                            type="number" 
-                            value={config.clienteNombre.x} 
-                            onChange={(e) => updateConfig('clienteNombre.x', e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-xs">Y (mm)</Label>
-                          <Input 
-                            type="number" 
-                            value={config.clienteNombre.y} 
-                            onChange={(e) => updateConfig('clienteNombre.y', e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-xs">Tamaño</Label>
-                          <Input 
-                            type="number" 
-                            value={config.clienteNombre.fontSize} 
-                            onChange={(e) => updateConfig('clienteNombre.fontSize', e.target.value)}
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* RUC */}
-                    <div className="p-3 bg-purple-50 rounded-lg">
-                      <Label className="font-bold text-purple-800">🆔 RUC / C.I.</Label>
-                      <div className="grid grid-cols-3 gap-2 mt-2">
-                        <div>
-                          <Label className="text-xs">X (mm)</Label>
-                          <Input 
-                            type="number" 
-                            value={config.clienteRuc.x} 
-                            onChange={(e) => updateConfig('clienteRuc.x', e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-xs">Y (mm)</Label>
-                          <Input 
-                            type="number" 
-                            value={config.clienteRuc.y} 
-                            onChange={(e) => updateConfig('clienteRuc.y', e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-xs">Tamaño</Label>
-                          <Input 
-                            type="number" 
-                            value={config.clienteRuc.fontSize} 
-                            onChange={(e) => updateConfig('clienteRuc.fontSize', e.target.value)}
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* X de CONTADO */}
-                    <div className="p-3 bg-red-50 rounded-lg">
-                      <Label className="font-bold text-red-800">✓ "X" de CONTADO</Label>
-                      <div className="grid grid-cols-3 gap-2 mt-2">
-                        <div>
-                          <Label className="text-xs">X (mm)</Label>
-                          <Input 
-                            type="number" 
-                            value={config.contadoX.x} 
-                            onChange={(e) => updateConfig('contadoX.x', e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-xs">Y (mm)</Label>
-                          <Input 
-                            type="number" 
-                            value={config.contadoX.y} 
-                            onChange={(e) => updateConfig('contadoX.y', e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-xs">Tamaño</Label>
-                          <Input 
-                            type="number" 
-                            value={config.contadoX.fontSize} 
-                            onChange={(e) => updateConfig('contadoX.fontSize', e.target.value)}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </TabsContent>
-
-                  <TabsContent value="tabla" className="space-y-4 mt-4">
-                    {/* Configuración de tabla */}
-                    <div className="p-3 bg-gray-50 rounded-lg">
-                      <Label className="font-bold">📋 Inicio de Tabla</Label>
-                      <div className="grid grid-cols-2 gap-2 mt-2">
-                        <div>
-                          <Label className="text-xs">Y inicial (mm)</Label>
-                          <Input 
-                            type="number" 
-                            value={config.tabla.inicioY} 
-                            onChange={(e) => updateConfig('tabla.inicioY', e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-xs">Alto por fila (mm)</Label>
-                          <Input 
-                            type="number" 
-                            value={config.tabla.altoFila} 
-                            onChange={(e) => updateConfig('tabla.altoFila', e.target.value)}
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="p-3 bg-orange-50 rounded-lg">
-                      <Label className="font-bold text-orange-800">📊 Columnas (X en mm)</Label>
-                      <div className="grid grid-cols-3 gap-2 mt-2">
-                        <div>
-                          <Label className="text-xs">Cantidad</Label>
-                          <Input 
-                            type="number" 
-                            value={config.tabla.columnas.cantidad.x} 
-                            onChange={(e) => updateConfig('tabla.columnas.cantidad.x', e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-xs">Descripción</Label>
-                          <Input 
-                            type="number" 
-                            value={config.tabla.columnas.descripcion.x} 
-                            onChange={(e) => updateConfig('tabla.columnas.descripcion.x', e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-xs">Precio Unit.</Label>
-                          <Input 
-                            type="number" 
-                            value={config.tabla.columnas.precioUnitario.x} 
-                            onChange={(e) => updateConfig('tabla.columnas.precioUnitario.x', e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-xs">Exentas</Label>
-                          <Input 
-                            type="number" 
-                            value={config.tabla.columnas.exentas.x} 
-                            onChange={(e) => updateConfig('tabla.columnas.exentas.x', e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-xs">5%</Label>
-                          <Input 
-                            type="number" 
-                            value={config.tabla.columnas.iva5.x} 
-                            onChange={(e) => updateConfig('tabla.columnas.iva5.x', e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-xs">10%</Label>
-                          <Input 
-                            type="number" 
-                            value={config.tabla.columnas.iva10.x} 
-                            onChange={(e) => updateConfig('tabla.columnas.iva10.x', e.target.value)}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </TabsContent>
-
-                  <TabsContent value="totales" className="space-y-4 mt-4">
-                    {/* Subtotal 10% */}
-                    <div className="p-3 bg-blue-50 rounded-lg">
-                      <Label className="font-bold text-blue-800">📊 Subtotal 10%</Label>
-                      <div className="grid grid-cols-2 gap-2 mt-2">
-                        <div>
-                          <Label className="text-xs">X (mm)</Label>
-                          <Input 
-                            type="number" 
-                            value={config.subtotal10.x} 
-                            onChange={(e) => updateConfig('subtotal10.x', e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-xs">Y (mm)</Label>
-                          <Input 
-                            type="number" 
-                            value={config.subtotal10.y} 
-                            onChange={(e) => updateConfig('subtotal10.y', e.target.value)}
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Total en letras */}
-                    <div className="p-3 bg-green-50 rounded-lg">
-                      <Label className="font-bold text-green-800">📝 Total en Letras</Label>
-                      <div className="grid grid-cols-3 gap-2 mt-2">
-                        <div>
-                          <Label className="text-xs">X (mm)</Label>
-                          <Input 
-                            type="number" 
-                            value={config.totalLetras.x} 
-                            onChange={(e) => updateConfig('totalLetras.x', e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-xs">Y (mm)</Label>
-                          <Input 
-                            type="number" 
-                            value={config.totalLetras.y} 
-                            onChange={(e) => updateConfig('totalLetras.y', e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-xs">Tamaño</Label>
-                          <Input 
-                            type="number" 
-                            value={config.totalLetras.fontSize} 
-                            onChange={(e) => updateConfig('totalLetras.fontSize', e.target.value)}
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Total Final */}
-                    <div className="p-3 bg-orange-50 rounded-lg">
-                      <Label className="font-bold text-orange-800">💰 TOTAL FINAL</Label>
-                      <div className="grid grid-cols-3 gap-2 mt-2">
-                        <div>
-                          <Label className="text-xs">X (mm)</Label>
-                          <Input 
-                            type="number" 
-                            value={config.totalFinal.x} 
-                            onChange={(e) => updateConfig('totalFinal.x', e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-xs">Y (mm)</Label>
-                          <Input 
-                            type="number" 
-                            value={config.totalFinal.y} 
-                            onChange={(e) => updateConfig('totalFinal.y', e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-xs">Tamaño</Label>
-                          <Input 
-                            type="number" 
-                            value={config.totalFinal.fontSize} 
-                            onChange={(e) => updateConfig('totalFinal.fontSize', e.target.value)}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </TabsContent>
-
-                  <TabsContent value="iva" className="space-y-4 mt-4">
-                    {/* Liquidación IVA */}
-                    <div className="p-3 bg-purple-50 rounded-lg">
-                      <Label className="font-bold text-purple-800">🧾 Liquidación IVA 10%</Label>
-                      <div className="grid grid-cols-2 gap-2 mt-2">
-                        <div>
-                          <Label className="text-xs">X (mm)</Label>
-                          <Input 
-                            type="number" 
-                            value={config.liquidacionIva10.x} 
-                            onChange={(e) => updateConfig('liquidacionIva10.x', e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-xs">Y (mm)</Label>
-                          <Input 
-                            type="number" 
-                            value={config.liquidacionIva10.y} 
-                            onChange={(e) => updateConfig('liquidacionIva10.y', e.target.value)}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </TabsContent>
-                </Tabs>
-              </CardContent>
-            </Card>
-
-            {/* Vista Previa */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Vista Previa de Datos</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="bg-white border-2 border-dashed border-gray-300 p-4 rounded-lg font-mono text-sm">
-                  <p className="text-gray-500 mb-4">Datos que se imprimirán:</p>
-                  
-                  <div className="space-y-2">
-                    <p><strong>Fecha:</strong> {new Date().toLocaleDateString('es-PY')}</p>
-                    <p><strong>Cliente:</strong> EDGAR LOPEZ</p>
-                    <p><strong>RUC:</strong> 4126977-2</p>
-                    <p><strong>Condición:</strong> X (CONTADO)</p>
-                    
-                    <hr className="my-3" />
-                    
-                    <p className="font-bold">Items:</p>
-                    <div className="pl-4 space-y-1">
-                      <p>1 | batido | 20.000 | 0 | 0 | 20.000</p>
-                      <p>1 | empanada | 5.000 | 0 | 0 | 5.000</p>
-                      <p>1 | cafe | 20.000 | 0 | 0 | 20.000</p>
-                    </div>
-                    
-                    <hr className="my-3" />
-                    
-                    <p><strong>Subtotal 10%:</strong> 45.000</p>
-                    <p><strong>Total letras:</strong> cuarenta y cinco mil guaraníes</p>
-                    <p><strong>IVA 10%:</strong> 4.091</p>
-                    <p><strong>TOTAL:</strong> 45.000</p>
-                  </div>
+            {/* TAB FACTURA */}
+            <TabsContent value="factura">
+              <div className="flex items-center justify-between mb-4">
+                <div className="text-sm text-gray-600">
+                  Página: <strong>140mm x 215mm</strong>
                 </div>
-
-                <div className="mt-4 p-4 bg-gray-100 rounded-lg">
-                  <p className="text-sm text-gray-600 mb-2">
-                    <strong>Dimensiones de página:</strong> 140mm x 215mm
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    <strong>Tip:</strong> Descarga el PDF de prueba e imprímelo sobre tu factura 
-                    pre-impresa para verificar las posiciones. Luego ajusta los valores según sea necesario.
-                  </p>
+                <div className="flex space-x-2">
+                  <Button variant="outline" size="sm" onClick={resetFacturaConfig}>
+                    <RotateCcw className="mr-2 h-4 w-4" /> Restaurar
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={saveFacturaConfig}>
+                    <Save className="mr-2 h-4 w-4" /> Guardar
+                  </Button>
+                  <Button size="sm" className="bg-orange-500 hover:bg-orange-600" onClick={downloadTestFacturaPDF}>
+                    <Download className="mr-2 h-4 w-4" /> Descargar Prueba
+                  </Button>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
+              </div>
 
-          {/* JSON Config para debug */}
-          <Card className="mt-6">
-            <CardHeader>
-              <CardTitle>Configuración Actual (JSON)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <pre className="bg-gray-900 text-green-400 p-4 rounded-lg overflow-auto text-xs max-h-64">
-                {JSON.stringify(config, null, 2)}
-              </pre>
-            </CardContent>
-          </Card>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Posiciones (en mm)</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <Tabs defaultValue="encabezado">
+                      <TabsList className="grid w-full grid-cols-4 mb-4">
+                        <TabsTrigger value="encabezado">Encabezado</TabsTrigger>
+                        <TabsTrigger value="tabla">Tabla</TabsTrigger>
+                        <TabsTrigger value="totales">Totales</TabsTrigger>
+                        <TabsTrigger value="iva">IVA</TabsTrigger>
+                      </TabsList>
+
+                      <TabsContent value="encabezado" className="space-y-4">
+                        {/* Fecha */}
+                        <div className="p-3 bg-blue-50 rounded-lg">
+                          <Label className="font-bold text-blue-800">📅 Fecha</Label>
+                          <div className="grid grid-cols-3 gap-2 mt-2">
+                            <div>
+                              <Label className="text-xs">X</Label>
+                              <Input type="number" value={facturaConfig.fecha.x} onChange={(e) => updateFacturaConfig('fecha.x', e.target.value)} />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Y</Label>
+                              <Input type="number" value={facturaConfig.fecha.y} onChange={(e) => updateFacturaConfig('fecha.y', e.target.value)} />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Tamaño</Label>
+                              <Input type="number" value={facturaConfig.fecha.fontSize} onChange={(e) => updateFacturaConfig('fecha.fontSize', e.target.value)} />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Nombre Cliente */}
+                        <div className="p-3 bg-green-50 rounded-lg">
+                          <Label className="font-bold text-green-800">👤 Nombre Cliente</Label>
+                          <div className="grid grid-cols-3 gap-2 mt-2">
+                            <div>
+                              <Label className="text-xs">X</Label>
+                              <Input type="number" value={facturaConfig.clienteNombre.x} onChange={(e) => updateFacturaConfig('clienteNombre.x', e.target.value)} />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Y</Label>
+                              <Input type="number" value={facturaConfig.clienteNombre.y} onChange={(e) => updateFacturaConfig('clienteNombre.y', e.target.value)} />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Tamaño</Label>
+                              <Input type="number" value={facturaConfig.clienteNombre.fontSize} onChange={(e) => updateFacturaConfig('clienteNombre.fontSize', e.target.value)} />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* RUC */}
+                        <div className="p-3 bg-purple-50 rounded-lg">
+                          <Label className="font-bold text-purple-800">🆔 RUC</Label>
+                          <div className="grid grid-cols-3 gap-2 mt-2">
+                            <div>
+                              <Label className="text-xs">X</Label>
+                              <Input type="number" value={facturaConfig.clienteRuc.x} onChange={(e) => updateFacturaConfig('clienteRuc.x', e.target.value)} />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Y</Label>
+                              <Input type="number" value={facturaConfig.clienteRuc.y} onChange={(e) => updateFacturaConfig('clienteRuc.y', e.target.value)} />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Tamaño</Label>
+                              <Input type="number" value={facturaConfig.clienteRuc.fontSize} onChange={(e) => updateFacturaConfig('clienteRuc.fontSize', e.target.value)} />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* X CONTADO */}
+                        <div className="p-3 bg-red-50 rounded-lg">
+                          <Label className="font-bold text-red-800">✓ "X" CONTADO</Label>
+                          <div className="grid grid-cols-3 gap-2 mt-2">
+                            <div>
+                              <Label className="text-xs">X</Label>
+                              <Input type="number" value={facturaConfig.contadoX.x} onChange={(e) => updateFacturaConfig('contadoX.x', e.target.value)} />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Y</Label>
+                              <Input type="number" value={facturaConfig.contadoX.y} onChange={(e) => updateFacturaConfig('contadoX.y', e.target.value)} />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Tamaño</Label>
+                              <Input type="number" value={facturaConfig.contadoX.fontSize} onChange={(e) => updateFacturaConfig('contadoX.fontSize', e.target.value)} />
+                            </div>
+                          </div>
+                        </div>
+                      </TabsContent>
+
+                      <TabsContent value="tabla" className="space-y-4">
+                        <div className="p-3 bg-gray-50 rounded-lg">
+                          <Label className="font-bold">📋 Inicio de Tabla</Label>
+                          <div className="grid grid-cols-2 gap-2 mt-2">
+                            <div>
+                              <Label className="text-xs">Y inicial</Label>
+                              <Input type="number" value={facturaConfig.tabla.inicioY} onChange={(e) => updateFacturaConfig('tabla.inicioY', e.target.value)} />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Alto fila</Label>
+                              <Input type="number" value={facturaConfig.tabla.altoFila} onChange={(e) => updateFacturaConfig('tabla.altoFila', e.target.value)} />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="p-3 bg-orange-50 rounded-lg">
+                          <Label className="font-bold text-orange-800">📊 Columnas (X)</Label>
+                          <div className="grid grid-cols-3 gap-2 mt-2">
+                            <div>
+                              <Label className="text-xs">Cantidad</Label>
+                              <Input type="number" value={facturaConfig.tabla.columnas.cantidad.x} onChange={(e) => updateFacturaConfig('tabla.columnas.cantidad.x', e.target.value)} />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Descripción</Label>
+                              <Input type="number" value={facturaConfig.tabla.columnas.descripcion.x} onChange={(e) => updateFacturaConfig('tabla.columnas.descripcion.x', e.target.value)} />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Precio Unit.</Label>
+                              <Input type="number" value={facturaConfig.tabla.columnas.precioUnitario.x} onChange={(e) => updateFacturaConfig('tabla.columnas.precioUnitario.x', e.target.value)} />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Exentas</Label>
+                              <Input type="number" value={facturaConfig.tabla.columnas.exentas.x} onChange={(e) => updateFacturaConfig('tabla.columnas.exentas.x', e.target.value)} />
+                            </div>
+                            <div>
+                              <Label className="text-xs">5%</Label>
+                              <Input type="number" value={facturaConfig.tabla.columnas.iva5.x} onChange={(e) => updateFacturaConfig('tabla.columnas.iva5.x', e.target.value)} />
+                            </div>
+                            <div>
+                              <Label className="text-xs">10%</Label>
+                              <Input type="number" value={facturaConfig.tabla.columnas.iva10.x} onChange={(e) => updateFacturaConfig('tabla.columnas.iva10.x', e.target.value)} />
+                            </div>
+                          </div>
+                        </div>
+                      </TabsContent>
+
+                      <TabsContent value="totales" className="space-y-4">
+                        <div className="p-3 bg-blue-50 rounded-lg">
+                          <Label className="font-bold text-blue-800">📊 Subtotal 10%</Label>
+                          <div className="grid grid-cols-2 gap-2 mt-2">
+                            <div>
+                              <Label className="text-xs">X</Label>
+                              <Input type="number" value={facturaConfig.subtotal10.x} onChange={(e) => updateFacturaConfig('subtotal10.x', e.target.value)} />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Y</Label>
+                              <Input type="number" value={facturaConfig.subtotal10.y} onChange={(e) => updateFacturaConfig('subtotal10.y', e.target.value)} />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="p-3 bg-green-50 rounded-lg">
+                          <Label className="font-bold text-green-800">📝 Total en Letras</Label>
+                          <div className="grid grid-cols-3 gap-2 mt-2">
+                            <div>
+                              <Label className="text-xs">X</Label>
+                              <Input type="number" value={facturaConfig.totalLetras.x} onChange={(e) => updateFacturaConfig('totalLetras.x', e.target.value)} />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Y</Label>
+                              <Input type="number" value={facturaConfig.totalLetras.y} onChange={(e) => updateFacturaConfig('totalLetras.y', e.target.value)} />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Tamaño</Label>
+                              <Input type="number" value={facturaConfig.totalLetras.fontSize} onChange={(e) => updateFacturaConfig('totalLetras.fontSize', e.target.value)} />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="p-3 bg-orange-50 rounded-lg">
+                          <Label className="font-bold text-orange-800">💰 TOTAL FINAL</Label>
+                          <div className="grid grid-cols-3 gap-2 mt-2">
+                            <div>
+                              <Label className="text-xs">X</Label>
+                              <Input type="number" value={facturaConfig.totalFinal.x} onChange={(e) => updateFacturaConfig('totalFinal.x', e.target.value)} />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Y</Label>
+                              <Input type="number" value={facturaConfig.totalFinal.y} onChange={(e) => updateFacturaConfig('totalFinal.y', e.target.value)} />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Tamaño</Label>
+                              <Input type="number" value={facturaConfig.totalFinal.fontSize} onChange={(e) => updateFacturaConfig('totalFinal.fontSize', e.target.value)} />
+                            </div>
+                          </div>
+                        </div>
+                      </TabsContent>
+
+                      <TabsContent value="iva" className="space-y-4">
+                        <div className="p-3 bg-purple-50 rounded-lg">
+                          <Label className="font-bold text-purple-800">🧾 Liquidación IVA 10%</Label>
+                          <div className="grid grid-cols-2 gap-2 mt-2">
+                            <div>
+                              <Label className="text-xs">X</Label>
+                              <Input type="number" value={facturaConfig.liquidacionIva10.x} onChange={(e) => updateFacturaConfig('liquidacionIva10.x', e.target.value)} />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Y</Label>
+                              <Input type="number" value={facturaConfig.liquidacionIva10.y} onChange={(e) => updateFacturaConfig('liquidacionIva10.y', e.target.value)} />
+                            </div>
+                          </div>
+                        </div>
+                      </TabsContent>
+                    </Tabs>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Vista Previa de Datos</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="bg-white border-2 border-dashed border-gray-300 p-4 rounded-lg font-mono text-sm">
+                      <p className="font-bold mb-2">Datos que se imprimirán:</p>
+                      <p>Fecha: {new Date().toLocaleDateString('es-PY')}</p>
+                      <p>Cliente: EDGAR LOPEZ</p>
+                      <p>RUC: 4126977-2</p>
+                      <p>Condición: X (CONTADO)</p>
+                      <hr className="my-2" />
+                      <p className="font-bold">Items:</p>
+                      <p className="pl-2">1 | batido | 20.000 | 0 | 0 | 20.000</p>
+                      <p className="pl-2">1 | empanada | 5.000 | 0 | 0 | 5.000</p>
+                      <p className="pl-2">1 | cafe | 20.000 | 0 | 0 | 20.000</p>
+                      <hr className="my-2" />
+                      <p>Subtotal 10%: 45.000</p>
+                      <p>Total letras: cuarenta y cinco mil guaraníes</p>
+                      <p>IVA 10%: 4.091</p>
+                      <p className="font-bold">TOTAL: 45.000</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+
+            {/* TAB RECIBO */}
+            <TabsContent value="recibo">
+              <div className="flex items-center justify-between mb-4">
+                <div className="text-sm text-gray-600">
+                  Página: <strong>{reciboConfig.pageWidth}mm x {reciboConfig.pageHeight}mm</strong>
+                </div>
+                <div className="flex space-x-2">
+                  <Button variant="outline" size="sm" onClick={resetReciboConfig}>
+                    <RotateCcw className="mr-2 h-4 w-4" /> Restaurar
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={saveReciboConfig}>
+                    <Save className="mr-2 h-4 w-4" /> Guardar
+                  </Button>
+                  <Button size="sm" className="bg-green-500 hover:bg-green-600" onClick={downloadTestReciboPDF}>
+                    <Download className="mr-2 h-4 w-4" /> Descargar Prueba
+                  </Button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Configuración del Recibo</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* Tamaño de página */}
+                    <div className="p-3 bg-gray-100 rounded-lg">
+                      <Label className="font-bold">📄 Tamaño de Página (mm)</Label>
+                      <div className="grid grid-cols-2 gap-2 mt-2">
+                        <div>
+                          <Label className="text-xs">Ancho</Label>
+                          <Input type="number" value={reciboConfig.pageWidth} onChange={(e) => updateReciboConfig('pageWidth', e.target.value)} />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Alto</Label>
+                          <Input type="number" value={reciboConfig.pageHeight} onChange={(e) => updateReciboConfig('pageHeight', e.target.value)} />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Márgenes */}
+                    <div className="p-3 bg-blue-50 rounded-lg">
+                      <Label className="font-bold text-blue-800">📐 Márgenes</Label>
+                      <div className="grid grid-cols-2 gap-2 mt-2">
+                        <div>
+                          <Label className="text-xs">Izquierdo</Label>
+                          <Input type="number" value={reciboConfig.marginLeft} onChange={(e) => updateReciboConfig('marginLeft', e.target.value)} />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Superior</Label>
+                          <Input type="number" value={reciboConfig.marginTop} onChange={(e) => updateReciboConfig('marginTop', e.target.value)} />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Restaurante */}
+                    <div className="p-3 bg-green-50 rounded-lg">
+                      <Label className="font-bold text-green-800">🏪 Datos del Restaurante</Label>
+                      <div className="space-y-2 mt-2">
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <Label className="text-xs">Nombre Y</Label>
+                            <Input type="number" value={reciboConfig.restaurante.nombre.y} onChange={(e) => updateReciboConfig('restaurante.nombre.y', e.target.value)} />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Nombre Tamaño</Label>
+                            <Input type="number" value={reciboConfig.restaurante.nombre.fontSize} onChange={(e) => updateReciboConfig('restaurante.nombre.fontSize', e.target.value)} />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <Label className="text-xs">Dirección Y</Label>
+                            <Input type="number" value={reciboConfig.restaurante.direccion.y} onChange={(e) => updateReciboConfig('restaurante.direccion.y', e.target.value)} />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Teléfono Y</Label>
+                            <Input type="number" value={reciboConfig.restaurante.telefono.y} onChange={(e) => updateReciboConfig('restaurante.telefono.y', e.target.value)} />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Fecha y Cliente */}
+                    <div className="p-3 bg-purple-50 rounded-lg">
+                      <Label className="font-bold text-purple-800">📅 Fecha y Cliente</Label>
+                      <div className="grid grid-cols-3 gap-2 mt-2">
+                        <div>
+                          <Label className="text-xs">Fecha Y</Label>
+                          <Input type="number" value={reciboConfig.fecha.y} onChange={(e) => updateReciboConfig('fecha.y', e.target.value)} />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Hora Y</Label>
+                          <Input type="number" value={reciboConfig.hora.y} onChange={(e) => updateReciboConfig('hora.y', e.target.value)} />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Cliente Y</Label>
+                          <Input type="number" value={reciboConfig.cliente.y} onChange={(e) => updateReciboConfig('cliente.y', e.target.value)} />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Tabla */}
+                    <div className="p-3 bg-orange-50 rounded-lg">
+                      <Label className="font-bold text-orange-800">📊 Tabla de Productos</Label>
+                      <div className="grid grid-cols-2 gap-2 mt-2">
+                        <div>
+                          <Label className="text-xs">Inicio Y</Label>
+                          <Input type="number" value={reciboConfig.tabla.inicioY} onChange={(e) => updateReciboConfig('tabla.inicioY', e.target.value)} />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Alto Fila</Label>
+                          <Input type="number" value={reciboConfig.tabla.altoFila} onChange={(e) => updateReciboConfig('tabla.altoFila', e.target.value)} />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 mt-2">
+                        <div>
+                          <Label className="text-xs">Cantidad X</Label>
+                          <Input type="number" value={reciboConfig.tabla.columnas.cantidad.x} onChange={(e) => updateReciboConfig('tabla.columnas.cantidad.x', e.target.value)} />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Descripción X</Label>
+                          <Input type="number" value={reciboConfig.tabla.columnas.descripcion.x} onChange={(e) => updateReciboConfig('tabla.columnas.descripcion.x', e.target.value)} />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Total X</Label>
+                          <Input type="number" value={reciboConfig.tabla.columnas.total.x} onChange={(e) => updateReciboConfig('tabla.columnas.total.x', e.target.value)} />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Mensaje */}
+                    <div className="p-3 bg-yellow-50 rounded-lg">
+                      <Label className="font-bold text-yellow-800">💬 Mensaje Final</Label>
+                      <div className="mt-2">
+                        <Input 
+                          value={reciboConfig.mensaje.texto} 
+                          onChange={(e) => updateReciboConfig('mensaje.texto', e.target.value)} 
+                          placeholder="¡Gracias por su compra!"
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Vista Previa del Recibo</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="bg-white border-2 border-gray-300 p-4 rounded-lg font-mono text-xs mx-auto" style={{ maxWidth: '200px' }}>
+                      <p className="text-center font-bold text-sm">{restaurant?.nombre || 'Mi Restaurante'}</p>
+                      <p className="text-center text-xs">{restaurant?.direccion || 'Calle Principal 123'}</p>
+                      <p className="text-center text-xs">Tel: {restaurant?.telefono || '0981 123 456'}</p>
+                      <hr className="my-2" />
+                      <p>Fecha: {new Date().toLocaleDateString('es-PY')}</p>
+                      <p>Hora: {new Date().toLocaleTimeString('es-PY')}</p>
+                      <p>Cliente: Sin Nombre</p>
+                      <hr className="my-2" />
+                      <div className="flex justify-between text-xs font-bold">
+                        <span>Cant.</span>
+                        <span>Desc.</span>
+                        <span>Total</span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span>1</span>
+                        <span>batido</span>
+                        <span>20.000</span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span>1</span>
+                        <span>empanada</span>
+                        <span>5.000</span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span>1</span>
+                        <span>cafe</span>
+                        <span>20.000</span>
+                      </div>
+                      <hr className="my-2" />
+                      <div className="flex justify-between font-bold">
+                        <span>TOTAL:</span>
+                        <span>45.000</span>
+                      </div>
+                      <p className="text-center mt-2 text-xs">{reciboConfig.mensaje.texto}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
     </div>
