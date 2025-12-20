@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
-import { CreditCard, DollarSign, X, Tag, CheckCircle, FileText } from 'lucide-react'
+import { CreditCard, DollarSign, X, Tag, CheckCircle, FileText, Receipt, Coins } from 'lucide-react'
 import { toast } from 'sonner'
 
 export default function CobroPage() {
@@ -34,9 +34,11 @@ export default function CobroPage() {
     metodo_pago: '',
     cupon_codigo: '',
     generar_factura: false,
+    generar_recibo: false,
     factura_ruc: '',
     factura_nombre: '',
-    factura_condicion: 'CONTADO'
+    factura_condicion: 'CONTADO',
+    monto_recibido: ''
   })
 
   const [appliedCoupon, setAppliedCoupon] = useState(null)
@@ -51,13 +53,12 @@ export default function CobroPage() {
   useEffect(() => {
     if (user && restaurant) {
       loadOrders()
-      const interval = setInterval(loadOrders, 30000) // Auto-refresh
+      const interval = setInterval(loadOrders, 30000)
       return () => clearInterval(interval)
     }
   }, [user, restaurant])
 
   const loadOrders = async () => {
-    // Pedidos a cobrar (ENTREGADO)
     const { data: aCobrar } = await supabase
       .from('orders')
       .select('*, order_items(*), customers(nombre, telefono)')
@@ -67,7 +68,6 @@ export default function CobroPage() {
 
     setOrdersACobrar(aCobrar || [])
 
-    // Pedidos cobrados (últimos 2 días)
     const twoDaysAgo = new Date()
     twoDaysAgo.setDate(twoDaysAgo.getDate() - 2)
 
@@ -89,7 +89,13 @@ export default function CobroPage() {
       customer_telefono: order.customers?.telefono || '',
       acepta_promociones: false,
       metodo_pago: '',
-      cupon_codigo: ''
+      cupon_codigo: '',
+      generar_factura: false,
+      generar_recibo: false,
+      factura_ruc: '',
+      factura_nombre: '',
+      factura_condicion: 'CONTADO',
+      monto_recibido: ''
     })
     setAppliedCoupon(null)
     setPaymentDialogOpen(true)
@@ -117,7 +123,6 @@ export default function CobroPage() {
         return
       }
 
-      // Validar fecha de vencimiento
       if (coupon.fecha_vencimiento) {
         const today = new Date()
         const vencimiento = new Date(coupon.fecha_vencimiento)
@@ -128,14 +133,12 @@ export default function CobroPage() {
         }
       }
 
-      // Validar límite de usos
       if (coupon.limite_usos && coupon.veces_usado >= coupon.limite_usos) {
         toast.error('Cupón alcanzó el límite de usos')
         setCouponLoading(false)
         return
       }
 
-      // Validar monto mínimo
       if (coupon.monto_minimo && selectedOrder.total < coupon.monto_minimo) {
         toast.error(`El pedido debe ser mínimo de ${formatCurrency(coupon.monto_minimo)}`)
         setCouponLoading(false)
@@ -153,7 +156,6 @@ export default function CobroPage() {
 
   const calculateDiscount = () => {
     if (!appliedCoupon) return 0
-
     if (appliedCoupon.tipo === 'PORCENTAJE') {
       return (selectedOrder.total * appliedCoupon.valor) / 100
     } else {
@@ -167,11 +169,17 @@ export default function CobroPage() {
     return Math.max(0, selectedOrder.total - discount)
   }
 
+  // Calcular vuelto
+  const calculateVuelto = () => {
+    const montoRecibido = parseFloat(paymentForm.monto_recibido) || 0
+    const total = calculateFinalTotal()
+    return montoRecibido - total
+  }
+
   const buscarClientePorRUC = async (ruc) => {
     if (!ruc || ruc.length < 3) return
 
     try {
-      // Intentar buscar por campo ruc primero, si falla buscar por teléfono
       let { data: cliente, error } = await supabase
         .from('customers')
         .select('*')
@@ -180,7 +188,6 @@ export default function CobroPage() {
         .limit(1)
         .single()
 
-      // Si no encontró por RUC, buscar por teléfono (compatibilidad)
       if (error || !cliente) {
         const { data: clienteTel } = await supabase
           .from('customers')
@@ -215,19 +222,148 @@ export default function CobroPage() {
     }
   }
 
+  // Generar Recibo PDF
+  const generarReciboPDF = async (orderItems, total) => {
+    try {
+      const { jsPDF } = await import('jspdf')
+      
+      // Cargar configuración del recibo
+      let config = {
+        pageWidth: 80,
+        pageHeight: 200,
+        marginLeft: 5,
+        marginTop: 5,
+        fontSize: 8,
+        lineHeight: 4
+      }
+      
+      try {
+        const savedConfig = localStorage.getItem('reciboConfig')
+        if (savedConfig) {
+          config = { ...config, ...JSON.parse(savedConfig) }
+        }
+      } catch (e) {
+        console.log('Usando configuración de recibo por defecto')
+      }
+
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: [config.pageWidth, config.pageHeight]
+      })
+
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(config.fontSize)
+      
+      let y = config.marginTop
+
+      // Nombre del restaurante
+      doc.setFontSize(12)
+      doc.setFont('helvetica', 'bold')
+      doc.text(restaurant?.nombre || 'Restaurante', config.pageWidth / 2, y, { align: 'center' })
+      y += 5
+
+      // Dirección y teléfono
+      doc.setFontSize(8)
+      doc.setFont('helvetica', 'normal')
+      if (restaurant?.direccion) {
+        doc.text(restaurant.direccion, config.pageWidth / 2, y, { align: 'center' })
+        y += 4
+      }
+      if (restaurant?.telefono) {
+        doc.text(`Tel: ${restaurant.telefono}`, config.pageWidth / 2, y, { align: 'center' })
+        y += 4
+      }
+
+      // Línea separadora
+      y += 2
+      doc.line(config.marginLeft, y, config.pageWidth - config.marginLeft, y)
+      y += 4
+
+      // Fecha y hora
+      const fecha = new Date()
+      doc.text(`Fecha: ${fecha.toLocaleDateString('es-PY')}`, config.marginLeft, y)
+      y += 4
+      doc.text(`Hora: ${fecha.toLocaleTimeString('es-PY')}`, config.marginLeft, y)
+      y += 4
+
+      // Cliente
+      doc.text('Cliente: Sin Nombre', config.marginLeft, y)
+      y += 6
+
+      // Línea separadora
+      doc.line(config.marginLeft, y, config.pageWidth - config.marginLeft, y)
+      y += 4
+
+      // Encabezado de productos
+      doc.setFont('helvetica', 'bold')
+      doc.text('Cant.', config.marginLeft, y)
+      doc.text('Descripción', config.marginLeft + 10, y)
+      doc.text('Total', config.pageWidth - config.marginLeft, y, { align: 'right' })
+      y += 4
+      doc.setFont('helvetica', 'normal')
+
+      // Productos
+      orderItems.forEach(item => {
+        const descripcion = item.nombre_item_snapshot.substring(0, 20)
+        const subtotal = item.cantidad * item.precio_unitario
+        
+        doc.text(item.cantidad.toString(), config.marginLeft, y)
+        doc.text(descripcion, config.marginLeft + 10, y)
+        doc.text(formatearNumeroRecibo(subtotal), config.pageWidth - config.marginLeft, y, { align: 'right' })
+        y += 4
+      })
+
+      // Línea separadora
+      y += 2
+      doc.line(config.marginLeft, y, config.pageWidth - config.marginLeft, y)
+      y += 4
+
+      // Total
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(10)
+      doc.text('TOTAL:', config.marginLeft, y)
+      doc.text(formatearNumeroRecibo(total), config.pageWidth - config.marginLeft, y, { align: 'right' })
+      y += 6
+
+      // Mensaje de agradecimiento
+      doc.setFontSize(8)
+      doc.setFont('helvetica', 'normal')
+      doc.text('¡Gracias por su compra!', config.pageWidth / 2, y, { align: 'center' })
+
+      return doc.output('blob')
+    } catch (error) {
+      console.error('Error generando recibo:', error)
+      throw error
+    }
+  }
+
+  const formatearNumeroRecibo = (numero) => {
+    return new Intl.NumberFormat('es-PY', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(Math.round(numero))
+  }
+
   const handleProcessPayment = async () => {
     if (!paymentForm.metodo_pago) {
       toast.error('Selecciona un método de pago')
       return
     }
 
+    // Validar vuelto si es efectivo
+    if (paymentForm.metodo_pago === 'EFECTIVO' && paymentForm.monto_recibido) {
+      const vuelto = calculateVuelto()
+      if (vuelto < 0) {
+        toast.error('El monto recibido es menor al total')
+        return
+      }
+    }
+
     try {
-      // 1. Crear o actualizar cliente si se proporcionó info
       let customerId = selectedOrder.customer_id
 
-      // Si se va a generar factura, usar esos datos para el cliente
       if (paymentForm.generar_factura && paymentForm.factura_nombre && paymentForm.factura_ruc) {
-        // Buscar cliente por RUC
         let { data: existingCustomer } = await supabase
           .from('customers')
           .select('*')
@@ -235,7 +371,6 @@ export default function CobroPage() {
           .eq('ruc', paymentForm.factura_ruc)
           .single()
 
-        // Si no existe, buscar por teléfono (compatibilidad)
         if (!existingCustomer) {
           const { data: customerByTel } = await supabase
             .from('customers')
@@ -248,20 +383,17 @@ export default function CobroPage() {
         }
 
         if (existingCustomer) {
-          // Actualizar cliente existente
           const updateData = {
             nombre: paymentForm.factura_nombre,
             acepta_marketing_whatsapp: paymentForm.acepta_promociones
           }
           
-          // Intentar actualizar RUC, si falla solo actualizar nombre
           try {
             await supabase
               .from('customers')
               .update({ ...updateData, ruc: paymentForm.factura_ruc })
               .eq('id', existingCustomer.id)
           } catch (e) {
-            // Si falla (campo no existe), solo actualizar nombre
             await supabase
               .from('customers')
               .update(updateData)
@@ -270,15 +402,13 @@ export default function CobroPage() {
           
           customerId = existingCustomer.id
         } else {
-          // Crear nuevo cliente
           const newCustomerData = {
             restaurant_id: restaurant.id,
             nombre: paymentForm.factura_nombre,
-            telefono: paymentForm.factura_ruc, // Guardar RUC en teléfono por compatibilidad
+            telefono: paymentForm.factura_ruc,
             acepta_marketing_whatsapp: paymentForm.acepta_promociones
           }
           
-          // Intentar agregar campo RUC, si falla solo usar teléfono
           try {
             newCustomerData.ruc = paymentForm.factura_ruc
           } catch (e) {
@@ -294,7 +424,6 @@ export default function CobroPage() {
           customerId = newCustomer?.id
         }
       } else if (paymentForm.customer_nombre && paymentForm.customer_telefono) {
-        // Flujo normal sin factura
         const { data: existingCustomer } = await supabase
           .from('customers')
           .select('*')
@@ -326,7 +455,6 @@ export default function CobroPage() {
         }
       }
 
-      // 2. Actualizar pedido
       const finalTotal = calculateFinalTotal()
       
       const { error: orderError } = await supabase
@@ -343,7 +471,6 @@ export default function CobroPage() {
 
       if (orderError) throw orderError
 
-      // 3. Incrementar uso de cupón si se aplicó
       if (appliedCoupon) {
         await supabase
           .from('coupons')
@@ -351,14 +478,12 @@ export default function CobroPage() {
           .eq('id', appliedCoupon.id)
       }
 
-      // 4. Procesar descuento de stock
       try {
         const { data: stockResult, error: stockError } = await supabase
           .rpc('procesar_cobro_pedido', { pedido_id: selectedOrder.id })
 
         if (stockError) {
           console.error('Error procesando stock:', stockError)
-          toast.warning('Pago procesado, pero hubo un problema con el stock')
         } else if (stockResult?.alertas && stockResult.alertas.length > 0) {
           const alertasTexto = stockResult.alertas.map(a => `${a.producto}: ${a.cantidad_actual}`).join(', ')
           toast.warning(`Stock bajo detectado: ${alertasTexto}`)
@@ -367,12 +492,17 @@ export default function CobroPage() {
         console.error('Error en descuento de stock:', stockErr)
       }
 
-      // 5. Generar factura si está marcada
-      if (paymentForm.generar_factura) {
+      // Obtener items para factura/recibo
+      const { data: orderItems } = await supabase
+        .from('order_items')
+        .select('*')
+        .eq('order_id', selectedOrder.id)
+
+      // Generar factura si está marcada
+      if (paymentForm.generar_factura && orderItems && orderItems.length > 0) {
         try {
           const { generarFacturaPDF, calcularTotalesFactura, DEFAULT_CONFIG } = await import('@/lib/facturaGenerator')
           
-          // Cargar configuración guardada de localStorage
           let facturaConfig = DEFAULT_CONFIG
           try {
             const savedConfig = localStorage.getItem('facturaConfig')
@@ -382,55 +512,73 @@ export default function CobroPage() {
           } catch (e) {
             console.log('Usando configuración por defecto')
           }
-          
-          // Obtener items del pedido
-          const { data: orderItems } = await supabase
-            .from('order_items')
-            .select('*')
-            .eq('order_id', selectedOrder.id)
 
-          if (orderItems && orderItems.length > 0) {
-            const itemsFactura = orderItems.map((item, index) => ({
-              codigo: String(index + 1).padStart(3, '0'),
-              cantidad: item.cantidad,
-              descripcion: item.nombre_item_snapshot,
-              precioUnitario: Math.round(item.precio_unitario),
-              tipoIva: 'IVA_10',
-              valorVenta: Math.round(item.precio_unitario * item.cantidad)
-            }))
+          const itemsFactura = orderItems.map((item, index) => ({
+            codigo: String(index + 1).padStart(3, '0'),
+            cantidad: item.cantidad,
+            descripcion: item.nombre_item_snapshot,
+            precioUnitario: Math.round(item.precio_unitario),
+            tipoIva: 'IVA_10',
+            valorVenta: Math.round(item.precio_unitario * item.cantidad)
+          }))
 
-            const totales = calcularTotalesFactura(itemsFactura)
+          const totales = calcularTotalesFactura(itemsFactura)
 
-            const facturaData = {
-              cliente: {
-                nombre: paymentForm.factura_nombre || paymentForm.customer_nombre,
-                ruc: paymentForm.factura_ruc,
-                telefono: paymentForm.customer_telefono
-              },
-              fecha: new Date().toISOString(),
-              condicionVenta: paymentForm.factura_condicion,
-              items: itemsFactura,
-              ...totales
-            }
-
-            const pdfBlob = generarFacturaPDF(facturaData, facturaConfig)
-            const url = URL.createObjectURL(pdfBlob)
-            const link = document.createElement('a')
-            link.href = url
-            link.download = `factura_${selectedOrder.id.slice(0, 8)}_${Date.now()}.pdf`
-            document.body.appendChild(link)
-            link.click()
-            document.body.removeChild(link)
-            URL.revokeObjectURL(url)
-
-            toast.success('¡Pago procesado y factura descargada!')
+          const facturaData = {
+            cliente: {
+              nombre: paymentForm.factura_nombre || paymentForm.customer_nombre,
+              ruc: paymentForm.factura_ruc,
+              telefono: paymentForm.customer_telefono
+            },
+            fecha: new Date().toISOString(),
+            condicionVenta: paymentForm.factura_condicion,
+            items: itemsFactura,
+            ...totales
           }
+
+          const pdfBlob = generarFacturaPDF(facturaData, facturaConfig)
+          const url = URL.createObjectURL(pdfBlob)
+          const link = document.createElement('a')
+          link.href = url
+          link.download = `factura_${selectedOrder.id.slice(0, 8)}_${Date.now()}.pdf`
+          document.body.appendChild(link)
+          link.click()
+          document.body.removeChild(link)
+          URL.revokeObjectURL(url)
         } catch (facturaError) {
           console.error('Error generando factura:', facturaError)
-          toast.warning('Pago procesado pero error al generar factura')
+          toast.warning('Error al generar factura')
+        }
+      }
+
+      // Generar recibo si está marcado
+      if (paymentForm.generar_recibo && orderItems && orderItems.length > 0) {
+        try {
+          const pdfBlob = await generarReciboPDF(orderItems, finalTotal)
+          const url = URL.createObjectURL(pdfBlob)
+          const link = document.createElement('a')
+          link.href = url
+          link.download = `recibo_${selectedOrder.id.slice(0, 8)}_${Date.now()}.pdf`
+          document.body.appendChild(link)
+          link.click()
+          document.body.removeChild(link)
+          URL.revokeObjectURL(url)
+        } catch (reciboError) {
+          console.error('Error generando recibo:', reciboError)
+          toast.warning('Error al generar recibo')
+        }
+      }
+
+      // Mostrar vuelto si es efectivo
+      if (paymentForm.metodo_pago === 'EFECTIVO' && paymentForm.monto_recibido) {
+        const vuelto = calculateVuelto()
+        if (vuelto > 0) {
+          toast.success(`¡Pago procesado! Vuelto: ${formatCurrency(vuelto)}`, { duration: 5000 })
+        } else {
+          toast.success('¡Pago procesado exitosamente!')
         }
       } else {
-        toast.success('¡Pago procesado exitosamente y stock actualizado!')
+        toast.success('¡Pago procesado exitosamente!')
       }
 
       setPaymentDialogOpen(false)
@@ -602,7 +750,7 @@ export default function CobroPage() {
                   </div>
                 </div>
 
-                {/* Solo mostrar estos campos si NO está activada la factura */}
+                {/* Solo mostrar campos de cliente si NO está activada la factura */}
                 {!paymentForm.generar_factura && (
                   <>
                     <div className="space-y-2">
@@ -619,7 +767,7 @@ export default function CobroPage() {
                       <Input 
                         value={paymentForm.customer_telefono}
                         onChange={(e) => setPaymentForm({...paymentForm, customer_telefono: e.target.value})}
-                        placeholder="+34 600 000 000"
+                        placeholder="+595 900 000 000"
                       />
                     </div>
 
@@ -633,8 +781,25 @@ export default function CobroPage() {
                   </>
                 )}
 
-                {/* Switch Generar Factura */}
-                <div className="border-t pt-4">
+                {/* Opciones de Factura y Recibo */}
+                <div className="border-t pt-4 space-y-3">
+                  {/* Opción Recibo */}
+                  <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                    <div className="flex items-center space-x-2">
+                      <Receipt className="h-5 w-5 text-green-600" />
+                      <Label className="font-semibold cursor-pointer">Generar Recibo</Label>
+                    </div>
+                    <Checkbox 
+                      checked={paymentForm.generar_recibo}
+                      onCheckedChange={(checked) => setPaymentForm({
+                        ...paymentForm, 
+                        generar_recibo: checked,
+                        generar_factura: checked ? false : paymentForm.generar_factura
+                      })}
+                    />
+                  </div>
+
+                  {/* Opción Factura */}
                   <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
                     <div className="flex items-center space-x-2">
                       <FileText className="h-5 w-5 text-blue-600" />
@@ -642,12 +807,16 @@ export default function CobroPage() {
                     </div>
                     <Checkbox 
                       checked={paymentForm.generar_factura}
-                      onCheckedChange={(checked) => setPaymentForm({...paymentForm, generar_factura: checked})}
+                      onCheckedChange={(checked) => setPaymentForm({
+                        ...paymentForm, 
+                        generar_factura: checked,
+                        generar_recibo: checked ? false : paymentForm.generar_recibo
+                      })}
                     />
                   </div>
                 </div>
 
-                {/* Campos de Factura - Solo si está activado */}
+                {/* Campos de Factura */}
                 {paymentForm.generar_factura && (
                   <div className="space-y-3 border border-blue-200 p-4 rounded-lg bg-blue-50/50">
                     <p className="text-sm font-semibold text-blue-800 mb-2">📋 Datos para la Factura</p>
@@ -744,9 +913,10 @@ export default function CobroPage() {
                   )}
                 </div>
 
+                {/* Método de Pago */}
                 <div className="space-y-2 border-t pt-4">
                   <Label>Método de Pago *</Label>
-                  <Select value={paymentForm.metodo_pago} onValueChange={(val) => setPaymentForm({...paymentForm, metodo_pago: val})}>
+                  <Select value={paymentForm.metodo_pago} onValueChange={(val) => setPaymentForm({...paymentForm, metodo_pago: val, monto_recibido: ''})}>
                     <SelectTrigger>
                       <SelectValue placeholder="Seleccionar método" />
                     </SelectTrigger>
@@ -761,6 +931,44 @@ export default function CobroPage() {
                   </Select>
                 </div>
 
+                {/* Calculadora de Vuelto - Solo para Efectivo */}
+                {paymentForm.metodo_pago === 'EFECTIVO' && (
+                  <div className="space-y-3 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <div className="flex items-center space-x-2">
+                      <Coins className="h-5 w-5 text-yellow-600" />
+                      <Label className="font-semibold text-yellow-800">Calcular Vuelto</Label>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label className="text-sm">Monto Recibido (Gs)</Label>
+                      <Input 
+                        type="number"
+                        value={paymentForm.monto_recibido}
+                        onChange={(e) => setPaymentForm({...paymentForm, monto_recibido: e.target.value})}
+                        placeholder="Ej: 50000"
+                        className="bg-white text-lg font-bold"
+                      />
+                    </div>
+
+                    {paymentForm.monto_recibido && (
+                      <div className="bg-white p-3 rounded-lg border">
+                        <div className="flex justify-between text-sm mb-1">
+                          <span>Total a pagar:</span>
+                          <span className="font-semibold">{formatCurrency(calculateFinalTotal())}</span>
+                        </div>
+                        <div className="flex justify-between text-sm mb-2">
+                          <span>Monto recibido:</span>
+                          <span className="font-semibold">{formatCurrency(parseFloat(paymentForm.monto_recibido) || 0)}</span>
+                        </div>
+                        <div className={`flex justify-between text-lg font-bold pt-2 border-t ${calculateVuelto() >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          <span>VUELTO:</span>
+                          <span>{formatCurrency(Math.abs(calculateVuelto()))} {calculateVuelto() < 0 ? '(Falta)' : ''}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <Button 
                   className="w-full bg-orange-500 hover:bg-orange-600 py-6 text-lg"
                   onClick={handleProcessPayment}
@@ -770,6 +978,11 @@ export default function CobroPage() {
                     <>
                       <FileText className="mr-2 h-5 w-5" /> 
                       Procesar Pago - {formatCurrency(calculateFinalTotal())} y Descargar Factura
+                    </>
+                  ) : paymentForm.generar_recibo ? (
+                    <>
+                      <Receipt className="mr-2 h-5 w-5" /> 
+                      Procesar Pago - {formatCurrency(calculateFinalTotal())} y Descargar Recibo
                     </>
                   ) : (
                     <>
