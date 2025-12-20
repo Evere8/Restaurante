@@ -9,9 +9,27 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Download, Save, RotateCcw, FileText } from 'lucide-react'
+import { Download, Save, RotateCcw, FileText, Receipt } from 'lucide-react'
 import { toast } from 'sonner'
 import { generarFacturaPDF, DEFAULT_CONFIG } from '@/lib/facturaGenerator'
+
+// Configuración por defecto del recibo
+const DEFAULT_RECIBO_CONFIG = {
+  pageWidth: 80,
+  pageHeight: 200,
+  marginLeft: 5,
+  marginTop: 5,
+  fontSize: 8,
+  lineHeight: 4,
+  restauranteNombre: { y: 5, fontSize: 12 },
+  restauranteDireccion: { y: 10, fontSize: 8 },
+  restauranteTelefono: { y: 14, fontSize: 8 },
+  fecha: { y: 22, fontSize: 8 },
+  cliente: { y: 30, fontSize: 8 },
+  tablaInicio: { y: 40, altoFila: 4 },
+  total: { y: 0, fontSize: 10 },
+  mensaje: { fontSize: 8 }
+}
 
 // Datos de ejemplo para la vista previa
 const EJEMPLO_DATA = {
