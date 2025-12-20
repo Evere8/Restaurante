@@ -182,7 +182,48 @@ export default function PedidosPage() {
       })
     }
 
+    // Detectar si hay nuevos pedidos
+    const currentPrepCount = categorized.preparacion.length
+    if (previousOrderCount > 0 && currentPrepCount > previousOrderCount) {
+      playNotificationSound()
+      toast.info('🔔 ¡Nuevo pedido recibido!')
+    }
+    setPreviousOrderCount(currentPrepCount)
+
     setOrders(categorized)
+  }
+
+  // Funciones para cambiar estado del pedido
+  const handleIniciarPreparacion = async (orderId) => {
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({ estado: 'PREPARANDO' })
+        .eq('id', orderId)
+
+      if (error) throw error
+      toast.success('Pedido en preparación')
+      loadOrders()
+    } catch (error) {
+      console.error('Error:', error)
+      toast.error('Error al actualizar pedido')
+    }
+  }
+
+  const handleMarcarListo = async (orderId) => {
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({ estado: 'LISTO' })
+        .eq('id', orderId)
+
+      if (error) throw error
+      toast.success('Pedido marcado como listo')
+      loadOrders()
+    } catch (error) {
+      console.error('Error:', error)
+      toast.error('Error al actualizar pedido')
+    }
   }
 
   const addToCart = (product) => {
