@@ -461,9 +461,22 @@ export default function PedidosPage() {
             <h1 className="text-3xl font-bold text-gray-800">Gestión de Pedidos</h1>
             <p className="text-gray-600">Crea y administra pedidos</p>
           </div>
-          <Button className="bg-orange-500 hover:bg-orange-600" onClick={openCreateDialog}>
-            <Plus className="mr-2 h-4 w-4" /> Nuevo Pedido
-          </Button>
+          <div className="flex items-center space-x-3">
+            {/* Toggle de sonido */}
+            <div className="flex items-center space-x-2 bg-white px-3 py-2 rounded-lg border">
+              <button onClick={toggleSound} className="flex items-center space-x-2">
+                {soundEnabled ? (
+                  <Volume2 className="h-5 w-5 text-green-600" />
+                ) : (
+                  <VolumeX className="h-5 w-5 text-gray-400" />
+                )}
+                <span className="text-sm">{soundEnabled ? 'Sonido ON' : 'Sonido OFF'}</span>
+              </button>
+            </div>
+            <Button className="bg-orange-500 hover:bg-orange-600" onClick={openCreateDialog}>
+              <Plus className="mr-2 h-4 w-4" /> Nuevo Pedido
+            </Button>
+          </div>
         </div>
 
         <Tabs defaultValue="preparacion" className="space-y-4">
