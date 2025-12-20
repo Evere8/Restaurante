@@ -57,13 +57,72 @@ export default function PedidosPage() {
   }, [user, authLoading, router])
 
   useEffect(() => {
+    // Cargar preferencia de sonido
+    const saved = localStorage.getItem('pedidosSoundEnabled')
+    if (saved !== null) {
+      setSoundEnabled(saved === 'true')
+    }
+  }, [])
+
+  useEffect(() => {
     if (user && restaurant) {
       loadCategories()
       loadProducts()
       loadCustomers()
       loadOrders()
+      
+      // Auto-refresh cada 15 segundos para detectar nuevos pedidos
+      const interval = setInterval(loadOrders, 15000)
+      return () => clearInterval(interval)
     }
   }, [user, restaurant])
+
+  // Reproducir sonido cuando hay nuevo pedido
+  const playNotificationSound = () => {
+    if (!soundEnabled) return
+    
+    try {
+      // Crear un sonido simple de notificación usando Web Audio API
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)()
+      const oscillator = audioContext.createOscillator()
+      const gainNode = audioContext.createGain()
+      
+      oscillator.connect(gainNode)
+      gainNode.connect(audioContext.destination)
+      
+      oscillator.frequency.value = 800
+      oscillator.type = 'sine'
+      
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime)
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5)
+      
+      oscillator.start(audioContext.currentTime)
+      oscillator.stop(audioContext.currentTime + 0.5)
+      
+      // Segundo beep
+      setTimeout(() => {
+        const osc2 = audioContext.createOscillator()
+        const gain2 = audioContext.createGain()
+        osc2.connect(gain2)
+        gain2.connect(audioContext.destination)
+        osc2.frequency.value = 1000
+        osc2.type = 'sine'
+        gain2.gain.setValueAtTime(0.3, audioContext.currentTime)
+        gain2.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5)
+        osc2.start(audioContext.currentTime)
+        osc2.stop(audioContext.currentTime + 0.5)
+      }, 200)
+    } catch (error) {
+      console.log('Audio not supported:', error)
+    }
+  }
+
+  const toggleSound = () => {
+    const newValue = !soundEnabled
+    setSoundEnabled(newValue)
+    localStorage.setItem('pedidosSoundEnabled', String(newValue))
+    toast.success(newValue ? 'Sonido activado' : 'Sonido desactivado')
+  }
 
   const loadCategories = async () => {
     const { data } = await supabase
