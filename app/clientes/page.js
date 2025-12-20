@@ -225,7 +225,8 @@ export default function ClientesPage() {
                   <thead className="bg-gray-50 border-b">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cliente</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Contacto</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">RUC / C.I.</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Teléfono</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Dirección</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Marketing</th>
                       <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Acciones</th>
@@ -236,14 +237,16 @@ export default function ClientesPage() {
                       <tr key={customer.id}>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-gray-900">{customer.nombre}</div>
+                          {customer.email && <div className="text-xs text-gray-500">{customer.email}</div>}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          {customer.ruc && <div className="text-sm text-gray-900 font-medium">RUC: {customer.ruc}</div>}
-                          <div className="text-sm text-gray-900">{customer.telefono}</div>
-                          <div className="text-sm text-gray-500">{customer.email}</div>
+                          <div className="text-sm font-medium text-gray-900">{customer.ruc || '-'}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">{customer.telefono || '-'}</div>
                         </td>
                         <td className="px-6 py-4">
-                          <div className="text-sm text-gray-900">{customer.direccion_principal}</div>
+                          <div className="text-sm text-gray-900">{customer.direccion_principal || '-'}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           {customer.acepta_marketing_whatsapp ? (
