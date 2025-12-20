@@ -504,8 +504,8 @@ export default function PedidosPage() {
           <TabsContent value="preparacion">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {orders.preparacion.map(order => (
-                <Card key={order.id}>
-                  <CardHeader>
+                <Card key={order.id} className={order.estado === 'NUEVO' ? 'border-2 border-blue-400' : 'border-2 border-yellow-400'}>
+                  <CardHeader className={order.estado === 'NUEVO' ? 'bg-blue-50' : 'bg-yellow-50'}>
                     <div className="flex items-start justify-between">
                       <div>
                         <CardTitle className="text-lg">Pedido #{order.id.slice(0, 8)}</CardTitle>
@@ -541,10 +541,34 @@ export default function PedidosPage() {
                         <span>Total:</span>
                         <span className="text-orange-600">{formatCurrency(order.total)}</span>
                       </div>
-                      <div className="flex space-x-2 mt-3">
-                        <Button size="sm" variant="outline" className="flex-1" onClick={() => openEditOrder(order)}>
-                          <Edit className="h-4 w-4 mr-1" /> Editar
-                        </Button>
+                      
+                      {/* Botones de acción */}
+                      <div className="flex flex-col space-y-2 mt-3">
+                        <div className="flex space-x-2">
+                          <Button size="sm" variant="outline" className="flex-1" onClick={() => openEditOrder(order)}>
+                            <Edit className="h-4 w-4 mr-1" /> Editar
+                          </Button>
+                        </div>
+                        
+                        {order.estado === 'NUEVO' && (
+                          <Button 
+                            size="sm" 
+                            className="w-full bg-yellow-500 hover:bg-yellow-600 text-white"
+                            onClick={() => handleIniciarPreparacion(order.id)}
+                          >
+                            <Play className="h-4 w-4 mr-1" /> Iniciar Preparación
+                          </Button>
+                        )}
+                        
+                        {order.estado === 'PREPARANDO' && (
+                          <Button 
+                            size="sm" 
+                            className="w-full bg-green-500 hover:bg-green-600 text-white"
+                            onClick={() => handleMarcarListo(order.id)}
+                          >
+                            <CheckCircle className="h-4 w-4 mr-1" /> Marcar Listo
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </CardContent>
