@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
-import { LogOut, Home, Utensils, ShoppingCart, ChefHat, CreditCard, Users, Tag, BarChart3, Settings, Code, Menu, X, Package, FileText } from 'lucide-react'
+import { LogOut, Home, Utensils, ShoppingCart, ChefHat, CreditCard, Users, Tag, BarChart3, Settings, Code, Menu, X, Package, FileText, Smartphone } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
@@ -16,6 +16,7 @@ export default function Sidebar() {
   const menuItems = [
     { href: '/dashboard', label: 'Dashboard', icon: Home, permission: 'dashboard' },
     { href: '/menu', label: 'Menú', icon: Utensils, permission: 'menu' },
+    { href: '/menu-digital', label: 'Menú Digital', icon: Smartphone, permission: 'menu' },
     { href: '/stock', label: 'Stock', icon: Package, permission: 'stock' },
     { href: '/pedidos', label: 'Pedidos', icon: ShoppingCart, permission: 'pedidos' },
     { href: '/kds', label: 'Cocina', icon: ChefHat, permission: 'kds' },
