@@ -77,41 +77,40 @@ export default function PedidosPage() {
     }
   }, [user, restaurant])
 
-  // Reproducir sonido cuando hay nuevo pedido
+  // Reproducir sonido cuando hay nuevo pedido - SONIDO MÁS LARGO
   const playNotificationSound = () => {
     if (!soundEnabled) return
     
     try {
-      // Crear un sonido simple de notificación usando Web Audio API
+      // Crear un sonido más largo de notificación usando Web Audio API
       const audioContext = new (window.AudioContext || window.webkitAudioContext)()
-      const oscillator = audioContext.createOscillator()
-      const gainNode = audioContext.createGain()
       
-      oscillator.connect(gainNode)
-      gainNode.connect(audioContext.destination)
+      // Secuencia de tonos para sonido más largo y notorio
+      const playTone = (frequency, startTime, duration) => {
+        const oscillator = audioContext.createOscillator()
+        const gainNode = audioContext.createGain()
+        
+        oscillator.connect(gainNode)
+        gainNode.connect(audioContext.destination)
+        
+        oscillator.frequency.value = frequency
+        oscillator.type = 'sine'
+        
+        gainNode.gain.setValueAtTime(0.4, audioContext.currentTime + startTime)
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + startTime + duration)
+        
+        oscillator.start(audioContext.currentTime + startTime)
+        oscillator.stop(audioContext.currentTime + startTime + duration)
+      }
       
-      oscillator.frequency.value = 800
-      oscillator.type = 'sine'
+      // Secuencia de 6 tonos para hacer el sonido más largo (~3 segundos)
+      playTone(800, 0, 0.3)
+      playTone(1000, 0.35, 0.3)
+      playTone(1200, 0.7, 0.3)
+      playTone(800, 1.05, 0.3)
+      playTone(1000, 1.4, 0.3)
+      playTone(1200, 1.75, 0.5)
       
-      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime)
-      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5)
-      
-      oscillator.start(audioContext.currentTime)
-      oscillator.stop(audioContext.currentTime + 0.5)
-      
-      // Segundo beep
-      setTimeout(() => {
-        const osc2 = audioContext.createOscillator()
-        const gain2 = audioContext.createGain()
-        osc2.connect(gain2)
-        gain2.connect(audioContext.destination)
-        osc2.frequency.value = 1000
-        osc2.type = 'sine'
-        gain2.gain.setValueAtTime(0.3, audioContext.currentTime)
-        gain2.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5)
-        osc2.start(audioContext.currentTime)
-        osc2.stop(audioContext.currentTime + 0.5)
-      }, 200)
     } catch (error) {
       console.log('Audio not supported:', error)
     }
