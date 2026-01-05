@@ -163,6 +163,17 @@ export default function MenuDigitalPage() {
         .update({ slug: slug || restaurant.id })
         .eq('id', restaurant.id)
 
+      // Preparar datos para guardar (asegurar que colores sea objeto)
+      const configToSave = {
+        descripcion: config.descripcion,
+        imagen_portada: config.imagen_portada,
+        colores: typeof config.colores === 'string' ? JSON.parse(config.colores) : config.colores,
+        horario_apertura: config.horario_apertura || null,
+        horario_cierre: config.horario_cierre || null,
+        mostrar_precios: config.mostrar_precios,
+        permitir_pedidos: config.permitir_pedidos
+      }
+
       // Guardar o actualizar configuración
       const { data: existing } = await supabase
         .from('menu_digital_config')
@@ -171,20 +182,24 @@ export default function MenuDigitalPage() {
         .single()
 
       if (existing) {
-        await supabase
+        const { error: updateError } = await supabase
           .from('menu_digital_config')
           .update({
-            ...config,
+            ...configToSave,
             updated_at: new Date().toISOString()
           })
           .eq('restaurant_id', restaurant.id)
+        
+        if (updateError) throw updateError
       } else {
-        await supabase
+        const { error: insertError } = await supabase
           .from('menu_digital_config')
           .insert({
             restaurant_id: restaurant.id,
-            ...config
+            ...configToSave
           })
+        
+        if (insertError) throw insertError
       }
 
       toast.success('Configuración guardada correctamente')
@@ -192,7 +207,7 @@ export default function MenuDigitalPage() {
 
     } catch (err) {
       console.error('Error guardando configuración:', err)
-      toast.error('Error al guardar la configuración')
+      toast.error('Error al guardar la configuración: ' + (err.message || 'Error desconocido'))
     } finally {
       setSaving(false)
     }
