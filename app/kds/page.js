@@ -64,7 +64,7 @@ export default function KDSPage() {
       .from('orders')
       .select('*, order_items(*), customers(nombre)')
       .eq('restaurant_id', restaurant.id)
-      .in('estado', ['NUEVO', 'PREPARANDO', 'LISTO'])
+      .in('estado', ['PENDIENTE', 'NUEVO', 'PREPARANDO', 'LISTO'])
       .order('created_at', { ascending: true })
 
     if (error) {
@@ -73,6 +73,7 @@ export default function KDSPage() {
     }
 
     const grouped = {
+      PENDIENTE: [],
       NUEVO: [],
       PREPARANDO: [],
       LISTO: []
@@ -89,6 +90,7 @@ export default function KDSPage() {
 
   const updateOrderStatus = async (orderId, currentStatus) => {
     const statusFlow = {
+      PENDIENTE: 'PREPARANDO',
       NUEVO: 'PREPARANDO',
       PREPARANDO: 'LISTO',
       LISTO: 'ENTREGADO'
