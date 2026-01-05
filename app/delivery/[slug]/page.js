@@ -5,9 +5,10 @@ import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
-import { ShoppingCart, Plus, Minus, X, Check, Clock, MapPin, Phone, ChevronLeft, Send, Store, Package, Gift, Percent } from 'lucide-react'
+import { ShoppingCart, Plus, Minus, X, Check, Clock, MapPin, Phone, ChevronLeft, Send, Store, Package, Gift, MessageSquare } from 'lucide-react'
 import { toast, Toaster } from 'sonner'
 
 export default function MenuPublicoPage() {
@@ -25,11 +26,14 @@ export default function MenuPublicoPage() {
   const [error, setError] = useState(null)
 
   // Modales
-  const [productModal, setProductModal] = useState(null)
+  const [selectedProduct, setSelectedProduct] = useState(null)
+  const [productQuantity, setProductQuantity] = useState(1)
+  const [productComment, setProductComment] = useState('')
   const [cartOpen, setCartOpen] = useState(false)
   const [checkoutOpen, setCheckoutOpen] = useState(false)
   const [whatsappModal, setWhatsappModal] = useState(false)
   const [confirmModal, setConfirmModal] = useState(false)
+  const [addedModal, setAddedModal] = useState(false)
 
   // Formularios
   const [checkoutForm, setCheckoutForm] = useState({
@@ -63,7 +67,6 @@ export default function MenuPublicoPage() {
     try {
       setLoading(true)
       
-      // Buscar restaurante por slug o por ID
       let activeRest = null
       
       // Primero intentar por slug
@@ -127,7 +130,7 @@ export default function MenuPublicoPage() {
         console.log('Sin promociones')
       }
 
-      // Cargar categorías (tabla correcta: menu_categories)
+      // Cargar categorías del restaurante (menu_categories)
       const { data: cats, error: catsError } = await supabase
         .from('menu_categories')
         .select('*')
@@ -139,11 +142,12 @@ export default function MenuPublicoPage() {
         console.log('Error cargando categorías:', catsError)
       }
       setCategories(cats || [])
+      console.log('Categorías cargadas:', cats?.length || 0)
 
-      // Cargar productos activos (campos correctos: precio_base, img_url)
+      // Cargar productos activos
       const { data: prods, error: prodsError } = await supabase
         .from('menu_items')
-        .select('*, menu_categories(nombre)')
+        .select('*, menu_categories(id, nombre)')
         .eq('restaurant_id', activeRest.id)
         .eq('disponible', true)
         .order('nombre')
@@ -179,34 +183,52 @@ export default function MenuPublicoPage() {
   // Productos populares (los primeros 4)
   const popularProducts = products.slice(0, 4)
 
-  const addToCart = (product, isPromotion = false, promoData = null) => {
-    const cartItem = {
-      id: isPromotion ? `promo-${promoData.id}` : product.id,
-      nombre: isPromotion ? promoData.nombre : product.nombre,
-      precio: isPromotion ? promoData.precio_final : product.precio_base,
-      precio_original: isPromotion ? promoData.precio_original : product.precio_base,
-      img_url: isPromotion ? promoData.imagen_url : product.img_url,
-      cantidad: 1,
+  // Abrir modal de producto para seleccionar cantidad
+  const openProductModal = (product, isPromotion = false, promoData = null) => {
+    setSelectedProduct({
+      ...product,
       isPromotion,
-      promoData
+      promoData,
+      precio: isPromotion ? promoData.precio_final : product.precio_base
+    })
+    setProductQuantity(1)
+    setProductComment('')
+  }
+
+  // Agregar al carrito desde el modal
+  const addToCartFromModal = () => {
+    if (!selectedProduct) return
+
+    const cartItem = {
+      id: selectedProduct.isPromotion ? `promo-${selectedProduct.promoData.id}` : selectedProduct.id,
+      nombre: selectedProduct.isPromotion ? selectedProduct.promoData.nombre : selectedProduct.nombre,
+      precio: selectedProduct.precio,
+      precio_original: selectedProduct.isPromotion ? selectedProduct.promoData.precio_original : selectedProduct.precio_base,
+      img_url: selectedProduct.isPromotion ? selectedProduct.promoData.imagen_url : selectedProduct.img_url,
+      cantidad: productQuantity,
+      comentario: productComment,
+      isPromotion: selectedProduct.isPromotion,
+      promoData: selectedProduct.promoData
     }
 
-    const existing = cart.find(item => item.id === cartItem.id)
+    const existing = cart.find(item => item.id === cartItem.id && item.comentario === cartItem.comentario)
     if (existing) {
       setCart(cart.map(item => 
-        item.id === cartItem.id 
-          ? { ...item, cantidad: item.cantidad + 1 }
+        (item.id === cartItem.id && item.comentario === cartItem.comentario)
+          ? { ...item, cantidad: item.cantidad + productQuantity }
           : item
       ))
     } else {
       setCart([...cart, cartItem])
     }
-    setProductModal(cartItem)
+    
+    setSelectedProduct(null)
+    setAddedModal(true)
   }
 
-  const updateCartQuantity = (itemId, delta) => {
-    setCart(cart.map(item => {
-      if (item.id === itemId) {
+  const updateCartQuantity = (index, delta) => {
+    setCart(cart.map((item, i) => {
+      if (i === index) {
         const newCantidad = item.cantidad + delta
         return newCantidad > 0 ? { ...item, cantidad: newCantidad } : item
       }
@@ -214,8 +236,8 @@ export default function MenuPublicoPage() {
     }).filter(item => item.cantidad > 0))
   }
 
-  const removeFromCart = (itemId) => {
-    setCart(cart.filter(item => item.id !== itemId))
+  const removeFromCart = (index) => {
+    setCart(cart.filter((_, i) => i !== index))
   }
 
   const cartTotal = cart.reduce((sum, item) => sum + (item.precio * item.cantidad), 0)
@@ -244,23 +266,29 @@ export default function MenuPublicoPage() {
         .select()
         .single()
 
-      if (orderError) throw orderError
+      if (orderError) {
+        console.error('Error creando orden:', orderError)
+        throw orderError
+      }
 
-      // Crear los items del pedido
+      // Crear los items del pedido con los campos correctos
       const orderItems = cart.map(item => ({
         order_id: order.id,
         menu_item_id: item.isPromotion ? null : item.id,
         cantidad: item.cantidad,
         precio_unitario: item.precio,
-        subtotal: item.precio * item.cantidad,
-        nombre_item_snapshot: item.nombre
+        total_item: item.precio * item.cantidad,
+        nombre_item_snapshot: item.comentario ? `${item.nombre} (${item.comentario})` : item.nombre
       }))
 
       const { error: itemsError } = await supabase
         .from('order_items')
         .insert(orderItems)
 
-      if (itemsError) throw itemsError
+      if (itemsError) {
+        console.error('Error creando items:', itemsError)
+        throw itemsError
+      }
 
       // Limpiar y mostrar confirmación
       setCart([])
@@ -270,7 +298,7 @@ export default function MenuPublicoPage() {
 
     } catch (err) {
       console.error('Error creando pedido:', err)
-      toast.error('Error al enviar el pedido')
+      toast.error('Error al enviar el pedido: ' + (err.message || 'Intenta de nuevo'))
     }
   }
 
@@ -281,27 +309,35 @@ export default function MenuPublicoPage() {
     }
 
     try {
-      // Guardar en la tabla de clientes
-      const { error } = await supabase
+      // Verificar si ya existe
+      const { data: existing } = await supabase
         .from('customers')
-        .insert({
-          restaurant_id: restaurant.id,
-          nombre: whatsappForm.nombre,
-          telefono: whatsappForm.telefono,
-          acepta_marketing_whatsapp: true
-        })
+        .select('id')
+        .eq('restaurant_id', restaurant.id)
+        .eq('telefono', whatsappForm.telefono)
+        .single()
 
-      if (error) {
-        if (error.message.includes('duplicate') || error.code === '23505') {
-          // Ya existe, actualizar
-          await supabase
-            .from('customers')
-            .update({ acepta_marketing_whatsapp: true })
-            .eq('restaurant_id', restaurant.id)
-            .eq('telefono', whatsappForm.telefono)
-        } else {
-          throw error
-        }
+      if (existing) {
+        // Actualizar
+        await supabase
+          .from('customers')
+          .update({ 
+            nombre: whatsappForm.nombre,
+            acepta_marketing_whatsapp: true 
+          })
+          .eq('id', existing.id)
+      } else {
+        // Crear nuevo
+        const { error } = await supabase
+          .from('customers')
+          .insert({
+            restaurant_id: restaurant.id,
+            nombre: whatsappForm.nombre,
+            telefono: whatsappForm.telefono,
+            acepta_marketing_whatsapp: true
+          })
+
+        if (error) throw error
       }
 
       toast.success('¡Gracias! Te enviaremos promociones por WhatsApp')
@@ -398,7 +434,7 @@ export default function MenuPublicoPage() {
               <div 
                 key={promo.id}
                 className="flex-shrink-0 w-48 bg-white rounded-xl shadow-lg overflow-hidden cursor-pointer transform transition hover:scale-105 border-2 border-red-200"
-                onClick={() => addToCart(null, true, promo)}
+                onClick={() => openProductModal(null, true, promo)}
               >
                 <div className="relative">
                   {promo.imagen_url ? (
@@ -448,7 +484,7 @@ export default function MenuPublicoPage() {
               <div 
                 key={product.id}
                 className="flex-shrink-0 w-40 bg-white rounded-xl shadow-md overflow-hidden cursor-pointer transform transition hover:scale-105"
-                onClick={() => addToCart(product)}
+                onClick={() => openProductModal(product)}
               >
                 <div className="relative">
                   {product.img_url ? (
@@ -525,16 +561,15 @@ export default function MenuPublicoPage() {
         ) : (
           <div className="grid grid-cols-2 gap-3">
             {filteredProducts.map(product => {
-              const inCart = cart.find(item => item.id === product.id)
+              const inCart = cart.filter(item => item.id === product.id)
+              const totalInCart = inCart.reduce((sum, item) => sum + item.cantidad, 0)
               return (
                 <div 
                   key={product.id}
-                  className="bg-white rounded-xl shadow-md overflow-hidden"
+                  className="bg-white rounded-xl shadow-md overflow-hidden cursor-pointer"
+                  onClick={() => openProductModal(product)}
                 >
-                  <div 
-                    className="relative cursor-pointer"
-                    onClick={() => addToCart(product)}
-                  >
+                  <div className="relative">
                     {product.img_url ? (
                       <img 
                         src={product.img_url} 
@@ -549,12 +584,12 @@ export default function MenuPublicoPage() {
                         <span className="text-4xl">🍽️</span>
                       </div>
                     )}
-                    {inCart && (
+                    {totalInCart > 0 && (
                       <div 
                         className="absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold"
                         style={{ backgroundColor: colors.primary }}
                       >
-                        {inCart.cantidad}
+                        {totalInCart}
                       </div>
                     )}
                   </div>
@@ -567,13 +602,12 @@ export default function MenuPublicoPage() {
                       <p className="font-bold" style={{ color: colors.primary }}>
                         {formatPrice(product.precio_base)}
                       </p>
-                      <button
-                        onClick={() => addToCart(product)}
-                        className="w-8 h-8 rounded-full flex items-center justify-center text-white shadow-md transition transform hover:scale-110"
+                      <div
+                        className="w-8 h-8 rounded-full flex items-center justify-center text-white shadow-md"
                         style={{ backgroundColor: colors.primary }}
                       >
                         <Plus className="h-5 w-5" />
-                      </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -605,35 +639,130 @@ export default function MenuPublicoPage() {
         </div>
       )}
 
+      {/* Modal de selección de producto */}
+      <Dialog open={!!selectedProduct} onOpenChange={() => setSelectedProduct(null)}>
+        <DialogContent className="max-w-md mx-auto">
+          {selectedProduct && (
+            <>
+              {/* Imagen del producto */}
+              {(selectedProduct.img_url || selectedProduct.promoData?.imagen_url) ? (
+                <img 
+                  src={selectedProduct.isPromotion ? selectedProduct.promoData.imagen_url : selectedProduct.img_url}
+                  alt={selectedProduct.isPromotion ? selectedProduct.promoData.nombre : selectedProduct.nombre}
+                  className="w-full h-48 object-cover rounded-lg -mt-6 -mx-6 mb-4"
+                  style={{ width: 'calc(100% + 48px)', maxWidth: 'none' }}
+                />
+              ) : (
+                <div 
+                  className="w-full h-32 flex items-center justify-center rounded-lg mb-4"
+                  style={{ backgroundColor: `${colors.primary}15` }}
+                >
+                  <span className="text-5xl">🍽️</span>
+                </div>
+              )}
+
+              <DialogHeader>
+                <DialogTitle className="text-xl capitalize">
+                  {selectedProduct.isPromotion ? selectedProduct.promoData.nombre : selectedProduct.nombre}
+                </DialogTitle>
+              </DialogHeader>
+
+              {selectedProduct.descripcion && !selectedProduct.isPromotion && (
+                <p className="text-gray-600 text-sm">{selectedProduct.descripcion}</p>
+              )}
+
+              {selectedProduct.isPromotion && selectedProduct.promoData.motivo && (
+                <Badge className="bg-red-100 text-red-600 w-fit">
+                  {selectedProduct.promoData.motivo}
+                </Badge>
+              )}
+
+              <div className="flex items-center justify-between py-2">
+                <span className="text-2xl font-bold" style={{ color: colors.primary }}>
+                  {formatPrice(selectedProduct.precio)}
+                </span>
+                {selectedProduct.isPromotion && (
+                  <span className="text-gray-400 line-through">
+                    {formatPrice(selectedProduct.promoData.precio_original)}
+                  </span>
+                )}
+              </div>
+
+              {/* Selector de cantidad */}
+              <div className="flex items-center justify-center space-x-4 py-4 bg-gray-50 rounded-xl">
+                <button
+                  onClick={() => setProductQuantity(Math.max(1, productQuantity - 1))}
+                  className="w-12 h-12 rounded-full bg-white border-2 border-gray-200 flex items-center justify-center hover:border-gray-300 transition"
+                >
+                  <Minus className="h-5 w-5" />
+                </button>
+                <span className="text-3xl font-bold w-16 text-center">{productQuantity}</span>
+                <button
+                  onClick={() => setProductQuantity(productQuantity + 1)}
+                  className="w-12 h-12 rounded-full flex items-center justify-center text-white transition"
+                  style={{ backgroundColor: colors.primary }}
+                >
+                  <Plus className="h-5 w-5" />
+                </button>
+              </div>
+
+              {/* Comentario/Nota especial */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium flex items-center text-gray-700">
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  Nota especial (opcional)
+                </label>
+                <Textarea
+                  value={productComment}
+                  onChange={(e) => setProductComment(e.target.value)}
+                  placeholder="Ej: Sin cebolla, extra queso, bien cocido..."
+                  className="resize-none"
+                  rows={2}
+                />
+              </div>
+
+              {/* Botón agregar */}
+              <Button 
+                className="w-full text-white py-6 text-lg mt-4"
+                style={{ backgroundColor: colors.primary }}
+                onClick={addToCartFromModal}
+              >
+                <ShoppingCart className="h-5 w-5 mr-2" />
+                Agregar {formatPrice(selectedProduct.precio * productQuantity)}
+              </Button>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Modal de producto agregado */}
-      <Dialog open={!!productModal} onOpenChange={() => setProductModal(null)}>
+      <Dialog open={addedModal} onOpenChange={setAddedModal}>
         <DialogContent className="max-w-sm mx-auto">
           <div className="text-center py-4">
             <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
               <Check className="h-8 w-8 text-green-500" />
             </div>
-            <h3 className="text-xl font-bold mb-2">¡Producto agregado!</h3>
-            <p className="text-gray-600 mb-6">El producto fue agregado a tu carrito</p>
+            <h3 className="text-xl font-bold mb-2">¡Agregado al carrito!</h3>
             
-            <div className="space-y-3">
+            <div className="space-y-3 mt-6">
               <Button 
                 className="w-full text-white"
                 style={{ backgroundColor: colors.primary }}
                 onClick={() => {
-                  setProductModal(null)
-                  setCheckoutOpen(true)
+                  setAddedModal(false)
+                  setCartOpen(true)
                 }}
               >
                 <ShoppingCart className="h-4 w-4 mr-2" />
-                Finalizar Pedido
+                Ver Carrito ({cartCount})
               </Button>
               <Button 
                 variant="outline" 
                 className="w-full"
-                onClick={() => setProductModal(null)}
+                onClick={() => setAddedModal(false)}
               >
                 <ChevronLeft className="h-4 w-4 mr-2" />
-                Continuar Comprando
+                Seguir Comprando
               </Button>
             </div>
           </div>
@@ -658,37 +787,47 @@ export default function MenuPublicoPage() {
           ) : (
             <>
               <div className="space-y-3 mb-4">
-                {cart.map(item => (
-                  <div key={item.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex-1">
-                      <h4 className="font-medium capitalize">{item.nombre}</h4>
-                      {item.isPromotion && (
-                        <Badge className="bg-red-100 text-red-600 text-xs">Promoción</Badge>
-                      )}
-                      <p className="text-sm" style={{ color: colors.primary }}>
-                        {formatPrice(item.precio)}
-                      </p>
+                {cart.map((item, index) => (
+                  <div key={`${item.id}-${index}`} className="p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <h4 className="font-medium capitalize">{item.nombre}</h4>
+                        {item.isPromotion && (
+                          <Badge className="bg-red-100 text-red-600 text-xs">Promoción</Badge>
+                        )}
+                        {item.comentario && (
+                          <p className="text-xs text-gray-500 mt-1 italic">"{item.comentario}"</p>
+                        )}
+                        <p className="text-sm mt-1" style={{ color: colors.primary }}>
+                          {formatPrice(item.precio)} x {item.cantidad}
+                        </p>
+                      </div>
+                      <span className="font-bold" style={{ color: colors.primary }}>
+                        {formatPrice(item.precio * item.cantidad)}
+                      </span>
                     </div>
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center justify-between mt-2">
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => updateCartQuantity(index, -1)}
+                          className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center hover:bg-gray-300"
+                        >
+                          <Minus className="h-3 w-3" />
+                        </button>
+                        <span className="w-6 text-center font-medium">{item.cantidad}</span>
+                        <button
+                          onClick={() => updateCartQuantity(index, 1)}
+                          className="w-7 h-7 rounded-full flex items-center justify-center text-white"
+                          style={{ backgroundColor: colors.primary }}
+                        >
+                          <Plus className="h-3 w-3" />
+                        </button>
+                      </div>
                       <button
-                        onClick={() => updateCartQuantity(item.id, -1)}
-                        className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center hover:bg-gray-300"
+                        onClick={() => removeFromCart(index)}
+                        className="text-red-500 hover:text-red-700 text-sm"
                       >
-                        <Minus className="h-4 w-4" />
-                      </button>
-                      <span className="w-8 text-center font-medium">{item.cantidad}</span>
-                      <button
-                        onClick={() => updateCartQuantity(item.id, 1)}
-                        className="w-8 h-8 rounded-full flex items-center justify-center text-white"
-                        style={{ backgroundColor: colors.primary }}
-                      >
-                        <Plus className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => removeFromCart(item.id)}
-                        className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center text-red-500 hover:bg-red-200 ml-2"
-                      >
-                        <X className="h-4 w-4" />
+                        Eliminar
                       </button>
                     </div>
                   </div>
