@@ -213,34 +213,115 @@ export default function MenuDigitalPage() {
     toast.success('QR descargado')
   }
 
-  const handleImageUpload = async (e) => {
+  const handleImageUpload = async (e, type = 'portada') => {
     const file = e.target.files?.[0]
     if (!file) return
 
     try {
       setUploadingImage(true)
 
-      const fileExt = file.name.split('.').pop()
-      const fileName = `${restaurant.id}-portada.${fileExt}`
-      const filePath = `menu-portadas/${fileName}`
+      // Convertir imagen a base64 como fallback si storage no funciona
+      const reader = new FileReader()
+      reader.onloadend = async () => {
+        const base64 = reader.result
+        
+        // Intentar subir a Supabase Storage
+        try {
+          const fileExt = file.name.split('.').pop()
+          const fileName = `${restaurant.id}-${type}-${Date.now()}.${fileExt}`
+          const filePath = `menu-portadas/${fileName}`
 
-      const { error: uploadError } = await supabase.storage
-        .from('public')
-        .upload(filePath, file, { upsert: true })
+          const { error: uploadError } = await supabase.storage
+            .from('public')
+            .upload(filePath, file, { upsert: true })
 
-      if (uploadError) throw uploadError
+          if (!uploadError) {
+            const { data: urlData } = supabase.storage
+              .from('public')
+              .getPublicUrl(filePath)
 
-      const { data: urlData } = supabase.storage
-        .from('public')
-        .getPublicUrl(filePath)
-
-      setConfig({ ...config, imagen_portada: urlData.publicUrl })
-      toast.success('Imagen subida correctamente')
+            if (type === 'portada') {
+              setConfig({ ...config, imagen_portada: urlData.publicUrl })
+            } else if (type === 'logo') {
+              // Actualizar logo del restaurante
+              await supabase
+                .from('restaurants')
+                .update({ logo_url: urlData.publicUrl })
+                .eq('id', restaurant.id)
+              toast.success('Logo actualizado')
+            }
+            toast.success('Imagen subida correctamente')
+          } else {
+            // Fallback: usar base64 directamente (no recomendado para producción)
+            console.log('Storage error, usando URL directa')
+            if (type === 'portada') {
+              setConfig({ ...config, imagen_portada: base64 })
+            }
+            toast.warning('Imagen cargada localmente. Usa una URL externa para mejor rendimiento.')
+          }
+        } catch (storageErr) {
+          console.log('Storage no disponible, usa una URL directa')
+          toast.error('Error al subir. Por favor usa una URL de imagen externa.')
+        }
+        
+        setUploadingImage(false)
+      }
+      reader.readAsDataURL(file)
 
     } catch (err) {
       console.error('Error subiendo imagen:', err)
-      toast.error('Error al subir la imagen')
-    } finally {
+      toast.error('Error al subir la imagen. Usa una URL externa.')
+      setUploadingImage(false)
+    }
+  }
+
+  const handleLogoUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    try {
+      setUploadingImage(true)
+      
+      const reader = new FileReader()
+      reader.onloadend = async () => {
+        // Intentar actualizar con la URL
+        const base64 = reader.result
+        
+        try {
+          const fileExt = file.name.split('.').pop()
+          const fileName = `${restaurant.id}-logo-${Date.now()}.${fileExt}`
+          const filePath = `logos/${fileName}`
+
+          const { error: uploadError } = await supabase.storage
+            .from('public')
+            .upload(filePath, file, { upsert: true })
+
+          if (!uploadError) {
+            const { data: urlData } = supabase.storage
+              .from('public')
+              .getPublicUrl(filePath)
+
+            await supabase
+              .from('restaurants')
+              .update({ logo_url: urlData.publicUrl })
+              .eq('id', restaurant.id)
+            
+            toast.success('Logo actualizado correctamente')
+            // Recargar para ver el cambio
+            window.location.reload()
+          } else {
+            toast.error('Error al subir logo. Usa una URL externa.')
+          }
+        } catch (err) {
+          toast.error('Error al subir logo')
+        }
+        
+        setUploadingImage(false)
+      }
+      reader.readAsDataURL(file)
+    } catch (err) {
+      console.error('Error:', err)
+      toast.error('Error al subir el logo')
       setUploadingImage(false)
     }
   }
