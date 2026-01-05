@@ -395,7 +395,7 @@ export default function MenuPage() {
       toast.error('No hay insumos disponibles')
       return
     }
-    setRecetaItems([...recetaItems, { stock_item_id: '', nombre: '', cantidad: '' }])
+    setRecetaItems([...recetaItems, { stock_item_id: '', nombre: '', cantidad: '', unidad_receta: 'unidad', unidad_stock: 'unidad' }])
   }
 
   const removeRecetaItem = (index) => {
@@ -410,10 +410,32 @@ export default function MenuPage() {
       const item = stockItems.find(s => s.id === value)
       if (item) {
         updated[index].nombre = item.nombre
+        updated[index].unidad_stock = item.unidad_medida || 'unidad'
+        // Auto-seleccionar la misma unidad por defecto
+        updated[index].unidad_receta = item.unidad_medida || 'unidad'
       }
     }
     
     setRecetaItems(updated)
+  }
+
+  // Obtener unidades compatibles según el tipo de stock
+  const getUnidadesCompatibles = (unidadStock) => {
+    if (unidadStock === 'kg' || unidadStock === 'gramo') {
+      return [
+        { value: 'kg', label: 'Kilogramo (kg)' },
+        { value: 'gramo', label: 'Gramo (g)' }
+      ]
+    }
+    if (unidadStock === 'litro' || unidadStock === 'ml') {
+      return [
+        { value: 'litro', label: 'Litro (L)' },
+        { value: 'ml', label: 'Mililitro (ml)' }
+      ]
+    }
+    return [
+      { value: 'unidad', label: 'Unidad/Entero' }
+    ]
   }
 
   if (authLoading || !user) {
