@@ -367,14 +367,16 @@ export default function MenuPage() {
     if (product.usar_stock_avanzado) {
       const { data: receta, error } = await supabase
         .from('menu_receta')
-        .select('*, stock_items(nombre)')
+        .select('*, stock_items(nombre, unidad_medida)')
         .eq('menu_item_id', product.id)
 
       if (!error && receta) {
         setRecetaItems(receta.map(r => ({
           stock_item_id: r.stock_item_id,
           nombre: r.stock_items.nombre,
-          cantidad: r.cantidad_usada
+          cantidad: r.cantidad_usada,
+          unidad_receta: r.unidad_medida || r.stock_items.unidad_medida || 'unidad',
+          unidad_stock: r.stock_items.unidad_medida || 'unidad'
         })))
       }
     }
