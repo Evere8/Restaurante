@@ -131,6 +131,7 @@ export default function KDSPage() {
 
   const getStatusButtonText = (status) => {
     const buttons = {
+      PENDIENTE: 'Iniciar Preparación',
       NUEVO: 'Iniciar Preparación',
       PREPARANDO: 'Marcar Listo',
       LISTO: 'Entregar'
@@ -143,6 +144,9 @@ export default function KDSPage() {
     PARA_LLEVAR: 'bg-green-100 text-green-800',
     DELIVERY: 'bg-purple-100 text-purple-800'
   }
+
+  // Combinar PENDIENTE y NUEVO para mostrar juntos
+  const pedidosNuevos = [...(orders.PENDIENTE || []), ...(orders.NUEVO || [])]
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -158,8 +162,8 @@ export default function KDSPage() {
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="NUEVO" className="relative">
               🆕 Nuevos
-              {orders.NUEVO.length > 0 && (
-                <Badge className="ml-2 bg-blue-500">{orders.NUEVO.length}</Badge>
+              {pedidosNuevos.length > 0 && (
+                <Badge className="ml-2 bg-blue-500">{pedidosNuevos.length}</Badge>
               )}
             </TabsTrigger>
             <TabsTrigger value="PREPARANDO" className="relative">
@@ -177,7 +181,13 @@ export default function KDSPage() {
           </TabsList>
 
           <TabsContent value="NUEVO" className="space-y-4">
-            {orders.NUEVO.map(order => (
+            {pedidosNuevos.length === 0 && (
+              <div className="text-center py-12 text-gray-500">
+                <span className="text-5xl">📭</span>
+                <p className="mt-4">No hay pedidos nuevos</p>
+              </div>
+            )}
+            {pedidosNuevos.map(order => (
                 <Card key={order.id} className="border-blue-200 border-2">
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between">
