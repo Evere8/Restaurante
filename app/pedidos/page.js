@@ -530,11 +530,16 @@ export default function PedidosPage() {
           <TabsContent value="preparacion">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {orders.preparacion.map(order => (
-                <Card key={order.id} className={order.estado === 'NUEVO' ? 'border-2 border-blue-400' : 'border-2 border-yellow-400'}>
+                <Card key={order.id} className={`${order.estado === 'NUEVO' ? 'border-2 border-blue-400' : 'border-2 border-yellow-400'} ${order.origen === 'DIGITAL' ? 'ring-2 ring-purple-400' : ''}`}>
                   <CardHeader className={order.estado === 'NUEVO' ? 'bg-blue-50' : 'bg-yellow-50'}>
                     <div className="flex items-start justify-between">
                       <div>
-                        <CardTitle className="text-lg">Pedido #{order.id.slice(0, 8)}</CardTitle>
+                        <CardTitle className="text-lg flex items-center">
+                          Pedido #{order.id.slice(0, 8)}
+                          {order.origen === 'DIGITAL' && (
+                            <Badge className="ml-2 bg-purple-500 text-xs">📱 Cliente</Badge>
+                          )}
+                        </CardTitle>
                         <p className="text-sm text-gray-600 mt-1">
                           {new Date(order.created_at).toLocaleString('es-ES')}
                         </p>
@@ -552,6 +557,11 @@ export default function PedidosPage() {
                         <div className="flex justify-between">
                           <span className="text-gray-600">Mesa:</span>
                           <span className="font-medium">{order.mesa}</span>
+                        </div>
+                      )}
+                      {order.nota_cliente && (
+                        <div className="bg-gray-100 p-2 rounded text-xs">
+                          <span className="font-semibold">Nota:</span> {order.nota_cliente}
                         </div>
                       )}
                       <div className="border-t pt-2 mt-2">
@@ -573,6 +583,9 @@ export default function PedidosPage() {
                         <div className="flex space-x-2">
                           <Button size="sm" variant="outline" className="flex-1" onClick={() => openEditOrder(order)}>
                             <Edit className="h-4 w-4 mr-1" /> Editar
+                          </Button>
+                          <Button size="sm" variant="destructive" onClick={() => handleEliminarPedido(order.id)}>
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                         
