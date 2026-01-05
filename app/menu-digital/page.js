@@ -680,12 +680,61 @@ export default function MenuDigitalPage() {
             {/* Tab Apariencia */}
             <TabsContent value="apariencia">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Logo del Restaurante */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <Image className="h-5 w-5 mr-2 text-orange-500" />
+                      Logo del Restaurante
+                    </CardTitle>
+                    <CardDescription>
+                      El logo se mostrará en el menú digital
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center space-x-4">
+                      {restaurant?.logo_url ? (
+                        <img 
+                          src={restaurant.logo_url} 
+                          alt="Logo"
+                          className="w-24 h-24 object-contain rounded-lg border bg-white p-2"
+                        />
+                      ) : (
+                        <div className="w-24 h-24 bg-gray-100 rounded-lg flex items-center justify-center border-2 border-dashed">
+                          <span className="text-3xl">🍽️</span>
+                        </div>
+                      )}
+                      <div className="flex-1">
+                        <p className="text-sm text-gray-600 mb-2">
+                          Sube el logo de tu restaurante
+                        </p>
+                        <Input 
+                          type="file" 
+                          accept="image/*" 
+                          onChange={handleLogoUpload} 
+                          disabled={uploadingImage}
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
+                      <p className="text-xs text-yellow-800">
+                        💡 <strong>Tip:</strong> Usa una imagen cuadrada (ej: 200x200px) para mejor visualización
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Imagen de Portada */}
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center">
                       <Image className="h-5 w-5 mr-2 text-orange-500" />
                       Imagen de Portada
                     </CardTitle>
+                    <CardDescription>
+                      Imagen de fondo del encabezado del menú
+                    </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     {config.imagen_portada ? (
@@ -693,7 +742,7 @@ export default function MenuDigitalPage() {
                         <img 
                           src={config.imagen_portada} 
                           alt="Portada"
-                          className="w-full h-48 object-cover rounded-lg"
+                          className="w-full h-32 object-cover rounded-lg"
                         />
                         <Button 
                           size="sm" 
@@ -705,37 +754,36 @@ export default function MenuDigitalPage() {
                         </Button>
                       </div>
                     ) : (
-                      <div className="w-full h-48 bg-gray-100 rounded-lg flex items-center justify-center border-2 border-dashed">
+                      <div className="w-full h-32 bg-gray-100 rounded-lg flex items-center justify-center border-2 border-dashed">
                         <span className="text-gray-400">Sin imagen de portada</span>
                       </div>
                     )}
 
                     <div>
-                      <Label>Subir imagen</Label>
-                      <Input type="file" accept="image/*" onChange={handleImageUpload} disabled={uploadingImage} className="mt-2" />
-                    </div>
-
-                    <div>
-                      <Label>O usa una URL</Label>
+                      <Label>Usar URL de imagen (recomendado)</Label>
                       <Input
                         value={config.imagen_portada}
                         onChange={(e) => setConfig({ ...config, imagen_portada: e.target.value })}
                         placeholder="https://ejemplo.com/imagen.jpg"
                         className="mt-2"
                       />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Puedes usar imágenes de Unsplash, Pexels o cualquier URL pública
+                      </p>
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card>
+                {/* Colores */}
+                <Card className="lg:col-span-2">
                   <CardHeader>
                     <CardTitle className="flex items-center">
                       <Palette className="h-5 w-5 mr-2 text-orange-500" />
-                      Colores
+                      Colores del Menú
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       <div>
                         <Label>Color Principal</Label>
                         <div className="flex items-center mt-2 space-x-2">
@@ -748,6 +796,52 @@ export default function MenuDigitalPage() {
                             })}
                             className="w-12 h-10 rounded cursor-pointer"
                           />
+                          <Input value={config.colores.primary} onChange={(e) => setConfig({ ...config, colores: { ...config.colores, primary: e.target.value }})} className="flex-1" />
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label>Color Secundario</Label>
+                        <div className="flex items-center mt-2 space-x-2">
+                          <input
+                            type="color"
+                            value={config.colores.secondary}
+                            onChange={(e) => setConfig({
+                              ...config,
+                              colores: { ...config.colores, secondary: e.target.value }
+                            })}
+                            className="w-12 h-10 rounded cursor-pointer"
+                          />
+                          <Input value={config.colores.secondary} onChange={(e) => setConfig({ ...config, colores: { ...config.colores, secondary: e.target.value }})} className="flex-1" />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Vista previa */}
+                    <div className="mt-4 p-4 rounded-lg border bg-white">
+                      <p className="text-sm font-medium mb-3">Vista previa:</p>
+                      <div className="rounded-lg overflow-hidden shadow-md" style={{ maxWidth: '300px' }}>
+                        <div className="h-16" style={{ backgroundColor: config.colores.secondary }}></div>
+                        <div className="p-3 bg-white">
+                          <div className="flex space-x-2 mb-2">
+                            <div className="px-3 py-1 rounded-full text-white text-xs" style={{ backgroundColor: config.colores.primary }}>
+                              Categoría
+                            </div>
+                            <div className="px-3 py-1 rounded-full bg-gray-100 text-gray-600 text-xs">
+                              Otra
+                            </div>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm">Producto</span>
+                            <span className="font-bold text-sm" style={{ color: config.colores.primary }}>Gs. 15.000</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
                           <Input value={config.colores.primary} onChange={(e) => setConfig({ ...config, colores: { ...config.colores, primary: e.target.value }})} className="flex-1" />
                         </div>
                       </div>
