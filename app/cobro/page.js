@@ -491,8 +491,7 @@ export default function CobroPage() {
           const { error: updateError } = await supabase
             .from('stock_items')
             .update({ 
-              cantidad: nuevaCantidad,
-              updated_at: new Date().toISOString()
+              cantidad: nuevaCantidad
             })
             .eq('id', stockItem.id)
 
