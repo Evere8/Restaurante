@@ -345,6 +345,167 @@ export default function CobroPage() {
     }).format(Math.round(numero))
   }
 
+  // Función para procesar descuento de stock al cobrar
+  const procesarDescuentoStock = async (orderId) => {
+    const alertas = []
+    
+    try {
+      // Obtener items del pedido con información del menu_item
+      const { data: orderItems, error: itemsError } = await supabase
+        .from('order_items')
+        .select('*, menu_items(id, nombre, usar_stock_avanzado, crear_en_stock)')
+        .eq('order_id', orderId)
+      
+      if (itemsError) {
+        console.error('Error obteniendo items del pedido:', itemsError)
+        return alertas
+      }
+
+      if (!orderItems || orderItems.length === 0) {
+        console.log('No hay items en el pedido')
+        return alertas
+      }
+
+      // Procesar cada item del pedido
+      for (const item of orderItems) {
+        const menuItem = item.menu_items
+        
+        if (!menuItem) {
+          console.log(`Item ${item.nombre_item_snapshot} no tiene menu_item asociado`)
+          continue
+        }
+
+        // Caso 1: Producto usa stock avanzado (tiene receta)
+        if (menuItem.usar_stock_avanzado) {
+          // Obtener la receta del producto
+          const { data: recetas, error: recetaError } = await supabase
+            .from('menu_receta')
+            .select('*, stock_items(id, nombre, cantidad, stock_minimo_alerta)')
+            .eq('menu_item_id', menuItem.id)
+          
+          if (recetaError) {
+            console.error(`Error obteniendo receta para ${menuItem.nombre}:`, recetaError)
+            continue
+          }
+
+          if (!recetas || recetas.length === 0) {
+            console.log(`Producto ${menuItem.nombre} tiene stock avanzado pero no tiene receta`)
+            continue
+          }
+
+          // Descontar cada insumo de la receta
+          for (const receta of recetas) {
+            const stockItem = receta.stock_items
+            if (!stockItem) continue
+
+            const cantidadADescontar = receta.cantidad_usada * item.cantidad
+            const nuevaCantidad = stockItem.cantidad - cantidadADescontar
+
+            // Actualizar stock
+            const { error: updateError } = await supabase
+              .from('stock_items')
+              .update({ 
+                cantidad: nuevaCantidad,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', stockItem.id)
+
+            if (updateError) {
+              console.error(`Error actualizando stock de ${stockItem.nombre}:`, updateError)
+              continue
+            }
+
+            // Registrar movimiento
+            await supabase
+              .from('stock_movimientos')
+              .insert({
+                stock_item_id: stockItem.id,
+                tipo: 'egreso',
+                cantidad: cantidadADescontar,
+                motivo: `Venta - Pedido cobrado (${menuItem.nombre})`,
+                order_id: orderId
+              })
+
+            // Verificar si quedó por debajo del mínimo
+            if (nuevaCantidad <= stockItem.stock_minimo_alerta) {
+              alertas.push({
+                tipo: 'stock_bajo',
+                producto: stockItem.nombre,
+                cantidad_actual: nuevaCantidad
+              })
+            }
+
+            console.log(`✅ Descontado ${cantidadADescontar} de ${stockItem.nombre} (Receta de ${menuItem.nombre})`)
+          }
+        }
+        
+        // Caso 2: Producto creado directamente en stock (vendible entero)
+        else if (menuItem.crear_en_stock) {
+          // Buscar el producto en stock_items por nombre
+          const { data: stockItems, error: stockError } = await supabase
+            .from('stock_items')
+            .select('*')
+            .eq('restaurant_id', restaurant.id)
+            .eq('nombre', menuItem.nombre)
+            .limit(1)
+          
+          if (stockError) {
+            console.error(`Error buscando stock para ${menuItem.nombre}:`, stockError)
+            continue
+          }
+
+          if (!stockItems || stockItems.length === 0) {
+            console.log(`Producto ${menuItem.nombre} no encontrado en stock_items`)
+            continue
+          }
+
+          const stockItem = stockItems[0]
+          const nuevaCantidad = stockItem.cantidad - item.cantidad
+
+          // Actualizar stock
+          const { error: updateError } = await supabase
+            .from('stock_items')
+            .update({ 
+              cantidad: nuevaCantidad,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', stockItem.id)
+
+          if (updateError) {
+            console.error(`Error actualizando stock de ${stockItem.nombre}:`, updateError)
+            continue
+          }
+
+          // Registrar movimiento
+          await supabase
+            .from('stock_movimientos')
+            .insert({
+              stock_item_id: stockItem.id,
+              tipo: 'egreso',
+              cantidad: item.cantidad,
+              motivo: 'Venta - Pedido cobrado',
+              order_id: orderId
+            })
+
+          // Verificar si quedó por debajo del mínimo
+          if (nuevaCantidad <= stockItem.stock_minimo_alerta) {
+            alertas.push({
+              tipo: 'stock_bajo',
+              producto: stockItem.nombre,
+              cantidad_actual: nuevaCantidad
+            })
+          }
+
+          console.log(`✅ Descontado ${item.cantidad} de ${stockItem.nombre} (Producto vendible)`)
+        }
+      }
+    } catch (error) {
+      console.error('Error general procesando stock:', error)
+    }
+
+    return alertas
+  }
+
   const handleProcessPayment = async () => {
     if (!paymentForm.metodo_pago) {
       toast.error('Selecciona un método de pago')
