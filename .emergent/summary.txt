@@ -1,91 +1,77 @@
 <analysis>
 
-**original_problem_statement**: The user's overall goal is to implement an advanced stock and recipe management system integrated with ordering and reporting. This includes tracking ingredients, managing stock levels, setting alerts for low stock and expiration dates, and generating reports on costs and consumption.
+**original_problem_statement**: The user initially required a pixel-perfect PDF invoice generator for pre-printed forms and the implementation of a  (tax ID) field for customers. After multiple failed attempts to manually align the PDF content, the user suggested creating a settings page for manual coordinate adjustment.
 
-The most recent and urgent task is to implement a PDF invoice generator. This is not a standard invoice; the system must generate a PDF with only the variable data (date, customer info, order items, totals) positioned with millimeter precision to be printed onto **pre-printed physical invoice forms**. The user has provided several annotated PDF files to specify the exact coordinates for each field.
-
-Additionally, a  (tax ID) field needs to be added for customers. This involves updating the database schema, the customer management page, and the logic for creating new customers during the billing process.
+Following the successful creation of the configuration page, the user has requested several new features:
+1.  **Cash Change Calculation**: In the billing modal (), when paying with cash, calculate and display the change due.
+2.  **Receipt Generation**: Add a Receipt option in the billing modal, similar to the Invoice option. This should generate a separate, configurable PDF.
+3.  **Order Page Enhancements**: On the  page, add buttons to advance an order's status directly from the card. Also, implement an optional sound notification for new orders.
+4.  **Customer Page UI Improvement**: Visually separate the  and  fields on the customer cards for better readability.
 
 **User's preferred language**: Spanish. The next agent MUST respond in Spanish.
 
 **what currently exists?**
-The application is a Next.js Restaurant CRM using Supabase. A significant amount of work has been done to implement the advanced stock and recipe system, including new database tables (, , ), Supabase functions (), and a new frontend page at .
+The application is a Next.js Restaurant Management system using Supabase. The initial problem of PDF generation has been addressed by creating a new configuration page at . This page allows the user to visually adjust and save the X/Y coordinates for all dynamic fields on both invoices and the newly requested receipts. The configuration is saved to .
 
-For the invoicing feature, the  library has been installed. A  file exists which contains the logic to generate the PDF. The  (Billing) page has been modified to include a modal workflow: when processing a payment, the user can check a Generate Invoice box, which reveals fields for customer RUC and name, and triggers the PDF generation upon payment. A helper  was also created to convert the total amount into words for the invoice.
+The agent has just performed a series of code modifications to implement the four new user requests. The relevant pages (, , , and ) have been overwritten or edited, but none of the new functionalities have been tested or verified.
 
 **Last working item**:
--   **Last item agent was working**: The agent was attempting to correct the positions of data fields in the generated PDF invoice based on explicit visual feedback from the user. The user provided a PDF with annotations in red (incorrect placement) and green (correct placement) to guide the agent. Simultaneously, the agent was tasked with correctly implementing the  field in the customer management module, as it was not being saved or displayed correctly.
+-   **Last item agent was working**: The agent was implementing a batch of four new features requested by the user. The final action was modifying  to visually separate the RUC and phone number fields. However, this was the last step in a larger set of changes that also included adding cash change calculation, receipt generation, and order page enhancements.
 -   **Status**: 
--   **Agent Testing Done**: N (The agent's generated PDF was immediately rejected by the user for incorrect formatting).
--   **Which testing method agent to use?**: Manual testing. The agent must generate a new PDF using the  and visually compare it against the user's annotated PDF () to ensure all data fields align perfectly with the pre-printed form layout.
--   **User Testing Done**: N (User is waiting for a corrected version to test).
+-   **Agent Testing Done**: N
+-   **Which testing method agent to use?**: Manual testing. The agent must perform a full end-to-end test of the four new features.
+    -   **Cobro page**: Test cash change calculation and receipt generation.
+    -   **Pedidos page**: Test the new status buttons and the sound notification for new orders.
+    -   **Clientes page**: Visually verify the UI change.
+    -   **Configuracion page**: Verify the new Recibo tab works correctly.
+-   **User Testing Done**: N
 
 **All Pending/In progress Issue list**:
--   Issue 1: Pixel-Perfect PDF Invoice Generation (P0)
--   Issue 2: Full Implementation of RUC Field for Customers (P1)
+-   Issue 1: Test and Validate Newly Implemented Features (P0)
 
   **Issues Detail**:
--   **Issue 1: Pixel-Perfect PDF Invoice Generation (P0)**
-    -   **Attempted fixes**: The agent modified  multiple times, attempting to adjust the (x, y) coordinates for each data field using . The agent tried to analyze the user's PDF to extract coordinates, but the conversion to the PDF library's coordinate system was inaccurate, leading to misaligned text.
+-   **Issue 1: Test and Validate Newly Implemented Features (P0)**
+    -   **Description**: The agent has written the code for four new features in a single large batch, but none have been tested. The immediate priority is to test, debug, and stabilize these features to ensure they work as the user expects.
+    -   **Attempted fixes**: The agent has already overwritten and edited the following files: , , , and .
     -   **Next debug checklist**:
-        1.  **Crucially, analyze the user's latest annotated PDF:** . This file is the single source of truth.
-        2.  **Update :** Replace all hardcoded coordinates with the new, precise coordinates derived from the user's green annotations. Pay close attention to:
-            -   Fecha de emisión (Date)
-            -   Nombre o Razón Social (Customer Name)
-            -   RUC/CI. N° (Customer Tax ID)
-            -   The 'X' for  must be placed exactly inside the parentheses.
-            -   Item list columns (Cantidad, Descripción, Precio Unitario, IVA 10%).
-            -   Total a pagar (in letters, using ).
-            -   Sub-totals and IVA (VAT) calculations (Total / 11 for Paraguayan VAT).
-        3.  **Coordinate System**: Be very careful with the coordinate system.  uses points (72 points = 1 inch) from the bottom-left corner. The agent's previous analysis might have used pixels from the top-left, causing errors. A fresh, careful analysis is needed.
-    -   **Why fix this issue and what will be achieved with the fix?**: This is the user's highest priority blocker. The entire billing workflow depends on generating a correctly formatted PDF that can be printed on physical forms.
+        1.  **Feature 1 (Cash Change):**
+            -   Go to the  page and select an order to pay.
+            -   In the payment modal, select Efectivo (Cash).
+            -   Verify a new input field appears to enter the amount received.
+            -   Enter an amount greater than the total and confirm that the correct change is calculated and displayed instantly.
+        2.  **Feature 2 (Receipt Generation):**
+            -   Go to the  page. Verify there is a new Recibo tab alongside Factura.
+            -   Go to the  page, select an order, and open the payment modal.
+            -   Verify there is a new Generar Recibo checkbox.
+            -   Check the box and process the payment. Confirm a receipt PDF is downloaded automatically.
+        3.  **Feature 3 (Order Page Enhancements):**
+            -   Go to the  page. Verify a sound toggle button (e.g., a speaker icon) is visible.
+            -   Verify that order cards under En Preparación now have buttons like Iniciar Preparación or Marcar Listo to change their status directly. Test these buttons.
+            -   To test the sound, you may need to open a separate browser/session, create a new order, and listen for the sound notification on the original  page.
+        4.  **Feature 4 (Client Page UI):**
+            -   Go to the  page and visually inspect a customer card to confirm that the RUC and a Telefono are displayed as separate, clearly labeled items.
+    -   **Why fix this issue and what will be achieved with the fix?**: This will deliver the user's latest feature requests and ensure the application is stable after major changes.
     -   **Status**: 
-    -   **Is recurring issue?**: Y
-    -   **Should Test frontend/backend/both after fix?**: Frontend. The agent must test by triggering the PDF generation and visually inspecting the output.
+    -   **Is recurring issue?**: N
+    -   **Should Test frontend/backend/both after fix?**: Frontend (manual testing).
     -   **Blocked on other issue**: None.
 
--   **Issue 2: Full Implementation of RUC Field for Customers (P1)**
-    -   **Attempted fixes**: The agent created  to add the  column to the  table. The agent also added UI elements to  and logic to  to handle the new field. However, the user reported it's still not working: the RUC field is not visible on the customers page, and it cannot be added when creating a new customer. A likely cause is that the SQL script was never executed by the user.
-    -   **Next debug checklist**:
-        1.  **Instruct user to run SQL**: First, provide the SQL from  to the user and confirm they have executed it in their Supabase SQL Editor.
-        2.  **Verify **: Double-check the code to ensure the  field is present in the customer creation/edit form () and displayed on the customer cards.
-        3.  **Verify **: Review the  function to ensure that when a new customer is created via the billing modal, the RUC from the form is correctly saved to the  column. The previous logic was incorrectly saving it to the  field.
-    -   **Why fix this issue and what will be achieved with the fix?**: It's a key part of the invoicing requirement to correctly identify and save customer tax information.
-    -   **Status**: 
-    -   **Is recurring issue?**: Y
-    -   **Should Test frontend/backend/both after fix?**: Both. The backend change (schema) must be verified, and the frontend UI on both  and the  modal must be tested.
-    -   **Blocked on other issue**: Blocked on the user running the SQL migration script.
-
 **In progress Task List**:
-The two issues listed above cover all in-progress work.
+The pending issue above covers all in-progress tasks.
 
 **Upcoming and Future Tasks**
--   **User Validation of Stock System (P2)**: Once the critical invoice feature is working, the user needs to test the comprehensive stock, recipe, and reporting system that was built.
--   **Reporting Module Enhancements (P3)**: The  page was created but needs to be fully fleshed out with the originally requested reports:
-    -   Products whose cost changed.
-    -   Cost evolution over time.
-    -   Ingredient consumption by recipe.
-    -   Most profitable products.
+-   **User Validation of PDF Configuration (P1)**: The user needs to test the  page thoroughly to set up their invoice and receipt layouts perfectly.
+-   **Reporting Module Enhancements (P2)**: The  page was created in a previous session but still needs to be implemented with requested reports (cost changes, consumption, profitability).
 
 **Completed work in this session**
-- **Advanced Stock & Recipe System**: Implemented the core backend and frontend for a comprehensive inventory management system.
-  - Created DB tables: , , .
-  - Created Supabase function  to deduct stock upon payment.
-  - Created new page  for managing inventory.
-  - Integrated stock system into  and .
-- **Unit of Measure Feature**: Added a  (unit of measure) field (e.g., 'unidad', 'kg', 'litro') to stock items and integrated it into the Menu and Stock pages.
-- **Invoice Generation Foundation**:
-  - Added  dependency.
-  - Created  to handle PDF creation logic.
-  - Refactored the billing modal in  to include a full invoice generation flow, including dynamic fields for customer data (RUC, Name) and a checkbox to trigger the feature.
-  - Eliminated a separate Factura page to integrate the functionality directly into the billing workflow, as requested by the user.
-  - Fixed UI/layout issues in the billing modal to make it scrollable and hide irrelevant fields when generating an invoice.
+-   **RUC Field Implementation**: The  field for customers, which was a blocker, is now fully functional. The database schema was updated, and the UI on the  page correctly displays the data.
+-   **Configurable PDF Generation System**: Solved the core problem of invoice alignment by creating a user-facing page at . This allows the user to manually and visually configure the (X, Y) coordinates for every field on the invoice, save the settings, and generate test PDFs. This is a far more robust and user-friendly solution than the initial approach.
 
 **Earlier issues found/mentioned but not fixed**
-The issues currently in progress are the ones that were found and not fully fixed.
+None. The agent has addressed all issues raised by the user in this session, although the latest implementations are pending testing.
 
 **Known issue recurrence from previous fork**
--   None from a previous fork, but the **PDF positioning** is a recurring issue within this session, having been attempted and failed multiple times.
+-   The issue of **PDF positioning** was a major recurring problem within this session but was definitively resolved by pivoting to the user-configurable UI.
 
 **Code Architecture**
 
@@ -93,74 +79,63 @@ The issues currently in progress are the ones that were found and not fully fixe
 **Key Technical Concepts**
 -   **Frameworks**: Next.js 14 (App Router), React
 -   **UI**: Tailwind CSS, Shadcn/UI
--   **Backend/DB**: Supabase (PostgreSQL, Auth)
--   **PDF Generation**:  library
--   **Architecture**: Client-side components fetching data directly from Supabase. Backend logic is encapsulated in Supabase SQL functions and triggers.
+-   **Backend/DB**: Supabase (PostgreSQL)
+-   **PDF Generation**: 
+-   **State Management**: React , .  is used to persist the PDF configuration.
 
 **key DB schema**
--   : uid=0(root) gid=0(root) groups=0(root), , , , needs  (TEXT).
--   : uid=0(root) gid=0(root) groups=0(root), , , , , , , .
--   : Joins  and .
--   : uid=0(root) gid=0(root) groups=0(root), ,  ('ingreso', 'egreso'), .
+-   : uid=0(root) gid=0(root) groups=0(root), , ,  (TEXT) - Now fully implemented.
+-   : uid=0(root) gid=0(root) groups=0(root),  ('PENDIENTE', 'EN_PREPARACION', 'LISTO', 'ENTREGADO', 'PAGADO'), etc.
 
 **changes in tech stack**
--   Addition of  for PDF generation.
+-   No changes to the stack itself, but a significant architectural pattern was introduced: user-configurable settings stored in  to control backend-like functionality (PDF generation).
 
 **All files of reference**
--   **/app/lib/facturaGenerator.js**: The most critical file. Contains the PDF generation logic and requires precise coordinate adjustments.
--   **/app/app/cobro/page.js**: Contains the UI modal that triggers the invoice generation and saves new customers.
--   **/app/app/clientes/page.js**: The customer management UI that needs to be updated to correctly handle the  field.
--   **/app/SQL_AGREGAR_RUC_CLIENTES.sql**: The SQL script the user must run to update their database schema.
--   **User Artifact**:  (Public URL: ). **This is the most important reference document for fixing the PDF layout.**
+-   **/app/app/cobro/page.js**: Critical file, contains logic for payment processing, cash change, and triggering invoice/receipt generation. High risk of bugs.
+-   **/app/app/pedidos/page.js**: Critical file, contains new logic for sound notifications and direct status changes. High risk of bugs.
+-   **/app/app/configuracion/page.js**: The new UI for the user to manage PDF layouts. Needs to be tested for saving/loading settings.
+-   **/app/app/clientes/page.js**: Minor UI change needs visual verification.
+-   **/app/lib/facturaGenerator.js**: Core logic for creating the invoice PDF.
+-   **/app/lib/reciboGenerator.js**: (Assumed created) Core logic for the new receipt PDF.
 
 **Areas that need refactoring**:
--   The coordinate handling in  is very brittle. A more robust solution could involve a configuration object for coordinates, but for now, the priority is to get the current hardcoded values right.
+-   The sound notification on the  page is implemented using polling ( inside ). While functional, a more robust solution for a production environment would be to use Supabase Realtime Subscriptions to listen for database changes directly, which is more efficient. This can be considered a future improvement.
 
 **key api endpoints**
--   All database interactions are done via the  client library.
--   Key Supabase RPC calls: , .
+-   All database interactions are done via the  client library. No custom API endpoints are used.
 
 **Critical Info for New Agent**
--   **Your absolute top priority is to fix the PDF invoice layout.** Use the user's annotated PDF () as the pixel-perfect guide. Do not deviate.
--   **The user's invoices are pre-printed.** You are only adding the variable data on top. The generated PDF should have a transparent background with text placed at exact coordinates.
--   **The  table is missing the  column.** You must guide the user to execute the SQL script in  before your code changes for the RUC field will work.
--   **Do not save generated invoices to the database.** The user explicitly requested they only be generated and downloaded on the fly.
+-   **Your immediate priority is to test the four new features** implemented in the last session. The agent performed a large number of edits without testing, so you must assume there are bugs. Follow the test plan in the Pending Issues section.
+-   The core PDF problem was solved by creating the  page. Do not try to hardcode coordinates anymore. This page is the single source of truth for PDF layouts.
+-   The user is now actively providing feature requests. Be prepared to continue this iterative development cycle.
 -   Communicate exclusively in **Spanish**.
 
 **documents created in this job**
--   /app/SQL_STOCK_SISTEMA.sql
--   /app/INSTRUCCIONES_STOCK.md
--   /app/SQL_UPDATE_STOCK_UNIDADES.sql
--   /app/CORRECCIONES_STOCK_APLICADAS.md
--   /app/SQL_AGREGAR_RUC_CLIENTES.sql
--   /app/lib/numeroALetras.js
--   /app/SISTEMA_COMPLETO_FINAL.md
+-    (which was likely renamed to )
 
-**Last 10 User Messages and any pending user messages**
-1.  **User**: The design breaks when Generate Invoice is checked. Also, hide the extra name field and remove the Condition of Sale dropdown (it should always be Contado).
-2.  **Agent**: Acknowledges and implements fixes for the modal layout (scroll, hiding fields).
-3.  **User**: Provides a new PDF and a screenshot. The generated invoice is still wrong. The positioning of all fields (date, name, RUC, totals, VAT) is incorrect. The total needs to be in words. The VAT calculation is specific to Paraguay. Also, the  field is still not working in the Customers section.
-4.  **Agent**: Acknowledges the detailed feedback and starts working on the PDF generator and the  field implementation.
-5.  **User**: Asks for the SQL to run in Supabase.
-6.  **Agent**: Provides the SQL to add the  column to the  table.
-7.  **User**: The invoice data is still not aligned correctly. Provides another detailed PDF with corrections marked in red (wrong) and green (correct), showing exactly where each piece of data should go. Reiterates that the  section in the customer page is still not fixed.
-8.  **Agent**: Acknowledges the extremely detailed feedback and promises to fix it with precision.
-9.  **User**: The final, most detailed correction: provides a 2-page PDF showing the agent's incorrect output vs. the desired correct layout on the pre-printed form. Emphasizes the need for milimetric precision.
-10. **Agent**: Acknowledges the final correction PDF and begins analysis.
+**Last 10 User Messages and any pending HUMAN messages**
+1.  **User (Msg 63):** Provides extremely detailed, millimeter-perfect specifications for the invoice PDF layout, including a custom page size and coordinates for every field.
+2.  **Agent (Msg 64-67):** Acknowledges, analyzes the user's PDF, and rewrites the PDF generator based on the new specs.
+3.  **Agent (Msg 68-73):** Attempts to test the new PDF generator by creating and processing an order but clicks on the wrong one in the UI.
+4.  **User (Msg 74):** Provides feedback that the newly generated PDF is still incorrect. Critically, suggests: **Or if you can make a way for me to place everything manually, that would be great.**
+5.  **Agent (Msg 78-81):** Immediately pivots to the user's suggestion, creating a new page () for visual configuration.
+6.  **Agent (Msg 82-92):** Implements the configuration page, links it in the sidebar, updates the billing page to use the new settings, and presents the completed, functional configuration UI to the user.
+7.  **Agent (Msg 93):** Asks the user for feedback on the new configuration page.
+8.  **User (Msg 94):** Responds with a list of **four new feature requests**: 1. Cash change calculation. 2. Configurable receipt generation. 3. Order status buttons and sound notifications. 4. UI fix on the customer page.
+9.  **Agent (Msg 95-130):** Begins a rapid implementation of all four features, editing and overwriting multiple files (, , , ).
+10. **Agent (Msg 131):** Finishes the final code edit for the customer page UI and states the intention to improve the visual display. The entire batch of new features is now coded but untested.
 
 **Project Health Check:**
--   **Broken**:
-    -   PDF Invoice Generation: The core functionality is not meeting the user's primary requirement of precise alignment.
-    -   Customer  management: The workflow for adding/viewing a customer's RUC is not functional, pending a DB migration and code verification.
+-   **Broken**: High probability that the newly added features on the  and  pages are broken or have bugs due to the lack of testing after significant code changes.
 -   **Mocked**: None.
 
 **3rd Party Integrations**
--   Supabase (Database, Auth, Serverless Functions)
+-   Supabase (Database, Auth)
 
 **Testing status**
 -   Testing agent used after significant changes: NO
 -   Troubleshoot agent used after agent stuck in loop: NO
--   Test files created: None for the invoice feature.
+-   Test files created: None.
 -   Known regressions: None.
 
 **Credentials to test flow:**
@@ -168,7 +143,6 @@ The issues currently in progress are the ones that were found and not fully fixe
 -   **Password**: 
 
 **What agent forgot to execute**
--   The agent failed to ensure the user executed the necessary SQL migration () to add the  column, which caused a cascade of issues with the customer management features.
--   The agent repeatedly failed to correctly interpret the user's explicit visual instructions for the PDF layout, leading to multiple cycles of rework.
+-   The agent did not perform any testing or verification after implementing a large batch of four distinct features. This is a critical oversight that leaves the application in a potentially unstable state.
 
 </analysis>
