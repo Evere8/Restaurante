@@ -842,39 +842,6 @@ export default function MenuDigitalPage() {
                 </Card>
               </div>
             </TabsContent>
-                          <Input value={config.colores.primary} onChange={(e) => setConfig({ ...config, colores: { ...config.colores, primary: e.target.value }})} className="flex-1" />
-                        </div>
-                      </div>
-
-                      <div>
-                        <Label>Color Secundario</Label>
-                        <div className="flex items-center mt-2 space-x-2">
-                          <input
-                            type="color"
-                            value={config.colores.secondary}
-                            onChange={(e) => setConfig({
-                              ...config,
-                              colores: { ...config.colores, secondary: e.target.value }
-                            })}
-                            className="w-12 h-10 rounded cursor-pointer"
-                          />
-                          <Input value={config.colores.secondary} onChange={(e) => setConfig({ ...config, colores: { ...config.colores, secondary: e.target.value }})} className="flex-1" />
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="p-4 rounded-lg border" style={{ backgroundColor: config.colores.background }}>
-                      <div className="h-16 rounded-lg mb-3" style={{ backgroundColor: config.colores.secondary }}></div>
-                      <div className="flex space-x-2">
-                        <div className="px-4 py-2 rounded-full text-white text-sm" style={{ backgroundColor: config.colores.primary }}>
-                          Botón Principal
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
 
             {/* Tab Configuración */}
             <TabsContent value="configuracion">
