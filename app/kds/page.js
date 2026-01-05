@@ -18,6 +18,7 @@ export default function KDSPage() {
   const { user, restaurant, loading: authLoading } = useAuth()
   const router = useRouter()
   const [orders, setOrders] = useState({
+    PENDIENTE: [],
     NUEVO: [],
     PREPARANDO: [],
     LISTO: []
