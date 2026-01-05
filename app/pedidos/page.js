@@ -171,7 +171,8 @@ export default function PedidosPage() {
 
     if (data) {
       data.forEach(order => {
-        if (order.estado === 'NUEVO' || order.estado === 'PREPARANDO') {
+        // PENDIENTE, NUEVO y PREPARANDO van a preparación
+        if (order.estado === 'PENDIENTE' || order.estado === 'NUEVO' || order.estado === 'PREPARANDO') {
           categorized.preparacion.push(order)
         } else if (order.estado === 'LISTO') {
           categorized.paraEntregar.push(order)
