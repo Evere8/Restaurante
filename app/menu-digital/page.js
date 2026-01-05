@@ -70,7 +70,7 @@ export default function MenuDigitalPage() {
         .eq('restaurant_id', restaurant.id)
         .single()
 
-      if (data) {
+      if (data && !error) {
         setConfig({
           descripcion: data.descripcion || '',
           imagen_portada: data.imagen_portada || '',
@@ -82,7 +82,7 @@ export default function MenuDigitalPage() {
         })
       }
     } catch (err) {
-      console.log('No hay configuración previa')
+      console.log('No hay configuración previa o tabla no existe aún')
     }
   }
 
