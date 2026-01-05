@@ -624,11 +624,16 @@ export default function PedidosPage() {
           <TabsContent value="paraEntregar">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {orders.paraEntregar.map(order => (
-                <Card key={order.id}>
+                <Card key={order.id} className={order.origen === 'DIGITAL' ? 'ring-2 ring-purple-400' : ''}>
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <div>
-                        <CardTitle className="text-lg">Pedido #{order.id.slice(0, 8)}</CardTitle>
+                        <CardTitle className="text-lg flex items-center">
+                          Pedido #{order.id.slice(0, 8)}
+                          {order.origen === 'DIGITAL' && (
+                            <Badge className="ml-2 bg-purple-500 text-xs">📱 Cliente</Badge>
+                          )}
+                        </CardTitle>
                         <p className="text-sm text-gray-600 mt-1">
                           {new Date(order.created_at).toLocaleString('es-ES')}
                         </p>
@@ -646,6 +651,11 @@ export default function PedidosPage() {
                         <div className="flex justify-between">
                           <span className="text-gray-600">Mesa:</span>
                           <span className="font-medium">{order.mesa}</span>
+                        </div>
+                      )}
+                      {order.nota_cliente && (
+                        <div className="bg-gray-100 p-2 rounded text-xs">
+                          <span className="font-semibold">Nota:</span> {order.nota_cliente}
                         </div>
                       )}
                       <div className="border-t pt-2 mt-2">
@@ -667,6 +677,9 @@ export default function PedidosPage() {
                         </Button>
                         <Button size="sm" className="flex-1 bg-green-500 hover:bg-green-600" onClick={() => handleMarcarEntregado(order.id)}>
                           ✅ Entregado
+                        </Button>
+                        <Button size="sm" variant="destructive" onClick={() => handleEliminarPedido(order.id)}>
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </div>
