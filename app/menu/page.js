@@ -666,68 +666,63 @@ export default function MenuPage() {
                           </div>
                         ) : (
                           <div className="space-y-2">
-                            {recetaItems.map((item, index) => (
-                              <div key={index} className="p-3 bg-orange-50 rounded-lg border space-y-2">
-                                <div className="flex items-center space-x-2">
-                                  <Select 
-                                    value={item.stock_item_id} 
-                                    onValueChange={(val) => updateRecetaItem(index, 'stock_item_id', val)}
-                                  >
-                                    <SelectTrigger className="flex-1">
-                                      <SelectValue placeholder="Seleccionar insumo" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {stockItems.map(stock => (
-                                        <SelectItem key={stock.id} value={stock.id}>
-                                          {stock.nombre} ({stock.unidad_medida || 'unidad'})
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                  <Button type="button" size="sm" variant="ghost" onClick={() => removeRecetaItem(index)}>
-                                    <X className="h-4 w-4 text-red-500" />
-                                  </Button>
+                            {recetaItems.map((item, index) => {
+                              const stockItem = stockItems.find(s => s.id === item.stock_item_id)
+                              const unidadStock = stockItem?.unidad_medida || 'unidad'
+                              const unidadIngreso = unidadStock === 'kg' ? 'gramos' : unidadStock === 'litro' ? 'ml' : unidadStock
+                              
+                              return (
+                                <div key={index} className="p-3 bg-orange-50 rounded-lg border space-y-2">
+                                  <div className="flex items-center space-x-2">
+                                    <Select 
+                                      value={item.stock_item_id} 
+                                      onValueChange={(val) => updateRecetaItem(index, 'stock_item_id', val)}
+                                    >
+                                      <SelectTrigger className="flex-1">
+                                        <SelectValue placeholder="Seleccionar insumo" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {stockItems.map(stock => (
+                                          <SelectItem key={stock.id} value={stock.id}>
+                                            {stock.nombre} (stock en {stock.unidad_medida || 'unidad'})
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                    <Button type="button" size="sm" variant="ghost" onClick={() => removeRecetaItem(index)}>
+                                      <X className="h-4 w-4 text-red-500" />
+                                    </Button>
+                                  </div>
+                                  
+                                  <div className="flex items-center space-x-2">
+                                    <Input 
+                                      type="number" 
+                                      step="0.01" 
+                                      placeholder={`Cantidad en ${unidadIngreso}`}
+                                      value={item.cantidad}
+                                      onChange={(e) => updateRecetaItem(index, 'cantidad', e.target.value)}
+                                      className="w-40"
+                                    />
+                                    <span className="text-sm font-medium text-gray-600">{unidadIngreso}</span>
+                                    {stockItem && (unidadStock === 'kg' || unidadStock === 'litro') && item.cantidad && (
+                                      <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                                        = {(parseFloat(item.cantidad) / 1000).toFixed(3)} {unidadStock} del stock
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
-                                
-                                <div className="flex items-center space-x-2">
-                                  <Input 
-                                    type="number" 
-                                    step="0.01" 
-                                    placeholder="Cantidad" 
-                                    value={item.cantidad}
-                                    onChange={(e) => updateRecetaItem(index, 'cantidad', e.target.value)}
-                                    className="w-28"
-                                  />
-                                  <Select 
-                                    value={item.unidad_receta || 'unidad'} 
-                                    onValueChange={(val) => updateRecetaItem(index, 'unidad_receta', val)}
-                                  >
-                                    <SelectTrigger className="w-36">
-                                      <SelectValue placeholder="Unidad" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {getUnidadesCompatibles(item.unidad_stock).map(u => (
-                                        <SelectItem key={u.value} value={u.value}>{u.label}</SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                  {item.unidad_stock && item.unidad_receta && item.unidad_stock !== item.unidad_receta && (
-                                    <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
-                                      Stock en {item.unidad_stock}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            ))}
+                              )
+                            })}
                           </div>
                         )}
                         
                         <div className="bg-blue-50 border border-blue-200 p-3 rounded-lg text-sm">
-                          <p className="font-semibold text-blue-800 mb-1">💡 Conversión automática:</p>
-                          <p className="text-blue-700">
-                            Si tu stock está en kg y usas gramos en la receta, el sistema convertirá automáticamente al descontar.
-                            <br />Ejemplo: 200g de café → descuenta 0.2 kg del stock.
-                          </p>
+                          <p className="font-semibold text-blue-800 mb-1">💡 Unidades de medida:</p>
+                          <ul className="text-blue-700 list-disc list-inside space-y-1">
+                            <li><strong>Si el stock está en kg:</strong> ingresa la cantidad en <strong>gramos</strong> (ej: 200g de café)</li>
+                            <li><strong>Si el stock está en litros:</strong> ingresa la cantidad en <strong>ml</strong> (ej: 250ml de leche)</li>
+                            <li><strong>Si el stock está en unidades:</strong> ingresa unidades enteras</li>
+                          </ul>
                         </div>
                       </div>
                     )}
