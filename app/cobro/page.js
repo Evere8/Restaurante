@@ -385,10 +385,10 @@ export default function CobroPage() {
 
         // Caso 1: Producto usa stock avanzado (tiene receta)
         if (menuItem.usar_stock_avanzado) {
-          // Obtener la receta del producto
+          // Obtener la receta del producto con unidad_medida
           const { data: recetas, error: recetaError } = await supabase
             .from('menu_receta')
-            .select('*, stock_items(id, nombre, cantidad, stock_minimo_alerta)')
+            .select('*, stock_items(id, nombre, cantidad, stock_minimo_alerta, unidad_medida)')
             .eq('menu_item_id', menuItem.id)
           
           if (recetaError) {
@@ -411,10 +411,18 @@ export default function CobroPage() {
               continue
             }
 
-            const cantidadADescontar = receta.cantidad_usada * item.cantidad
+            // Obtener unidades
+            const unidadReceta = receta.unidad_medida || 'unidad'
+            const unidadStock = stockItem.unidad_medida || 'unidad'
+            
+            // Calcular cantidad a descontar con conversión de unidades
+            let cantidadBase = receta.cantidad_usada * item.cantidad
+            let cantidadADescontar = convertirUnidades(cantidadBase, unidadReceta, unidadStock)
+            
             const nuevaCantidad = stockItem.cantidad - cantidadADescontar
 
-            console.log(`   → Descontando ${cantidadADescontar} de ${stockItem.nombre} (actual: ${stockItem.cantidad}, nuevo: ${nuevaCantidad})`)
+            console.log(`   → ${stockItem.nombre}: ${cantidadBase} ${unidadReceta} = ${cantidadADescontar} ${unidadStock}`)
+            console.log(`   → Stock: ${stockItem.cantidad} - ${cantidadADescontar} = ${nuevaCantidad} ${unidadStock}`)
 
             // Actualizar stock
             const { error: updateError } = await supabase
