@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
-import { ShoppingCart, Plus, Minus, X, Check, Clock, MapPin, Phone, ChevronLeft, Send, Store, Package } from 'lucide-react'
+import { ShoppingCart, Plus, Minus, X, Check, Clock, MapPin, Phone, ChevronLeft, Send, Store, Package, Gift, Percent } from 'lucide-react'
 import { toast, Toaster } from 'sonner'
 
 export default function MenuPublicoPage() {
@@ -18,6 +18,7 @@ export default function MenuPublicoPage() {
   const [config, setConfig] = useState(null)
   const [categories, setCategories] = useState([])
   const [products, setProducts] = useState([])
+  const [promotions, setPromotions] = useState([])
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [cart, setCart] = useState([])
   const [loading, setLoading] = useState(true)
@@ -33,7 +34,7 @@ export default function MenuPublicoPage() {
   // Formularios
   const [checkoutForm, setCheckoutForm] = useState({
     mesa: '',
-    tipo: 'LOCAL', // LOCAL o LLEVAR
+    tipo: 'LOCAL',
     nombre_cliente: ''
   })
 
@@ -44,8 +45,8 @@ export default function MenuPublicoPage() {
 
   // Colores por defecto
   const defaultColors = {
-    primary: '#f97316', // orange-500
-    secondary: '#1e3a5f', // navy
+    primary: '#f97316',
+    secondary: '#1e3a5f',
     background: '#ffffff',
     text: '#1f2937'
   }
@@ -62,36 +63,41 @@ export default function MenuPublicoPage() {
     try {
       setLoading(true)
       
+      // Buscar restaurante por slug o por ID
       let activeRest = null
       
-      // Buscar restaurante por slug o id
-      const { data: rest, error: restError } = await supabase
+      // Primero intentar por slug
+      const { data: restBySlug } = await supabase
         .from('restaurants')
         .select('*')
-        .or(`slug.eq.${slug},id.eq.${slug}`)
+        .eq('slug', slug)
         .single()
 
-      if (restError || !rest) {
-        // Intentar buscar el primer restaurante disponible
-        const { data: restByName, error: nameError } = await supabase
+      if (restBySlug) {
+        activeRest = restBySlug
+      } else {
+        // Intentar por ID
+        const { data: restById } = await supabase
           .from('restaurants')
           .select('*')
-          .limit(1)
+          .eq('id', slug)
           .single()
         
-        if (nameError || !restByName) {
-          setError('Restaurante no encontrado')
-          setLoading(false)
-          return
+        if (restById) {
+          activeRest = restById
         }
-        activeRest = restByName
-        setRestaurant(restByName)
-      } else {
-        activeRest = rest
-        setRestaurant(rest)
       }
 
-      // Cargar configuración del menú digital (opcional, puede no existir)
+      if (!activeRest) {
+        setError('Restaurante no encontrado')
+        setLoading(false)
+        return
+      }
+
+      setRestaurant(activeRest)
+      console.log('Restaurante cargado:', activeRest.nombre, activeRest.id)
+
+      // Cargar configuración del menú digital
       try {
         const { data: configData } = await supabase
           .from('menu_digital_config')
@@ -103,26 +109,50 @@ export default function MenuPublicoPage() {
           setConfig(configData)
         }
       } catch (configErr) {
-        console.log('Configuración de menú digital no encontrada, usando valores por defecto')
+        console.log('Sin configuración de menú digital')
       }
 
-      // Cargar categorías
-      const { data: cats } = await supabase
-        .from('categories')
+      // Cargar promociones
+      try {
+        const { data: promoData } = await supabase
+          .from('promociones')
+          .select('*, promocion_items(*, menu_items(id, nombre, precio_base, img_url))')
+          .eq('restaurant_id', activeRest.id)
+          .eq('activa', true)
+
+        if (promoData) {
+          setPromotions(promoData)
+        }
+      } catch (promoErr) {
+        console.log('Sin promociones')
+      }
+
+      // Cargar categorías (tabla correcta: menu_categories)
+      const { data: cats, error: catsError } = await supabase
+        .from('menu_categories')
         .select('*')
         .eq('restaurant_id', activeRest.id)
-        .order('nombre')
+        .eq('activo', true)
+        .order('orden')
 
+      if (catsError) {
+        console.log('Error cargando categorías:', catsError)
+      }
       setCategories(cats || [])
 
-      // Cargar productos activos
-      const { data: prods } = await supabase
+      // Cargar productos activos (campos correctos: precio_base, img_url)
+      const { data: prods, error: prodsError } = await supabase
         .from('menu_items')
-        .select('*, categories(nombre)')
+        .select('*, menu_categories(nombre)')
         .eq('restaurant_id', activeRest.id)
         .eq('disponible', true)
         .order('nombre')
 
+      if (prodsError) {
+        console.log('Error cargando productos:', prodsError)
+      }
+      
+      console.log('Productos cargados:', prods?.length || 0)
       setProducts(prods || [])
       setLoading(false)
 
@@ -146,26 +176,37 @@ export default function MenuPublicoPage() {
     ? products 
     : products.filter(p => p.category_id === selectedCategory)
 
-  // Productos populares (los primeros 4 o marcados como populares)
+  // Productos populares (los primeros 4)
   const popularProducts = products.slice(0, 4)
 
-  const addToCart = (product) => {
-    const existing = cart.find(item => item.id === product.id)
+  const addToCart = (product, isPromotion = false, promoData = null) => {
+    const cartItem = {
+      id: isPromotion ? `promo-${promoData.id}` : product.id,
+      nombre: isPromotion ? promoData.nombre : product.nombre,
+      precio: isPromotion ? promoData.precio_final : product.precio_base,
+      precio_original: isPromotion ? promoData.precio_original : product.precio_base,
+      img_url: isPromotion ? promoData.imagen_url : product.img_url,
+      cantidad: 1,
+      isPromotion,
+      promoData
+    }
+
+    const existing = cart.find(item => item.id === cartItem.id)
     if (existing) {
       setCart(cart.map(item => 
-        item.id === product.id 
+        item.id === cartItem.id 
           ? { ...item, cantidad: item.cantidad + 1 }
           : item
       ))
     } else {
-      setCart([...cart, { ...product, cantidad: 1 }])
+      setCart([...cart, cartItem])
     }
-    setProductModal(product)
+    setProductModal(cartItem)
   }
 
-  const updateCartQuantity = (productId, delta) => {
+  const updateCartQuantity = (itemId, delta) => {
     setCart(cart.map(item => {
-      if (item.id === productId) {
+      if (item.id === itemId) {
         const newCantidad = item.cantidad + delta
         return newCantidad > 0 ? { ...item, cantidad: newCantidad } : item
       }
@@ -173,8 +214,8 @@ export default function MenuPublicoPage() {
     }).filter(item => item.cantidad > 0))
   }
 
-  const removeFromCart = (productId) => {
-    setCart(cart.filter(item => item.id !== productId))
+  const removeFromCart = (itemId) => {
+    setCart(cart.filter(item => item.id !== itemId))
   }
 
   const cartTotal = cart.reduce((sum, item) => sum + (item.precio * item.cantidad), 0)
@@ -208,7 +249,7 @@ export default function MenuPublicoPage() {
       // Crear los items del pedido
       const orderItems = cart.map(item => ({
         order_id: order.id,
-        menu_item_id: item.id,
+        menu_item_id: item.isPromotion ? null : item.id,
         cantidad: item.cantidad,
         precio_unitario: item.precio,
         subtotal: item.precio * item.cantidad,
@@ -221,7 +262,7 @@ export default function MenuPublicoPage() {
 
       if (itemsError) throw itemsError
 
-      // Limpiar carrito y mostrar confirmación
+      // Limpiar y mostrar confirmación
       setCart([])
       setCheckoutOpen(false)
       setConfirmModal(true)
@@ -250,8 +291,17 @@ export default function MenuPublicoPage() {
           acepta_marketing_whatsapp: true
         })
 
-      if (error && !error.message.includes('duplicate')) {
-        throw error
+      if (error) {
+        if (error.message.includes('duplicate') || error.code === '23505') {
+          // Ya existe, actualizar
+          await supabase
+            .from('customers')
+            .update({ acepta_marketing_whatsapp: true })
+            .eq('restaurant_id', restaurant.id)
+            .eq('telefono', whatsappForm.telefono)
+        } else {
+          throw error
+        }
       }
 
       toast.success('¡Gracias! Te enviaremos promociones por WhatsApp')
@@ -288,7 +338,7 @@ export default function MenuPublicoPage() {
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: colors.background }}>
+    <div className="min-h-screen pb-24" style={{ backgroundColor: colors.background }}>
       <Toaster position="top-center" richColors />
       
       {/* Header con imagen de portada */}
@@ -324,24 +374,67 @@ export default function MenuPublicoPage() {
             <Clock className="h-4 w-4 mr-1" style={{ color: colors.primary }} />
             <span className="text-green-600 font-medium">Abierto</span>
           </div>
-          {restaurant?.direccion && (
-            <div className="flex items-center">
-              <MapPin className="h-4 w-4 mr-1" style={{ color: colors.primary }} />
-              <span className="truncate max-w-[150px]">{restaurant.direccion}</span>
-            </div>
-          )}
         </div>
         <Button 
           size="sm" 
           variant="outline"
           onClick={() => setWhatsappModal(true)}
-          className="text-xs"
-          style={{ borderColor: colors.primary, color: colors.primary }}
+          className="text-xs border-green-500 text-green-600 hover:bg-green-50"
         >
           <Phone className="h-3 w-3 mr-1" />
-          Promociones
+          Recibir promociones
         </Button>
       </div>
+
+      {/* Sección de PROMOCIONES */}
+      {promotions.length > 0 && (
+        <div className="px-4 py-4 bg-gradient-to-r from-red-50 to-orange-50">
+          <h2 className="text-lg font-bold mb-3 flex items-center text-red-600">
+            <Gift className="h-5 w-5 mr-2" />
+            🔥 Promociones Especiales
+          </h2>
+          <div className="flex overflow-x-auto space-x-3 pb-2 -mx-4 px-4 scrollbar-hide">
+            {promotions.map(promo => (
+              <div 
+                key={promo.id}
+                className="flex-shrink-0 w-48 bg-white rounded-xl shadow-lg overflow-hidden cursor-pointer transform transition hover:scale-105 border-2 border-red-200"
+                onClick={() => addToCart(null, true, promo)}
+              >
+                <div className="relative">
+                  {promo.imagen_url ? (
+                    <img 
+                      src={promo.imagen_url} 
+                      alt={promo.nombre}
+                      className="w-full h-28 object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-28 bg-gradient-to-br from-red-400 to-orange-400 flex items-center justify-center">
+                      <Gift className="h-12 w-12 text-white" />
+                    </div>
+                  )}
+                  <Badge className="absolute top-2 left-2 bg-red-500 text-white animate-pulse">
+                    {promo.tipo_descuento === '2x1' ? '2x1' : `-${promo.porcentaje_descuento}%`}
+                  </Badge>
+                </div>
+                <div className="p-3">
+                  <h3 className="font-bold text-sm text-gray-800">{promo.nombre}</h3>
+                  {promo.motivo && (
+                    <p className="text-xs text-red-500 font-medium">{promo.motivo}</p>
+                  )}
+                  <div className="flex items-center justify-between mt-2">
+                    <span className="text-gray-400 line-through text-xs">
+                      {formatPrice(promo.precio_original)}
+                    </span>
+                    <span className="font-bold text-red-600">
+                      {formatPrice(promo.precio_final)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Sección de productos populares */}
       {popularProducts.length > 0 && (
@@ -358,9 +451,9 @@ export default function MenuPublicoPage() {
                 onClick={() => addToCart(product)}
               >
                 <div className="relative">
-                  {product.imagen_url ? (
+                  {product.img_url ? (
                     <img 
-                      src={product.imagen_url} 
+                      src={product.img_url} 
                       alt={product.nombre}
                       className="w-full h-24 object-cover"
                     />
@@ -380,9 +473,9 @@ export default function MenuPublicoPage() {
                   </Badge>
                 </div>
                 <div className="p-2">
-                  <h3 className="font-medium text-sm truncate">{product.nombre}</h3>
+                  <h3 className="font-medium text-sm truncate capitalize">{product.nombre}</h3>
                   <p className="font-bold text-sm" style={{ color: colors.primary }}>
-                    {formatPrice(product.precio)}
+                    {formatPrice(product.precio_base)}
                   </p>
                 </div>
               </div>
@@ -423,61 +516,71 @@ export default function MenuPublicoPage() {
       </div>
 
       {/* Lista de productos */}
-      <div className="px-4 py-4 pb-24">
-        <div className="grid grid-cols-2 gap-3">
-          {filteredProducts.map(product => {
-            const inCart = cart.find(item => item.id === product.id)
-            return (
-              <div 
-                key={product.id}
-                className="bg-white rounded-xl shadow-md overflow-hidden"
-              >
+      <div className="px-4 py-4">
+        {filteredProducts.length === 0 ? (
+          <div className="text-center py-12">
+            <div className="text-5xl mb-4">🍽️</div>
+            <p className="text-gray-500">No hay productos disponibles</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3">
+            {filteredProducts.map(product => {
+              const inCart = cart.find(item => item.id === product.id)
+              return (
                 <div 
-                  className="relative cursor-pointer"
-                  onClick={() => addToCart(product)}
+                  key={product.id}
+                  className="bg-white rounded-xl shadow-md overflow-hidden"
                 >
-                  {product.imagen_url ? (
-                    <img 
-                      src={product.imagen_url} 
-                      alt={product.nombre}
-                      className="w-full h-28 object-cover"
-                    />
-                  ) : (
-                    <div 
-                      className="w-full h-28 flex items-center justify-center"
-                      style={{ backgroundColor: `${colors.primary}15` }}
-                    >
-                      <span className="text-4xl">🍽️</span>
+                  <div 
+                    className="relative cursor-pointer"
+                    onClick={() => addToCart(product)}
+                  >
+                    {product.img_url ? (
+                      <img 
+                        src={product.img_url} 
+                        alt={product.nombre}
+                        className="w-full h-28 object-cover"
+                      />
+                    ) : (
+                      <div 
+                        className="w-full h-28 flex items-center justify-center"
+                        style={{ backgroundColor: `${colors.primary}15` }}
+                      >
+                        <span className="text-4xl">🍽️</span>
+                      </div>
+                    )}
+                    {inCart && (
+                      <div 
+                        className="absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold"
+                        style={{ backgroundColor: colors.primary }}
+                      >
+                        {inCart.cantidad}
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-3">
+                    <h3 className="font-medium text-sm mb-1 line-clamp-2 capitalize">{product.nombre}</h3>
+                    {product.descripcion && (
+                      <p className="text-xs text-gray-500 mb-1 line-clamp-1">{product.descripcion}</p>
+                    )}
+                    <div className="flex items-center justify-between">
+                      <p className="font-bold" style={{ color: colors.primary }}>
+                        {formatPrice(product.precio_base)}
+                      </p>
+                      <button
+                        onClick={() => addToCart(product)}
+                        className="w-8 h-8 rounded-full flex items-center justify-center text-white shadow-md transition transform hover:scale-110"
+                        style={{ backgroundColor: colors.primary }}
+                      >
+                        <Plus className="h-5 w-5" />
+                      </button>
                     </div>
-                  )}
-                  {inCart && (
-                    <div 
-                      className="absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold"
-                      style={{ backgroundColor: colors.primary }}
-                    >
-                      {inCart.cantidad}
-                    </div>
-                  )}
-                </div>
-                <div className="p-3">
-                  <h3 className="font-medium text-sm mb-1 line-clamp-2">{product.nombre}</h3>
-                  <div className="flex items-center justify-between">
-                    <p className="font-bold" style={{ color: colors.primary }}>
-                      {formatPrice(product.precio)}
-                    </p>
-                    <button
-                      onClick={() => addToCart(product)}
-                      className="w-8 h-8 rounded-full flex items-center justify-center text-white shadow-md transition transform hover:scale-110"
-                      style={{ backgroundColor: colors.primary }}
-                    >
-                      <Plus className="h-5 w-5" />
-                    </button>
                   </div>
                 </div>
-              </div>
-            )
-          })}
-        </div>
+              )
+            })}
+          </div>
+        )}
       </div>
 
       {/* Barra del carrito fija */}
@@ -558,7 +661,10 @@ export default function MenuPublicoPage() {
                 {cart.map(item => (
                   <div key={item.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <div className="flex-1">
-                      <h4 className="font-medium">{item.nombre}</h4>
+                      <h4 className="font-medium capitalize">{item.nombre}</h4>
+                      {item.isPromotion && (
+                        <Badge className="bg-red-100 text-red-600 text-xs">Promoción</Badge>
+                      )}
                       <p className="text-sm" style={{ color: colors.primary }}>
                         {formatPrice(item.precio)}
                       </p>
@@ -719,8 +825,9 @@ export default function MenuPublicoPage() {
       <Dialog open={whatsappModal} onOpenChange={setWhatsappModal}>
         <DialogContent className="max-w-sm mx-auto">
           <DialogHeader>
-            <DialogTitle className="text-center">
-              📱 Recibe Promociones
+            <DialogTitle className="text-center flex items-center justify-center">
+              <Phone className="h-5 w-5 mr-2 text-green-500" />
+              Recibir Promociones por WhatsApp
             </DialogTitle>
           </DialogHeader>
 
@@ -731,16 +838,16 @@ export default function MenuPublicoPage() {
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-2">Nombre</label>
+                <label className="block text-sm font-medium mb-2">Nombre *</label>
                 <Input
                   type="text"
-                  placeholder="Tu nombre"
+                  placeholder="Tu nombre completo"
                   value={whatsappForm.nombre}
                   onChange={(e) => setWhatsappForm({ ...whatsappForm, nombre: e.target.value })}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-2">Número de WhatsApp</label>
+                <label className="block text-sm font-medium mb-2">Número de WhatsApp *</label>
                 <Input
                   type="tel"
                   placeholder="Ej: 0981123456"
@@ -750,12 +857,11 @@ export default function MenuPublicoPage() {
               </div>
 
               <Button 
-                className="w-full text-white"
-                style={{ backgroundColor: colors.primary }}
+                className="w-full text-white bg-green-500 hover:bg-green-600"
                 onClick={handleWhatsappSubmit}
               >
                 <Phone className="h-4 w-4 mr-2" />
-                Guardar
+                Guardar y recibir promociones
               </Button>
             </div>
           </div>
