@@ -440,17 +440,25 @@ export default function CobroPage() {
             }
 
             // Obtener unidades
-            const unidadReceta = receta.unidad_medida || 'unidad'
             const unidadStock = stockItem.unidad_medida || 'unidad'
             
             // Calcular cantidad a descontar con conversión de unidades
+            // La receta siempre se guarda en la unidad más pequeña (gramos, ml, unidades)
             let cantidadBase = receta.cantidad_usada * item.cantidad
-            let cantidadADescontar = convertirUnidades(cantidadBase, unidadReceta, unidadStock)
+            let cantidadADescontar = cantidadBase
+            
+            // Conversión automática: si stock está en kg/litro, la receta está en g/ml
+            if (unidadStock === 'kg') {
+              cantidadADescontar = cantidadBase / 1000 // gramos a kg
+              console.log(`   → Conversión: ${cantidadBase}g = ${cantidadADescontar}kg`)
+            } else if (unidadStock === 'litro') {
+              cantidadADescontar = cantidadBase / 1000 // ml a litros
+              console.log(`   → Conversión: ${cantidadBase}ml = ${cantidadADescontar}L`)
+            }
             
             const nuevaCantidad = stockItem.cantidad - cantidadADescontar
 
-            console.log(`   → ${stockItem.nombre}: ${cantidadBase} ${unidadReceta} = ${cantidadADescontar} ${unidadStock}`)
-            console.log(`   → Stock: ${stockItem.cantidad} - ${cantidadADescontar} = ${nuevaCantidad} ${unidadStock}`)
+            console.log(`   → ${stockItem.nombre}: ${stockItem.cantidad} - ${cantidadADescontar} = ${nuevaCantidad} ${unidadStock}`)
 
             // Actualizar stock
             const { error: updateError } = await supabase
