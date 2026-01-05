@@ -204,11 +204,12 @@ export default function MenuPage() {
             .eq('menu_item_id', savedProductId)
         }
 
-        // Insertar nuevas recetas
+        // Insertar nuevas recetas con unidad de medida
         const recetasToInsert = recetaItems.map(item => ({
           menu_item_id: savedProductId,
           stock_item_id: item.stock_item_id,
-          cantidad_usada: parseFloat(item.cantidad)
+          cantidad_usada: parseFloat(item.cantidad),
+          unidad_medida: item.unidad_receta || 'unidad'
         }))
 
         const { error: recetaError } = await supabase
