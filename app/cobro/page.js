@@ -478,18 +478,16 @@ export default function CobroPage() {
           .eq('id', appliedCoupon.id)
       }
 
+      // Procesar descuento de stock
       try {
-        const { data: stockResult, error: stockError } = await supabase
-          .rpc('procesar_cobro_pedido', { pedido_id: selectedOrder.id })
-
-        if (stockError) {
-          console.error('Error procesando stock:', stockError)
-        } else if (stockResult?.alertas && stockResult.alertas.length > 0) {
-          const alertasTexto = stockResult.alertas.map(a => `${a.producto}: ${a.cantidad_actual}`).join(', ')
+        const alertasStock = await procesarDescuentoStock(selectedOrder.id)
+        if (alertasStock.length > 0) {
+          const alertasTexto = alertasStock.map(a => `${a.producto}: ${a.cantidad_actual}`).join(', ')
           toast.warning(`Stock bajo detectado: ${alertasTexto}`)
         }
       } catch (stockErr) {
         console.error('Error en descuento de stock:', stockErr)
+        toast.warning('El pago se procesó pero hubo un error al actualizar el stock')
       }
 
       // Obtener items para factura/recibo
