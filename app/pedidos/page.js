@@ -471,6 +471,7 @@ export default function PedidosPage() {
   })
 
   const estadoColors = {
+    PENDIENTE: 'bg-orange-500',
     NUEVO: 'bg-blue-500',
     PREPARANDO: 'bg-yellow-500',
     LISTO: 'bg-green-500',
