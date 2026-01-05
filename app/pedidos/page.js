@@ -273,6 +273,33 @@ export default function PedidosPage() {
     }
   }
 
+  const handleEliminarPedido = async (orderId) => {
+    if (!confirm('¿Estás seguro de eliminar este pedido? Esta acción no se puede deshacer.')) {
+      return
+    }
+
+    try {
+      // Primero eliminar items del pedido
+      await supabase
+        .from('order_items')
+        .delete()
+        .eq('order_id', orderId)
+
+      // Luego eliminar el pedido
+      const { error } = await supabase
+        .from('orders')
+        .delete()
+        .eq('id', orderId)
+
+      if (error) throw error
+      toast.success('Pedido eliminado correctamente')
+      loadOrders()
+    } catch (error) {
+      console.error('Error:', error)
+      toast.error('Error al eliminar pedido')
+    }
+  }
+
   const openEditOrder = (order) => {
     setEditingOrder(order)
     setCart(order.order_items.map(item => ({
