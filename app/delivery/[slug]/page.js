@@ -62,6 +62,8 @@ export default function MenuPublicoPage() {
     try {
       setLoading(true)
       
+      let activeRest = null
+      
       // Buscar restaurante por slug o id
       const { data: rest, error: restError } = await supabase
         .from('restaurants')
@@ -70,7 +72,7 @@ export default function MenuPublicoPage() {
         .single()
 
       if (restError || !rest) {
-        // Intentar buscar solo por nombre similar al slug
+        // Intentar buscar el primer restaurante disponible
         const { data: restByName, error: nameError } = await supabase
           .from('restaurants')
           .select('*')
@@ -82,12 +84,12 @@ export default function MenuPublicoPage() {
           setLoading(false)
           return
         }
+        activeRest = restByName
         setRestaurant(restByName)
       } else {
+        activeRest = rest
         setRestaurant(rest)
       }
-
-      const activeRest = rest || restByName
 
       // Cargar configuración del menú digital (opcional, puede no existir)
       try {
