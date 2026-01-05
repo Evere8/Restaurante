@@ -345,6 +345,34 @@ export default function CobroPage() {
     }).format(Math.round(numero))
   }
 
+  // Función para convertir unidades de medida
+  const convertirUnidades = (cantidad, unidadOrigen, unidadDestino) => {
+    // Si son iguales, no hay conversión
+    if (unidadOrigen === unidadDestino) {
+      return cantidad
+    }
+
+    // Conversiones de peso
+    if (unidadOrigen === 'gramo' && unidadDestino === 'kg') {
+      return cantidad / 1000 // 1000g = 1kg
+    }
+    if (unidadOrigen === 'kg' && unidadDestino === 'gramo') {
+      return cantidad * 1000
+    }
+
+    // Conversiones de volumen
+    if (unidadOrigen === 'ml' && unidadDestino === 'litro') {
+      return cantidad / 1000 // 1000ml = 1L
+    }
+    if (unidadOrigen === 'litro' && unidadDestino === 'ml') {
+      return cantidad * 1000
+    }
+
+    // Si no hay conversión conocida, devolver la cantidad original
+    console.log(`⚠️ No hay conversión de ${unidadOrigen} a ${unidadDestino}, usando cantidad original`)
+    return cantidad
+  }
+
   // Función para procesar descuento de stock al cobrar
   const procesarDescuentoStock = async (orderId) => {
     const alertas = []
