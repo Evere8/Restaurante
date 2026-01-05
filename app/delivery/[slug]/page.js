@@ -710,12 +710,12 @@ export default function MenuPublicoPage() {
               <div className="space-y-2">
                 <label className="text-sm font-medium flex items-center text-gray-700">
                   <MessageSquare className="h-4 w-4 mr-2" />
-                  Nota especial (opcional)
+                  ¿Alguna indicación especial? (opcional)
                 </label>
                 <Textarea
                   value={productComment}
                   onChange={(e) => setProductComment(e.target.value)}
-                  placeholder="Ej: Sin cebolla, extra queso, bien cocido..."
+                  placeholder="Escribe aquí si tienes alguna preferencia..."
                   className="resize-none"
                   rows={2}
                 />
