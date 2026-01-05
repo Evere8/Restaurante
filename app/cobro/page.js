@@ -348,8 +348,11 @@ export default function CobroPage() {
   // Función para procesar descuento de stock al cobrar
   const procesarDescuentoStock = async (orderId) => {
     const alertas = []
+    let productosDescontados = []
     
     try {
+      console.log('🔄 Iniciando descuento de stock para pedido:', orderId)
+      
       // Obtener items del pedido con información del menu_item
       const { data: orderItems, error: itemsError } = await supabase
         .from('order_items')
@@ -357,23 +360,28 @@ export default function CobroPage() {
         .eq('order_id', orderId)
       
       if (itemsError) {
-        console.error('Error obteniendo items del pedido:', itemsError)
+        console.error('❌ Error obteniendo items del pedido:', itemsError)
+        toast.error('Error al obtener items del pedido para stock')
         return alertas
       }
 
       if (!orderItems || orderItems.length === 0) {
-        console.log('No hay items en el pedido')
+        console.log('⚠️ No hay items en el pedido')
         return alertas
       }
+
+      console.log(`📦 Items encontrados: ${orderItems.length}`)
 
       // Procesar cada item del pedido
       for (const item of orderItems) {
         const menuItem = item.menu_items
         
         if (!menuItem) {
-          console.log(`Item ${item.nombre_item_snapshot} no tiene menu_item asociado`)
+          console.log(`⚠️ Item ${item.nombre_item_snapshot} no tiene menu_item asociado (menu_item_id: ${item.menu_item_id})`)
           continue
         }
+
+        console.log(`📍 Procesando: ${item.cantidad}x ${menuItem.nombre} (stock_avanzado: ${menuItem.usar_stock_avanzado}, crear_en_stock: ${menuItem.crear_en_stock})`)
 
         // Caso 1: Producto usa stock avanzado (tiene receta)
         if (menuItem.usar_stock_avanzado) {
@@ -384,22 +392,29 @@ export default function CobroPage() {
             .eq('menu_item_id', menuItem.id)
           
           if (recetaError) {
-            console.error(`Error obteniendo receta para ${menuItem.nombre}:`, recetaError)
+            console.error(`❌ Error obteniendo receta para ${menuItem.nombre}:`, recetaError)
             continue
           }
 
           if (!recetas || recetas.length === 0) {
-            console.log(`Producto ${menuItem.nombre} tiene stock avanzado pero no tiene receta`)
+            console.log(`⚠️ Producto ${menuItem.nombre} tiene stock avanzado pero no tiene receta configurada`)
             continue
           }
+
+          console.log(`🍳 Recetas encontradas: ${recetas.length}`)
 
           // Descontar cada insumo de la receta
           for (const receta of recetas) {
             const stockItem = receta.stock_items
-            if (!stockItem) continue
+            if (!stockItem) {
+              console.log('⚠️ Receta sin stock_item asociado')
+              continue
+            }
 
             const cantidadADescontar = receta.cantidad_usada * item.cantidad
             const nuevaCantidad = stockItem.cantidad - cantidadADescontar
+
+            console.log(`   → Descontando ${cantidadADescontar} de ${stockItem.nombre} (actual: ${stockItem.cantidad}, nuevo: ${nuevaCantidad})`)
 
             // Actualizar stock
             const { error: updateError } = await supabase
@@ -411,12 +426,13 @@ export default function CobroPage() {
               .eq('id', stockItem.id)
 
             if (updateError) {
-              console.error(`Error actualizando stock de ${stockItem.nombre}:`, updateError)
+              console.error(`❌ Error actualizando stock de ${stockItem.nombre}:`, updateError)
+              toast.error(`Error al descontar ${stockItem.nombre}`)
               continue
             }
 
             // Registrar movimiento
-            await supabase
+            const { error: movError } = await supabase
               .from('stock_movimientos')
               .insert({
                 stock_item_id: stockItem.id,
@@ -425,6 +441,12 @@ export default function CobroPage() {
                 motivo: `Venta - Pedido cobrado (${menuItem.nombre})`,
                 order_id: orderId
               })
+            
+            if (movError) {
+              console.log('⚠️ Error registrando movimiento:', movError)
+            }
+
+            productosDescontados.push(`${stockItem.nombre}: -${cantidadADescontar}`)
 
             // Verificar si quedó por debajo del mínimo
             if (nuevaCantidad <= stockItem.stock_minimo_alerta) {
@@ -435,12 +457,14 @@ export default function CobroPage() {
               })
             }
 
-            console.log(`✅ Descontado ${cantidadADescontar} de ${stockItem.nombre} (Receta de ${menuItem.nombre})`)
+            console.log(`✅ Descontado ${cantidadADescontar} de ${stockItem.nombre}`)
           }
         }
         
         // Caso 2: Producto creado directamente en stock (vendible entero)
         else if (menuItem.crear_en_stock) {
+          console.log(`📦 Buscando producto vendible: ${menuItem.nombre}`)
+          
           // Buscar el producto en stock_items por nombre
           const { data: stockItems, error: stockError } = await supabase
             .from('stock_items')
@@ -450,17 +474,19 @@ export default function CobroPage() {
             .limit(1)
           
           if (stockError) {
-            console.error(`Error buscando stock para ${menuItem.nombre}:`, stockError)
+            console.error(`❌ Error buscando stock para ${menuItem.nombre}:`, stockError)
             continue
           }
 
           if (!stockItems || stockItems.length === 0) {
-            console.log(`Producto ${menuItem.nombre} no encontrado en stock_items`)
+            console.log(`⚠️ Producto ${menuItem.nombre} no encontrado en stock_items`)
             continue
           }
 
           const stockItem = stockItems[0]
           const nuevaCantidad = stockItem.cantidad - item.cantidad
+
+          console.log(`   → Descontando ${item.cantidad} de ${stockItem.nombre} (actual: ${stockItem.cantidad}, nuevo: ${nuevaCantidad})`)
 
           // Actualizar stock
           const { error: updateError } = await supabase
@@ -472,12 +498,13 @@ export default function CobroPage() {
             .eq('id', stockItem.id)
 
           if (updateError) {
-            console.error(`Error actualizando stock de ${stockItem.nombre}:`, updateError)
+            console.error(`❌ Error actualizando stock de ${stockItem.nombre}:`, updateError)
+            toast.error(`Error al descontar ${stockItem.nombre}`)
             continue
           }
 
           // Registrar movimiento
-          await supabase
+          const { error: movError } = await supabase
             .from('stock_movimientos')
             .insert({
               stock_item_id: stockItem.id,
@@ -486,6 +513,12 @@ export default function CobroPage() {
               motivo: 'Venta - Pedido cobrado',
               order_id: orderId
             })
+          
+          if (movError) {
+            console.log('⚠️ Error registrando movimiento:', movError)
+          }
+
+          productosDescontados.push(`${stockItem.nombre}: -${item.cantidad}`)
 
           // Verificar si quedó por debajo del mínimo
           if (nuevaCantidad <= stockItem.stock_minimo_alerta) {
@@ -496,11 +529,23 @@ export default function CobroPage() {
             })
           }
 
-          console.log(`✅ Descontado ${item.cantidad} de ${stockItem.nombre} (Producto vendible)`)
+          console.log(`✅ Descontado ${item.cantidad} de ${stockItem.nombre}`)
+        } else {
+          console.log(`ℹ️ Producto ${menuItem.nombre} no usa stock avanzado ni está en stock`)
         }
       }
+
+      // Mostrar resumen de lo descontado
+      if (productosDescontados.length > 0) {
+        console.log(`✅ Stock actualizado: ${productosDescontados.join(', ')}`)
+        toast.success(`Stock actualizado: ${productosDescontados.join(', ')}`)
+      } else {
+        console.log('ℹ️ No se descontó ningún producto del stock')
+      }
+      
     } catch (error) {
-      console.error('Error general procesando stock:', error)
+      console.error('❌ Error general procesando stock:', error)
+      toast.error('Error procesando descuento de stock')
     }
 
     return alertas
