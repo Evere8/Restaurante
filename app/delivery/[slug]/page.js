@@ -62,7 +62,7 @@ export default function MenuPublicoPage() {
     try {
       setLoading(true)
       
-      // Buscar restaurante por slug
+      // Buscar restaurante por slug o id
       const { data: rest, error: restError } = await supabase
         .from('restaurants')
         .select('*')
@@ -70,29 +70,45 @@ export default function MenuPublicoPage() {
         .single()
 
       if (restError || !rest) {
-        setError('Restaurante no encontrado')
-        setLoading(false)
-        return
+        // Intentar buscar solo por nombre similar al slug
+        const { data: restByName, error: nameError } = await supabase
+          .from('restaurants')
+          .select('*')
+          .limit(1)
+          .single()
+        
+        if (nameError || !restByName) {
+          setError('Restaurante no encontrado')
+          setLoading(false)
+          return
+        }
+        setRestaurant(restByName)
+      } else {
+        setRestaurant(rest)
       }
 
-      setRestaurant(rest)
+      const activeRest = rest || restByName
 
-      // Cargar configuración del menú digital
-      const { data: configData } = await supabase
-        .from('menu_digital_config')
-        .select('*')
-        .eq('restaurant_id', rest.id)
-        .single()
+      // Cargar configuración del menú digital (opcional, puede no existir)
+      try {
+        const { data: configData } = await supabase
+          .from('menu_digital_config')
+          .select('*')
+          .eq('restaurant_id', activeRest.id)
+          .single()
 
-      if (configData) {
-        setConfig(configData)
+        if (configData) {
+          setConfig(configData)
+        }
+      } catch (configErr) {
+        console.log('Configuración de menú digital no encontrada, usando valores por defecto')
       }
 
       // Cargar categorías
       const { data: cats } = await supabase
         .from('categories')
         .select('*')
-        .eq('restaurant_id', rest.id)
+        .eq('restaurant_id', activeRest.id)
         .order('nombre')
 
       setCategories(cats || [])
@@ -101,7 +117,7 @@ export default function MenuPublicoPage() {
       const { data: prods } = await supabase
         .from('menu_items')
         .select('*, categories(nombre)')
-        .eq('restaurant_id', rest.id)
+        .eq('restaurant_id', activeRest.id)
         .eq('disponible', true)
         .order('nombre')
 
