@@ -760,16 +760,21 @@ export default function PedidosPage() {
           <TabsContent value="entregados">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {orders.entregados.map(order => (
-                <Card key={order.id} className="opacity-75">
-                  <CardHeader>
+                <Card key={order.id} className="border-2 border-purple-200 hover:border-purple-400 transition-all">
+                  <CardHeader className="bg-purple-50">
                     <div className="flex items-start justify-between">
                       <div>
-                        <CardTitle className="text-lg">Pedido #{order.id.slice(0, 8)}</CardTitle>
+                        <CardTitle className="text-lg flex items-center">
+                          Pedido #{order.id.slice(0, 8)}
+                          {order.origen === 'DIGITAL' && (
+                            <Badge className="ml-2 bg-purple-500 text-xs">📱 Cliente</Badge>
+                          )}
+                        </CardTitle>
                         <p className="text-sm text-gray-600 mt-1">
                           {new Date(order.created_at).toLocaleString('es-ES')}
                         </p>
                       </div>
-                      <Badge className="bg-green-500">ENTREGADO</Badge>
+                      <Badge className="bg-purple-500">ENTREGADO</Badge>
                     </div>
                   </CardHeader>
                   <CardContent>
@@ -796,6 +801,25 @@ export default function PedidosPage() {
                       <div className="border-t pt-2 mt-2 flex justify-between font-bold text-lg">
                         <span>Total:</span>
                         <span className="text-orange-600">{formatCurrency(order.total)}</span>
+                      </div>
+                      
+                      {/* Botones de acción para pedidos entregados */}
+                      <div className="flex flex-col space-y-2 mt-3">
+                        <Button 
+                          size="sm" 
+                          className="w-full bg-purple-500 hover:bg-purple-600 text-white"
+                          onClick={() => openAddItemsDialog(order)}
+                        >
+                          <Plus className="h-4 w-4 mr-1" /> Agregar más productos
+                        </Button>
+                        <div className="flex space-x-2">
+                          <Button size="sm" variant="outline" className="flex-1" onClick={() => openEditOrder(order)}>
+                            <Edit className="h-4 w-4 mr-1" /> Editar
+                          </Button>
+                          <Button size="sm" variant="destructive" onClick={() => handleEliminarPedido(order.id)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   </CardContent>
