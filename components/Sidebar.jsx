@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
 import { LogOut, Home, Utensils, ShoppingCart, ChefHat, CreditCard, Users, Tag, BarChart3, Settings, Code, Menu, X, Package, FileText, Smartphone } from 'lucide-react'
@@ -12,6 +12,18 @@ export default function Sidebar() {
   const { user, restaurant, logout } = useAuth()
   const pathname = usePathname()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [adminColors, setAdminColors] = useState({
+    primary: '#f97316',
+    secondary: '#ea580c'
+  })
+
+  // Cargar colores al iniciar
+  useEffect(() => {
+    const savedColors = localStorage.getItem('adminColors')
+    if (savedColors) {
+      setAdminColors(JSON.parse(savedColors))
+    }
+  }, [])
 
   const menuItems = [
     { href: '/dashboard', label: 'Dashboard', icon: Home, permission: 'dashboard' },
@@ -39,12 +51,25 @@ export default function Sidebar() {
     return user.permisos[item.permission] !== false
   })
 
+  // Calcular color más oscuro para gradiente
+  const darkenColor = (hex, percent) => {
+    const num = parseInt(hex.replace('#', ''), 16)
+    const amt = Math.round(2.55 * percent)
+    const R = Math.max((num >> 16) - amt, 0)
+    const G = Math.max((num >> 8 & 0x00FF) - amt, 0)
+    const B = Math.max((num & 0x0000FF) - amt, 0)
+    return '#' + (0x1000000 + R * 0x10000 + G * 0x100 + B).toString(16).slice(1)
+  }
+
+  const primaryDark = darkenColor(adminColors.primary, 15)
+
   return (
     <>
       {/* Hamburger Button - Mobile Only - A LA DERECHA */}
       <button
         onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-        className="lg:hidden fixed top-4 right-4 z-50 p-2 bg-orange-600 text-white rounded-lg shadow-lg"
+        className="lg:hidden fixed top-4 right-4 z-50 p-2 text-white rounded-lg shadow-lg"
+        style={{ backgroundColor: adminColors.primary }}
       >
         {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
       </button>
@@ -60,12 +85,18 @@ export default function Sidebar() {
       {/* Sidebar */}
       <div
         className={cn(
-          "fixed lg:static inset-y-0 left-0 z-40 w-64 min-h-screen bg-gradient-to-b from-orange-600 to-orange-700 text-white flex flex-col transition-transform duration-300",
+          "fixed lg:static inset-y-0 left-0 z-40 w-64 min-h-screen text-white flex flex-col transition-transform duration-300",
           mobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
+        style={{ 
+          background: `linear-gradient(to bottom, ${adminColors.primary}, ${primaryDark})`
+        }}
       >
         {/* Header */}
-        <div className="p-6 border-b border-orange-500 mt-16 lg:mt-0">
+        <div 
+          className="p-6 border-b mt-16 lg:mt-0"
+          style={{ borderColor: `${adminColors.primary}88` }}
+        >
           {restaurant?.logo_url && (
             <div className="mb-4 flex justify-center">
               <img 
@@ -77,8 +108,8 @@ export default function Sidebar() {
             </div>
           )}
           <h1 className="text-2xl font-bold">{restaurant?.nombre || 'CRM Restaurante'}</h1>
-          <p className="text-orange-100 text-sm mt-1">{user?.nombre}</p>
-          <p className="text-orange-200 text-xs">{user?.rol}</p>
+          <p className="text-white/80 text-sm mt-1">{user?.nombre}</p>
+          <p className="text-white/60 text-xs">{user?.rol}</p>
         </div>
 
         {/* Menu Items */}
@@ -92,9 +123,10 @@ export default function Sidebar() {
                   className={cn(
                     'flex items-center space-x-3 px-4 py-3 rounded-lg transition-all cursor-pointer',
                     isActive 
-                      ? 'bg-white text-orange-600 shadow-lg' 
-                      : 'hover:bg-orange-500/50 text-white'
+                      ? 'bg-white shadow-lg' 
+                      : 'hover:bg-white/20 text-white'
                   )}
+                  style={isActive ? { color: adminColors.primary } : {}}
                 >
                   <Icon className="h-5 w-5" />
                   <span className="font-medium">{item.label}</span>
@@ -105,11 +137,14 @@ export default function Sidebar() {
         </nav>
 
         {/* Footer */}
-        <div className="p-4 border-t border-orange-500">
+        <div 
+          className="p-4 border-t"
+          style={{ borderColor: `${adminColors.primary}88` }}
+        >
           <Button
             variant="ghost"
             onClick={logout}
-            className="w-full justify-start text-white hover:bg-orange-500/50"
+            className="w-full justify-start text-white hover:bg-white/20"
           >
             <LogOut className="h-5 w-5 mr-3" />
             Cerrar Sesión
