@@ -1262,11 +1262,64 @@ export default function MenuPublicoPage() {
       <Dialog open={cartOpen} onOpenChange={setCartOpen}>
         <DialogContent className="max-w-md mx-auto max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center">
-              <ShoppingCart className="h-5 w-5 mr-2" style={{ color: colors.primary }} />
-              Tu Pedido
+            <DialogTitle className="flex items-center justify-between">
+              <div className="flex items-center">
+                <ShoppingCart className="h-5 w-5 mr-2" style={{ color: colors.primary }} />
+                {cuentasSeparadas ? 'Cuentas Separadas' : 'Tu Pedido'}
+              </div>
+              {!activeOrder && !cuentasSeparadas && cart.length > 0 && (
+                <button
+                  onClick={iniciarCuentasSeparadasCliente}
+                  className="text-xs px-2 py-1 rounded-full border flex items-center gap-1 hover:bg-gray-100"
+                >
+                  <Users className="h-3 w-3" /> Separar
+                </button>
+              )}
+              {cuentasSeparadas && (
+                <button
+                  onClick={cancelarCuentasSeparadasCliente}
+                  className="text-xs px-2 py-1 rounded-full border border-red-300 text-red-600 flex items-center gap-1 hover:bg-red-50"
+                >
+                  <X className="h-3 w-3" /> Cancelar
+                </button>
+              )}
             </DialogTitle>
           </DialogHeader>
+
+          {/* Pestañas de cuentas separadas */}
+          {cuentasSeparadas && cuentas.length > 0 && (
+            <div className="mb-3 pb-3 border-b">
+              <div className="flex flex-wrap gap-1 mb-2">
+                {cuentas.map((cuenta, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setCuentaActiva(index)}
+                    className={`px-3 py-1 rounded-full text-xs font-medium transition-all flex items-center gap-1 ${
+                      cuentaActiva === index 
+                        ? 'text-white' 
+                        : 'bg-gray-100 text-gray-700'
+                    }`}
+                    style={cuentaActiva === index ? { backgroundColor: colors.primary } : {}}
+                  >
+                    {cuenta.nombre}
+                    <span className="bg-white/30 px-1.5 rounded-full">
+                      {cuenta.productos.length}
+                    </span>
+                  </button>
+                ))}
+                <button
+                  onClick={agregarNuevaCuentaCliente}
+                  className="px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 flex items-center"
+                >
+                  <UserPlus className="h-3 w-3 mr-1" /> Agregar
+                </button>
+              </div>
+              <div className="text-xs text-gray-500 flex justify-between">
+                <span>Total de {cuentas[cuentaActiva]?.nombre}: {formatPrice(calculateCuentaTotal(cuentas[cuentaActiva] || { productos: [] }))}</span>
+                <span className="font-medium">Total General: {formatPrice(calculateTotalGeneral())}</span>
+              </div>
+            </div>
+          )}
 
           {/* Items del pedido activo */}
           {activeOrder && activeOrder.estado === 'ENTREGADO' && activeOrder.order_items?.length > 0 && (
@@ -1285,15 +1338,21 @@ export default function MenuPublicoPage() {
             </div>
           )}
 
-          {cart.length === 0 ? (
+          {getCurrentCartItems().length === 0 && !cuentasSeparadas ? (
             <div className="text-center py-8">
               <div className="text-4xl mb-3">🛒</div>
               <p className="text-gray-500">Tu carrito está vacío</p>
             </div>
+          ) : getCurrentCartItems().length === 0 && cuentasSeparadas ? (
+            <div className="text-center py-8">
+              <div className="text-4xl mb-3">📝</div>
+              <p className="text-gray-500">Cuenta de {cuentas[cuentaActiva]?.nombre} vacía</p>
+              <p className="text-xs text-gray-400 mt-1">Agrega productos desde el menú</p>
+            </div>
           ) : (
             <>
               <div className="space-y-2 mb-4">
-                {cart.map((item, index) => (
+                {getCurrentCartItems().map((item, index) => (
                   <div key={`${item.id}-${index}`} className="p-3 bg-gray-50 rounded-lg">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
@@ -1329,19 +1388,25 @@ export default function MenuPublicoPage() {
                 {activeOrder && activeOrder.estado === 'ENTREGADO' && (
                   <div className="flex justify-between items-center mb-2 text-sm">
                     <span className="text-gray-600">Nuevo pedido:</span>
-                    <span>{formatPrice(cartTotal)}</span>
+                    <span>{formatPrice(cuentasSeparadas ? calculateTotalGeneral() : cartTotal)}</span>
                   </div>
                 )}
                 <div className="flex justify-between items-center mb-3">
                   <span className="text-lg font-medium">Total:</span>
                   <span className="text-xl font-bold" style={{ color: colors.primary }}>
-                    {formatPrice(activeOrder?.estado === 'ENTREGADO' ? grandTotal : cartTotal)}
+                    {formatPrice(cuentasSeparadas ? calculateTotalGeneral() : (activeOrder?.estado === 'ENTREGADO' ? grandTotal : cartTotal))}
                   </span>
                 </div>
+                {cuentasSeparadas && cuentas.length > 1 && (
+                  <p className="text-xs text-gray-500 mb-2 text-center">
+                    Se crearán {cuentas.filter(c => c.productos.length > 0).length} pedidos separados
+                  </p>
+                )}
                 <Button 
                   className="w-full text-white py-5"
                   style={{ backgroundColor: colors.primary }}
                   onClick={() => { setCartOpen(false); setCheckoutOpen(true) }}
+                  disabled={cuentasSeparadas ? !cuentas.some(c => c.productos.length > 0) : getCurrentCartItems().length === 0}
                 >
                   Continuar
                 </Button>
