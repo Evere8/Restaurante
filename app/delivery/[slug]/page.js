@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
-import { ShoppingCart, Plus, Minus, X, Check, Clock, Phone, ChevronLeft, Send, Store, Package, Gift, MessageSquare, Search, Timer, ChefHat, Utensils, CreditCard } from 'lucide-react'
+import { ShoppingCart, Plus, Minus, X, Check, Clock, Phone, ChevronLeft, Send, Store, Package, Gift, MessageSquare, Search, Timer, ChefHat, Utensils, CreditCard, Users, UserPlus } from 'lucide-react'
 import { toast, Toaster } from 'sonner'
 
 export default function MenuPublicoPage() {
@@ -28,9 +28,19 @@ export default function MenuPublicoPage() {
 
   // Estado del pedido activo (para seguimiento)
   const [activeOrder, setActiveOrder] = useState(null)
+  const [activeOrders, setActiveOrders] = useState([]) // Para cuentas separadas
+  const [activeOrderTab, setActiveOrderTab] = useState(0) // Pestaña activa en seguimiento
   const [orderTimer, setOrderTimer] = useState(0)
   const [showOrderStatus, setShowOrderStatus] = useState(false)
   const timerRef = useRef(null)
+
+  // Estados para Cuentas Separadas
+  const [cuentasSeparadas, setCuentasSeparadas] = useState(false)
+  const [cuentas, setCuentas] = useState([]) // Array de {nombre: string, productos: array}
+  const [cuentaActiva, setCuentaActiva] = useState(0)
+  const [nombreCuentaDialog, setNombreCuentaDialog] = useState(false)
+  const [nuevoNombreCuenta, setNuevoNombreCuenta] = useState('')
+  const [grupoMesaId, setGrupoMesaId] = useState(null)
 
   // Modales
   const [selectedProduct, setSelectedProduct] = useState(null)
