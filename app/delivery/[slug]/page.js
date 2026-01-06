@@ -131,44 +131,94 @@ export default function MenuPublicoPage() {
     }
   }, [activeOrder])
 
-  // Polling para actualizar estado del pedido
+  // Polling para actualizar estado del pedido (incluyendo cuentas separadas)
   useEffect(() => {
     if (!activeOrder) return
 
-    const pollOrder = async () => {
-      const { data, error } = await supabase
-        .from('orders')
-        .select('*, order_items(*)')
-        .eq('id', activeOrder.id)
-        .single()
-
-      // Si el pedido fue eliminado o no existe
-      if (error || !data) {
-        console.log('Pedido eliminado o no encontrado, limpiando estado...')
-        localStorage.removeItem(`activeOrder_${slug}`)
-        setActiveOrder(null)
-        setShowOrderStatus(false)
-        setCart([])
-        toast.info('El pedido ya no está disponible')
-        return
-      }
-
-      setActiveOrder(data)
-      localStorage.setItem(`activeOrder_${slug}`, JSON.stringify(data))
+    const pollOrders = async () => {
+      // Verificar si hay múltiples pedidos (cuentas separadas)
+      const savedOrders = localStorage.getItem(`activeOrders_${slug}`)
       
-      // Si está pagado, limpiar
-      if (data.estado === 'PAGADO') {
-        localStorage.removeItem(`activeOrder_${slug}`)
-        setActiveOrder(null)
-        setShowOrderStatus(false)
-        setCart([])
-        toast.success('¡Gracias por tu compra!')
+      if (savedOrders) {
+        // Modo cuentas separadas - actualizar todos los pedidos
+        const ordersData = JSON.parse(savedOrders)
+        const orderIds = ordersData.map(o => o.id)
+        
+        const { data: updatedOrders, error } = await supabase
+          .from('orders')
+          .select('*, order_items(*)')
+          .in('id', orderIds)
+        
+        if (error || !updatedOrders || updatedOrders.length === 0) {
+          console.log('Pedidos eliminados o no encontrados, limpiando estado...')
+          localStorage.removeItem(`activeOrder_${slug}`)
+          localStorage.removeItem(`activeOrders_${slug}`)
+          setActiveOrder(null)
+          setActiveOrders([])
+          setShowOrderStatus(false)
+          setCart([])
+          toast.info('Los pedidos ya no están disponibles')
+          return
+        }
+
+        // Actualizar localStorage y estado
+        localStorage.setItem(`activeOrders_${slug}`, JSON.stringify(updatedOrders))
+        setActiveOrders(updatedOrders)
+        
+        // Actualizar el pedido activo si es uno de los del grupo
+        const currentActiveIndex = activeOrderTab < updatedOrders.length ? activeOrderTab : 0
+        setActiveOrder(updatedOrders[currentActiveIndex])
+        localStorage.setItem(`activeOrder_${slug}`, JSON.stringify(updatedOrders[currentActiveIndex]))
+
+        // Si todos están pagados, limpiar
+        if (updatedOrders.every(o => o.estado === 'PAGADO')) {
+          localStorage.removeItem(`activeOrder_${slug}`)
+          localStorage.removeItem(`activeOrders_${slug}`)
+          setActiveOrder(null)
+          setActiveOrders([])
+          setShowOrderStatus(false)
+          setCart([])
+          toast.success('¡Gracias por tu compra!')
+        }
+      } else {
+        // Modo normal - un solo pedido
+        const { data, error } = await supabase
+          .from('orders')
+          .select('*, order_items(*)')
+          .eq('id', activeOrder.id)
+          .single()
+
+        // Si el pedido fue eliminado o no existe
+        if (error || !data) {
+          console.log('Pedido eliminado o no encontrado, limpiando estado...')
+          localStorage.removeItem(`activeOrder_${slug}`)
+          setActiveOrder(null)
+          setShowOrderStatus(false)
+          setCart([])
+          toast.info('El pedido ya no está disponible')
+          return
+        }
+
+        setActiveOrder(data)
+        localStorage.setItem(`activeOrder_${slug}`, JSON.stringify(data))
+        
+        // Si está pagado, limpiar
+        if (data.estado === 'PAGADO') {
+          localStorage.removeItem(`activeOrder_${slug}`)
+          setActiveOrder(null)
+          setShowOrderStatus(false)
+          setCart([])
+          toast.success('¡Gracias por tu compra!')
+        }
       }
     }
 
-    const interval = setInterval(pollOrder, 5000) // Cada 5 segundos
+    // Primera carga inmediata
+    pollOrders()
+    
+    const interval = setInterval(pollOrders, 3000) // Cada 3 segundos para mejor respuesta
     return () => clearInterval(interval)
-  }, [activeOrder, slug])
+  }, [activeOrder?.id, slug, activeOrderTab])
 
   useEffect(() => {
     if (slug) {
