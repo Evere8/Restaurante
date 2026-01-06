@@ -717,7 +717,10 @@ export default function ConfiguracionPage() {
                     if (!open) resetUserForm()
                   }}>
                     <DialogTrigger asChild>
-                      <Button className="bg-orange-500 hover:bg-orange-600">
+                      <Button 
+                        className="hover:opacity-90"
+                        style={{ backgroundColor: themeColors.secondary }}
+                      >
                         <Plus className="mr-2 h-4 w-4" /> Nuevo Usuario
                       </Button>
                     </DialogTrigger>
