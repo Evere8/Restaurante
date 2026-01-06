@@ -1105,6 +1105,161 @@ export default function PedidosPage() {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Dialog para Agregar Items a Pedido Entregado */}
+        <Dialog open={addItemsDialogOpen} onOpenChange={(open) => {
+          setAddItemsDialogOpen(open)
+          if (!open) {
+            setAddingToOrder(null)
+            setCart([])
+          }
+        }}>
+          <DialogContent className="max-w-6xl w-full max-h-[95vh] sm:max-h-[90vh] p-0 flex flex-col">
+            <DialogHeader className="px-4 sm:px-6 pt-4 sm:pt-6 pb-3 border-b shrink-0 bg-purple-50">
+              <DialogTitle className="flex items-center">
+                <Plus className="h-5 w-5 mr-2 text-purple-600" />
+                Agregar más productos al Pedido #{addingToOrder?.id?.slice(0, 8)}
+              </DialogTitle>
+              <p className="text-sm text-purple-600">
+                Mesa: {addingToOrder?.mesa} | Total actual: {formatCurrency(addingToOrder?.total || 0)}
+              </p>
+            </DialogHeader>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 overflow-y-scroll p-4 sm:p-6" style={{WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain'}}>
+              {/* Productos */}
+              <div className="lg:col-span-2 space-y-4">
+                <div className="space-y-3">
+                  <div className="flex space-x-2">
+                    <Input
+                      placeholder="Buscar producto..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="flex-1"
+                    />
+                    <Select value={selectedCategory || 'all'} onValueChange={(val) => setSelectedCategory(val === 'all' ? null : val)}>
+                      <SelectTrigger className="w-[200px]">
+                        <SelectValue placeholder="Categoría" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todas</SelectItem>
+                        {categories.map(cat => (
+                          <SelectItem key={cat.id} value={cat.id}>{cat.nombre}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 max-h-[400px] overflow-y-auto">
+                    {filteredProducts.map(product => (
+                      <Card key={product.id} className="cursor-pointer hover:shadow-md transition-shadow border-purple-100 hover:border-purple-300" onClick={() => addToCart(product)}>
+                        <CardContent className="p-3">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <h4 className="font-semibold text-sm">{product.nombre}</h4>
+                              <p className="text-lg font-bold text-purple-600 mt-1">{formatCurrency(product.precio_base)}</p>
+                            </div>
+                            <Plus className="h-5 w-5 text-purple-500" />
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Carrito de nuevos items */}
+              <div className="lg:border-l lg:pl-4 flex flex-col mt-4 lg:mt-0">
+                <h3 className="font-bold text-lg mb-3 flex items-center text-purple-700">
+                  <ShoppingCart className="mr-2 h-5 w-5" /> Nuevos Items ({cart.length})
+                </h3>
+
+                {/* Items actuales del pedido */}
+                {addingToOrder?.order_items?.length > 0 && (
+                  <div className="mb-4 p-3 bg-gray-50 rounded-lg border">
+                    <p className="font-semibold text-sm mb-2 text-gray-600">Items actuales:</p>
+                    {addingToOrder.order_items.map(item => (
+                      <div key={item.id} className="flex justify-between text-xs py-1 text-gray-500">
+                        <span>{item.cantidad}x {item.nombre_item_snapshot}</span>
+                        <span>{formatCurrency(item.precio_unitario * item.cantidad)}</span>
+                      </div>
+                    ))}
+                    <div className="border-t mt-2 pt-2 flex justify-between font-medium text-sm">
+                      <span>Subtotal anterior:</span>
+                      <span>{formatCurrency(addingToOrder.total)}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Nuevos items */}
+                <div className="space-y-2 mb-4 flex-1 overflow-y-auto max-h-[200px]">
+                  {cart.length === 0 ? (
+                    <div className="text-center py-8 text-gray-400">
+                      <ShoppingCart className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">Agrega productos para añadir al pedido</p>
+                    </div>
+                  ) : (
+                    cart.map(item => (
+                      <div key={item.id} className="bg-purple-50 p-2 rounded-lg border border-purple-200">
+                        <div className="flex items-start justify-between mb-2">
+                          <span className="font-medium text-sm">{item.nombre}</span>
+                          <button onClick={() => removeFromCart(item.id)} className="text-red-500">
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <Button size="sm" variant="outline" onClick={() => updateCartQuantity(item.id, -1)}>
+                              <Minus className="h-3 w-3" />
+                            </Button>
+                            <span className="font-bold w-8 text-center">{item.cantidad}</span>
+                            <Button size="sm" variant="outline" onClick={() => updateCartQuantity(item.id, 1)}>
+                              <Plus className="h-3 w-3" />
+                            </Button>
+                          </div>
+                          <span className="font-bold text-purple-600">{formatCurrency(parseFloat(item.precio_base) * item.cantidad)}</span>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <div className="border-t pt-3 space-y-3">
+                  <div className="bg-purple-100 p-3 rounded-lg">
+                    <div className="flex justify-between items-center text-sm mb-1">
+                      <span>Pedido anterior:</span>
+                      <span>{formatCurrency(addingToOrder?.total || 0)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm mb-2">
+                      <span>Nuevos items:</span>
+                      <span className="text-purple-600">+ {formatCurrency(calculateTotal())}</span>
+                    </div>
+                    <div className="border-t border-purple-200 pt-2 flex justify-between items-center">
+                      <span className="font-bold text-lg">NUEVO TOTAL:</span>
+                      <span className="font-bold text-2xl text-purple-600">
+                        {formatCurrency((parseFloat(addingToOrder?.total) || 0) + calculateTotal())}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="bg-yellow-50 p-2 rounded-lg border border-yellow-200">
+                    <p className="text-xs text-yellow-800">
+                      ⚠️ Al agregar items, el pedido volverá a estado "PENDIENTE" para preparación
+                    </p>
+                  </div>
+
+                  <Button 
+                    className="w-full bg-purple-500 hover:bg-purple-600" 
+                    onClick={handleAddItemsToOrder} 
+                    disabled={cart.length === 0}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Agregar al Pedido
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
         </div>
       </div>
     </div>
