@@ -653,12 +653,23 @@ export default function MenuPublicoPage() {
       
       {/* Header con imagen de portada */}
       <div 
-        className="relative h-40 bg-cover bg-center"
+        className="relative h-40 bg-cover bg-center overflow-hidden"
         style={{ 
-          backgroundColor: colors.secondary,
-          backgroundImage: config?.imagen_portada ? `url(${config.imagen_portada})` : 'none'
+          backgroundColor: colors.secondary
         }}
       >
+        {/* Imagen de portada como img para mejor control de errores */}
+        {config?.imagen_portada && (
+          <img 
+            src={config.imagen_portada}
+            alt="Portada"
+            className="absolute inset-0 w-full h-full object-cover"
+            onError={(e) => {
+              e.target.style.display = 'none'
+              console.log('Error cargando imagen de portada')
+            }}
+          />
+        )}
         <div className="absolute inset-0 bg-black/40"></div>
         <div className="absolute bottom-0 left-0 right-0 p-4">
           <div className="flex items-end space-x-4">
