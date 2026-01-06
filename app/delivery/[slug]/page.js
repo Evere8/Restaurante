@@ -736,7 +736,10 @@ export default function MenuPublicoPage() {
             )}
             <div className="text-white pb-1">
               <h1 className="text-xl font-bold">{restaurant?.nombre}</h1>
-              <p className="text-white/80 text-sm">{config?.descripcion || 'Restaurante'}</p>
+              {restaurant?.tipo_negocio && (
+                <p className="text-white/90 text-xs font-medium capitalize">{restaurant.tipo_negocio.replace('_', ' ')}</p>
+              )}
+              <p className="text-white/70 text-sm mt-0.5">{restaurant?.descripcion || config?.descripcion || ''}</p>
             </div>
           </div>
         </div>
