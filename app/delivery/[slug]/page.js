@@ -301,6 +301,58 @@ export default function MenuPublicoPage() {
     setProductComment('')
   }
 
+  // Funciones para Cuentas Separadas del Cliente
+  const iniciarCuentasSeparadasCliente = () => {
+    setCuentasSeparadas(true)
+    setGrupoMesaId(crypto.randomUUID())
+    setNombreCuentaDialog(true)
+  }
+
+  const agregarNuevaCuentaCliente = () => {
+    setNuevoNombreCuenta('')
+    setNombreCuentaDialog(true)
+  }
+
+  const confirmarNuevaCuentaCliente = () => {
+    if (!nuevoNombreCuenta.trim()) {
+      toast.error('Ingresa un nombre para la cuenta')
+      return
+    }
+    
+    const nuevaCuenta = {
+      nombre: nuevoNombreCuenta.trim(),
+      productos: []
+    }
+    
+    setCuentas([...cuentas, nuevaCuenta])
+    setCuentaActiva(cuentas.length)
+    setNombreCuentaDialog(false)
+    setNuevoNombreCuenta('')
+    toast.success(`Cuenta de "${nuevaCuenta.nombre}" creada`)
+  }
+
+  const eliminarCuentaCliente = (index) => {
+    if (cuentas.length <= 1) {
+      toast.error('Debe haber al menos una cuenta')
+      return
+    }
+    
+    const nuevasCuentas = cuentas.filter((_, i) => i !== index)
+    setCuentas(nuevasCuentas)
+    
+    if (cuentaActiva >= nuevasCuentas.length) {
+      setCuentaActiva(nuevasCuentas.length - 1)
+    }
+  }
+
+  const cancelarCuentasSeparadasCliente = () => {
+    setCuentasSeparadas(false)
+    setCuentas([])
+    setCuentaActiva(0)
+    setGrupoMesaId(null)
+    setCart([])
+  }
+
   const addToCartFromModal = () => {
     if (!selectedProduct) return
 
@@ -316,15 +368,36 @@ export default function MenuPublicoPage() {
       promoData: selectedProduct.promoData
     }
 
-    const existing = cart.find(item => item.id === cartItem.id && item.comentario === cartItem.comentario)
-    if (existing) {
-      setCart(cart.map(item => 
-        (item.id === cartItem.id && item.comentario === cartItem.comentario)
-          ? { ...item, cantidad: item.cantidad + productQuantity }
-          : item
-      ))
+    if (cuentasSeparadas && cuentas.length > 0) {
+      // Modo cuentas separadas
+      const nuevasCuentas = [...cuentas]
+      const cuentaActual = nuevasCuentas[cuentaActiva]
+      const existing = cuentaActual.productos.find(item => item.id === cartItem.id && item.comentario === cartItem.comentario)
+      
+      if (existing) {
+        cuentaActual.productos = cuentaActual.productos.map(item =>
+          (item.id === cartItem.id && item.comentario === cartItem.comentario)
+            ? { ...item, cantidad: item.cantidad + productQuantity }
+            : item
+        )
+      } else {
+        cuentaActual.productos.push(cartItem)
+      }
+      
+      setCuentas(nuevasCuentas)
+      toast.success(`${cartItem.nombre} agregado a cuenta de ${cuentaActual.nombre}`)
     } else {
-      setCart([...cart, cartItem])
+      // Modo normal
+      const existing = cart.find(item => item.id === cartItem.id && item.comentario === cartItem.comentario)
+      if (existing) {
+        setCart(cart.map(item => 
+          (item.id === cartItem.id && item.comentario === cartItem.comentario)
+            ? { ...item, cantidad: item.cantidad + productQuantity }
+            : item
+        ))
+      } else {
+        setCart([...cart, cartItem])
+      }
     }
     
     setSelectedProduct(null)
@@ -332,25 +405,69 @@ export default function MenuPublicoPage() {
   }
 
   const updateCartQuantity = (index, delta) => {
-    setCart(cart.map((item, i) => {
-      if (i === index) {
-        const newCantidad = item.cantidad + delta
-        return newCantidad > 0 ? { ...item, cantidad: newCantidad } : item
-      }
-      return item
-    }).filter(item => item.cantidad > 0))
+    if (cuentasSeparadas && cuentas.length > 0) {
+      const nuevasCuentas = [...cuentas]
+      nuevasCuentas[cuentaActiva].productos = nuevasCuentas[cuentaActiva].productos
+        .map((item, i) => {
+          if (i === index) {
+            const newCantidad = item.cantidad + delta
+            return newCantidad > 0 ? { ...item, cantidad: newCantidad } : item
+          }
+          return item
+        })
+        .filter(item => item.cantidad > 0)
+      setCuentas(nuevasCuentas)
+    } else {
+      setCart(cart.map((item, i) => {
+        if (i === index) {
+          const newCantidad = item.cantidad + delta
+          return newCantidad > 0 ? { ...item, cantidad: newCantidad } : item
+        }
+        return item
+      }).filter(item => item.cantidad > 0))
+    }
   }
 
   const removeFromCart = (index) => {
-    setCart(cart.filter((_, i) => i !== index))
+    if (cuentasSeparadas && cuentas.length > 0) {
+      const nuevasCuentas = [...cuentas]
+      nuevasCuentas[cuentaActiva].productos = nuevasCuentas[cuentaActiva].productos.filter((_, i) => i !== index)
+      setCuentas(nuevasCuentas)
+    } else {
+      setCart(cart.filter((_, i) => i !== index))
+    }
   }
 
-  const cartTotal = cart.reduce((sum, item) => sum + (item.precio * item.cantidad), 0)
-  const cartCount = cart.reduce((sum, item) => sum + item.cantidad, 0)
+  // Funciones de cálculo actualizadas
+  const getCurrentCartItems = () => {
+    if (cuentasSeparadas && cuentas.length > 0) {
+      return cuentas[cuentaActiva]?.productos || []
+    }
+    return cart
+  }
+
+  const calculateCuentaTotal = (cuenta) => {
+    return cuenta.productos.reduce((sum, item) => sum + (item.precio * item.cantidad), 0)
+  }
+
+  const calculateTotalGeneral = () => {
+    if (cuentasSeparadas && cuentas.length > 0) {
+      return cuentas.reduce((total, cuenta) => total + calculateCuentaTotal(cuenta), 0)
+    }
+    return cart.reduce((sum, item) => sum + (item.precio * item.cantidad), 0)
+  }
+
+  const cartTotal = cuentasSeparadas && cuentas.length > 0 
+    ? calculateCuentaTotal(cuentas[cuentaActiva] || { productos: [] })
+    : cart.reduce((sum, item) => sum + (item.precio * item.cantidad), 0)
+    
+  const cartCount = cuentasSeparadas && cuentas.length > 0
+    ? cuentas.reduce((total, cuenta) => total + cuenta.productos.reduce((sum, item) => sum + item.cantidad, 0), 0)
+    : cart.reduce((sum, item) => sum + item.cantidad, 0)
 
   // Total del pedido activo + carrito nuevo
   const activeOrderTotal = activeOrder?.order_items?.reduce((sum, item) => sum + (item.precio_unitario * item.cantidad), 0) || 0
-  const grandTotal = activeOrderTotal + cartTotal
+  const grandTotal = activeOrderTotal + (cuentasSeparadas ? calculateTotalGeneral() : cartTotal)
 
   const handleCheckout = async () => {
     if (!checkoutForm.mesa && !activeOrder) {
