@@ -166,20 +166,29 @@ export default function ConfiguracionPage() {
 
   const handleSaveRestaurant = async () => {
     try {
+      // Solo actualizar campos básicos que existen en la tabla
+      const updateData = {
+        nombre: restaurantForm.nombre,
+        telefono: restaurantForm.telefono,
+        email: restaurantForm.email,
+        direccion: restaurantForm.direccion,
+        logo_url: restaurantForm.logo_url
+      }
+
       const { error } = await supabase
         .from('restaurants')
-        .update({
-          nombre: restaurantForm.nombre,
-          telefono: restaurantForm.telefono,
-          email: restaurantForm.email,
-          direccion: restaurantForm.direccion,
-          logo_url: restaurantForm.logo_url,
-          tipo_negocio: restaurantForm.tipo_negocio,
-          descripcion: restaurantForm.descripcion
-        })
+        .update(updateData)
         .eq('id', currentRestaurant.id)
 
       if (error) throw error
+
+      // Guardar tipo_negocio y descripcion en localStorage como alternativa
+      const extraData = {
+        tipo_negocio: restaurantForm.tipo_negocio,
+        descripcion: restaurantForm.descripcion
+      }
+      localStorage.setItem(`restaurant_extra_${currentRestaurant.id}`, JSON.stringify(extraData))
+
       toast.success('Restaurante actualizado')
       await loadRestaurantData()
       await reloadRestaurant()
