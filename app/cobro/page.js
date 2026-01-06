@@ -1299,27 +1299,49 @@ function CobroRapidoSection({ restaurant, formatCurrency }) {
   const [cart, setCart] = useState([])
   const [metodoPago, setMetodoPago] = useState('')
   const [procesando, setProcesando] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    loadProducts()
-  }, [restaurant])
+    if (restaurant?.id) {
+      loadProducts()
+    }
+  }, [restaurant?.id])
 
   const loadProducts = async () => {
-    if (!restaurant) return
+    if (!restaurant?.id) {
+      console.log('No restaurant ID for cobro rapido')
+      setIsLoading(false)
+      return
+    }
     
-    const { data: items } = await supabase
-      .from('menu_items')
-      .select('*, menu_categories(nombre)')
-      .eq('restaurant_id', restaurant.id)
-      .eq('activo', true)
+    try {
+      console.log('Loading products for restaurant:', restaurant.id)
+      const { data: items, error: itemsError } = await supabase
+        .from('menu_items')
+        .select('*, menu_categories(nombre)')
+        .eq('restaurant_id', restaurant.id)
+        .eq('activo', true)
 
-    const { data: cats } = await supabase
-      .from('menu_categories')
-      .select('*')
-      .eq('restaurant_id', restaurant.id)
+      if (itemsError) {
+        console.error('Error loading items:', itemsError)
+      }
 
-    setMenuItems(items || [])
-    setCategories(cats || [])
+      const { data: cats, error: catsError } = await supabase
+        .from('menu_categories')
+        .select('*')
+        .eq('restaurant_id', restaurant.id)
+
+      if (catsError) {
+        console.error('Error loading categories:', catsError)
+      }
+
+      console.log('Loaded items:', items?.length, 'categories:', cats?.length)
+      setMenuItems(items || [])
+      setCategories(cats || [])
+    } catch (e) {
+      console.error('Error in loadProducts:', e)
+    }
+    setIsLoading(false)
   }
 
   const filteredProducts = menuItems.filter(item => {
