@@ -113,12 +113,6 @@ export default function LoginPage() {
               {loading ? 'Iniciando...' : 'Iniciar Sesión'}
             </Button>
           </form>
-
-          <div className="mt-6 p-4 bg-orange-50 rounded-lg text-sm text-gray-700">
-            <p className="font-semibold mb-2">👤 Usuarios Demo:</p>
-            <p className="mb-1"><strong>Admin:</strong> admin@demo.com / admin123</p>
-            <p><strong>Dev:</strong> dev@demo.com / dev123</p>
-          </div>
         </CardContent>
       </Card>
     </div>
