@@ -523,10 +523,19 @@ export default function MenuPublicoPage() {
         <div className="p-4 text-white" style={{ backgroundColor: colors.primary }}>
           <div className="flex items-center justify-between">
             <h1 className="text-xl font-bold">Tu Pedido</h1>
-            <div className="flex items-center bg-white/20 px-3 py-1 rounded-full">
-              <Timer className="h-4 w-4 mr-2" />
-              <span className="font-mono text-lg">{formatTime(orderTimer)}</span>
-            </div>
+            {/* Solo mostrar cronómetro si NO está entregado */}
+            {activeOrder.estado !== 'ENTREGADO' && (
+              <div className="flex items-center bg-white/20 px-3 py-1 rounded-full">
+                <Timer className="h-4 w-4 mr-2" />
+                <span className="font-mono text-lg">{formatTime(orderTimer)}</span>
+              </div>
+            )}
+            {activeOrder.estado === 'ENTREGADO' && (
+              <div className="flex items-center bg-green-500 px-3 py-1 rounded-full">
+                <Check className="h-4 w-4 mr-2" />
+                <span className="text-sm font-medium">Entregado</span>
+              </div>
+            )}
           </div>
           <p className="text-sm text-white/80">Mesa {activeOrder.mesa}</p>
         </div>
