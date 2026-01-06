@@ -1570,6 +1570,56 @@ export default function MenuPublicoPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Dialog para nombre de cuenta separada */}
+      <Dialog open={nombreCuentaDialog} onOpenChange={setNombreCuentaDialog}>
+        <DialogContent className="max-w-sm mx-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center">
+              <Users className="mr-2 h-5 w-5" style={{ color: colors.primary }} />
+              {cuentas.length === 0 ? 'Crear Primera Cuenta' : 'Nueva Cuenta'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <p className="text-sm text-gray-600">
+              {cuentas.length === 0 
+                ? '¿Quieren pagar por separado? Ingresa el nombre de la primera persona.'
+                : 'Ingresa el nombre para agregar otra cuenta.'}
+            </p>
+            <div>
+              <label className="block text-sm font-medium mb-2">Nombre</label>
+              <Input 
+                placeholder="Ej: Juan, María..."
+                value={nuevoNombreCuenta}
+                onChange={(e) => setNuevoNombreCuenta(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && confirmarNuevaCuentaCliente()}
+                autoFocus
+              />
+            </div>
+          </div>
+          <div className="flex space-x-2">
+            <Button 
+              variant="outline" 
+              className="flex-1"
+              onClick={() => {
+                setNombreCuentaDialog(false)
+                if (cuentas.length === 0) {
+                  setCuentasSeparadas(false)
+                }
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button 
+              className="flex-1 text-white"
+              style={{ backgroundColor: colors.primary }}
+              onClick={confirmarNuevaCuentaCliente}
+            >
+              {cuentas.length === 0 ? 'Crear' : 'Agregar'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
