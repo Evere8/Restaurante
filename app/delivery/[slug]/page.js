@@ -1016,7 +1016,7 @@ export default function MenuPublicoPage() {
                       <div className="flex-1">
                         <h4 className="font-medium capitalize text-sm">{item.nombre}</h4>
                         {item.comentario && (
-                          <p className="text-xs text-gray-500 italic">"{item.comentario}"</p>
+                          <p className="text-xs text-gray-500 italic">&quot;{item.comentario}&quot;</p>
                         )}
                         <p className="text-sm mt-1" style={{ color: colors.primary }}>
                           {formatPrice(item.precio)} x {item.cantidad}
