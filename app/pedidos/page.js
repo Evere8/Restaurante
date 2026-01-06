@@ -1243,7 +1243,7 @@ export default function PedidosPage() {
 
                   <div className="bg-yellow-50 p-2 rounded-lg border border-yellow-200">
                     <p className="text-xs text-yellow-800">
-                      ⚠️ Al agregar items, el pedido volverá a estado "PENDIENTE" para preparación
+                      ⚠️ Al agregar items, el pedido volverá a estado &quot;PENDIENTE&quot; para preparación
                     </p>
                   </div>
 
