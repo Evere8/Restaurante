@@ -238,36 +238,154 @@ export default function PedidosPage() {
     }
   }
 
-  const addToCart = (product) => {
-    const existingItem = cart.find(item => item.id === product.id)
-    if (existingItem) {
-      setCart(cart.map(item => 
-        item.id === product.id 
-          ? { ...item, cantidad: item.cantidad + 1 }
-          : item
-      ))
-    } else {
-      setCart([...cart, { ...product, cantidad: 1 }])
+  // Funciones para Cuentas Separadas
+  const iniciarCuentasSeparadas = () => {
+    setCuentasSeparadas(true)
+    setGrupoMesaId(crypto.randomUUID())
+    setNombreCuentaDialog(true)
+  }
+
+  const agregarNuevaCuenta = () => {
+    setNuevoNombreCuenta('')
+    setNombreCuentaDialog(true)
+  }
+
+  const confirmarNuevaCuenta = () => {
+    if (!nuevoNombreCuenta.trim()) {
+      toast.error('Ingresa un nombre para la cuenta')
+      return
     }
-    toast.success(`${product.nombre} agregado al carrito`)
+    
+    const nuevaCuenta = {
+      nombre: nuevoNombreCuenta.trim(),
+      productos: []
+    }
+    
+    setCuentas([...cuentas, nuevaCuenta])
+    setCuentaActiva(cuentas.length) // Activar la nueva cuenta
+    setNombreCuentaDialog(false)
+    setNuevoNombreCuenta('')
+    toast.success(`Cuenta "${nuevaCuenta.nombre}" creada`)
+  }
+
+  const eliminarCuenta = (index) => {
+    if (cuentas.length <= 1) {
+      toast.error('Debe haber al menos una cuenta')
+      return
+    }
+    
+    const nuevasCuentas = cuentas.filter((_, i) => i !== index)
+    setCuentas(nuevasCuentas)
+    
+    if (cuentaActiva >= nuevasCuentas.length) {
+      setCuentaActiva(nuevasCuentas.length - 1)
+    }
+  }
+
+  const cancelarCuentasSeparadas = () => {
+    setCuentasSeparadas(false)
+    setCuentas([])
+    setCuentaActiva(0)
+    setGrupoMesaId(null)
+    setCart([])
+  }
+
+  const addToCart = (product) => {
+    if (cuentasSeparadas && cuentas.length > 0) {
+      // Modo cuentas separadas: agregar a la cuenta activa
+      const nuevasCuentas = [...cuentas]
+      const cuentaActual = nuevasCuentas[cuentaActiva]
+      const existingItem = cuentaActual.productos.find(item => item.id === product.id)
+      
+      if (existingItem) {
+        cuentaActual.productos = cuentaActual.productos.map(item =>
+          item.id === product.id
+            ? { ...item, cantidad: item.cantidad + 1 }
+            : item
+        )
+      } else {
+        cuentaActual.productos.push({ ...product, cantidad: 1 })
+      }
+      
+      setCuentas(nuevasCuentas)
+      toast.success(`${product.nombre} agregado a cuenta de ${cuentaActual.nombre}`)
+    } else {
+      // Modo normal
+      const existingItem = cart.find(item => item.id === product.id)
+      if (existingItem) {
+        setCart(cart.map(item => 
+          item.id === product.id 
+            ? { ...item, cantidad: item.cantidad + 1 }
+            : item
+        ))
+      } else {
+        setCart([...cart, { ...product, cantidad: 1 }])
+      }
+      toast.success(`${product.nombre} agregado al carrito`)
+    }
   }
 
   const updateCartQuantity = (productId, delta) => {
-    setCart(cart.map(item => {
-      if (item.id === productId) {
-        const newQuantity = item.cantidad + delta
-        return newQuantity > 0 ? { ...item, cantidad: newQuantity } : null
-      }
-      return item
-    }).filter(Boolean))
+    if (cuentasSeparadas && cuentas.length > 0) {
+      const nuevasCuentas = [...cuentas]
+      nuevasCuentas[cuentaActiva].productos = nuevasCuentas[cuentaActiva].productos
+        .map(item => {
+          if (item.id === productId) {
+            const newQuantity = item.cantidad + delta
+            return newQuantity > 0 ? { ...item, cantidad: newQuantity } : null
+          }
+          return item
+        })
+        .filter(Boolean)
+      setCuentas(nuevasCuentas)
+    } else {
+      setCart(cart.map(item => {
+        if (item.id === productId) {
+          const newQuantity = item.cantidad + delta
+          return newQuantity > 0 ? { ...item, cantidad: newQuantity } : null
+        }
+        return item
+      }).filter(Boolean))
+    }
   }
 
   const removeFromCart = (productId) => {
-    setCart(cart.filter(item => item.id !== productId))
+    if (cuentasSeparadas && cuentas.length > 0) {
+      const nuevasCuentas = [...cuentas]
+      nuevasCuentas[cuentaActiva].productos = nuevasCuentas[cuentaActiva].productos
+        .filter(item => item.id !== productId)
+      setCuentas(nuevasCuentas)
+    } else {
+      setCart(cart.filter(item => item.id !== productId))
+    }
   }
 
   const calculateTotal = () => {
+    if (cuentasSeparadas && cuentas.length > 0) {
+      return cuentas[cuentaActiva]?.productos?.reduce((sum, item) => 
+        sum + (parseFloat(item.precio_base) * item.cantidad), 0) || 0
+    }
     return cart.reduce((sum, item) => sum + (parseFloat(item.precio_base) * item.cantidad), 0)
+  }
+
+  const calculateTotalCuenta = (cuenta) => {
+    return cuenta.productos.reduce((sum, item) => 
+      sum + (parseFloat(item.precio_base) * item.cantidad), 0)
+  }
+
+  const calculateTotalGeneral = () => {
+    if (cuentasSeparadas && cuentas.length > 0) {
+      return cuentas.reduce((total, cuenta) => 
+        total + calculateTotalCuenta(cuenta), 0)
+    }
+    return calculateTotal()
+  }
+
+  const getCurrentCartItems = () => {
+    if (cuentasSeparadas && cuentas.length > 0) {
+      return cuentas[cuentaActiva]?.productos || []
+    }
+    return cart
   }
 
   const handleMarcarEntregado = async (orderId) => {
