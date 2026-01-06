@@ -41,6 +41,14 @@ export default function PedidosPage() {
   const [soundEnabled, setSoundEnabled] = useState(true)
   const audioRef = useRef(null)
 
+  // Estados para Cuentas Separadas
+  const [cuentasSeparadas, setCuentasSeparadas] = useState(false)
+  const [cuentas, setCuentas] = useState([]) // Array de {nombre: string, productos: array}
+  const [cuentaActiva, setCuentaActiva] = useState(0) // Índice de la cuenta activa
+  const [nombreCuentaDialog, setNombreCuentaDialog] = useState(false)
+  const [nuevoNombreCuenta, setNuevoNombreCuenta] = useState('')
+  const [grupoMesaId, setGrupoMesaId] = useState(null)
+
   const [orderForm, setOrderForm] = useState({
     tipo: 'SALA',
     mesa: '',
