@@ -64,14 +64,46 @@ export default function MenuPublicoPage() {
 
   const colors = config?.colores || defaultColors
 
-  // Cargar pedido activo desde localStorage
+  // Cargar pedido activo desde localStorage y verificar que aún existe
   useEffect(() => {
-    const savedOrder = localStorage.getItem(`activeOrder_${slug}`)
-    if (savedOrder) {
-      const order = JSON.parse(savedOrder)
-      setActiveOrder(order)
-      setShowOrderStatus(true)
-      setCheckoutForm(prev => ({ ...prev, mesa: order.mesa || '' }))
+    const checkSavedOrder = async () => {
+      const savedOrder = localStorage.getItem(`activeOrder_${slug}`)
+      if (savedOrder) {
+        const order = JSON.parse(savedOrder)
+        
+        // Verificar que el pedido aún existe en la base de datos
+        const { data, error } = await supabase
+          .from('orders')
+          .select('*, order_items(*)')
+          .eq('id', order.id)
+          .single()
+        
+        if (error || !data) {
+          // El pedido fue eliminado, limpiar localStorage
+          console.log('Pedido guardado ya no existe, limpiando...')
+          localStorage.removeItem(`activeOrder_${slug}`)
+          setActiveOrder(null)
+          setShowOrderStatus(false)
+          return
+        }
+        
+        // Si el pedido está PAGADO, también limpiar
+        if (data.estado === 'PAGADO') {
+          localStorage.removeItem(`activeOrder_${slug}`)
+          setActiveOrder(null)
+          setShowOrderStatus(false)
+          return
+        }
+        
+        // El pedido existe y está activo
+        setActiveOrder(data)
+        setShowOrderStatus(true)
+        setCheckoutForm(prev => ({ ...prev, mesa: data.mesa || '' }))
+      }
+    }
+    
+    if (slug) {
+      checkSavedOrder()
     }
   }, [slug])
 
