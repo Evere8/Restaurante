@@ -94,14 +94,19 @@ export default function ConfiguracionPage() {
 
     if (data) {
       setRestaurant(data)
+      
+      // Cargar datos extra desde localStorage
+      const extraDataStr = localStorage.getItem(`restaurant_extra_${currentRestaurant.id}`)
+      const extraData = extraDataStr ? JSON.parse(extraDataStr) : {}
+      
       setRestaurantForm({
         nombre: data.nombre || '',
         telefono: data.telefono || '',
         email: data.email || '',
         direccion: data.direccion || '',
         logo_url: data.logo_url || '',
-        tipo_negocio: data.tipo_negocio || '',
-        descripcion: data.descripcion || ''
+        tipo_negocio: extraData.tipo_negocio || data.tipo_negocio || '',
+        descripcion: extraData.descripcion || data.descripcion || ''
       })
     }
   }
