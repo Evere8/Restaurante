@@ -1299,13 +1299,12 @@ export default function CobroPage() {
 }
 
 // Componente separado para Cobro Rápido
-function CobroRapidoSection({ restaurant, formatCurrency }) {
+function CobroRapidoSection({ restaurant, formatCurrency, onOrderCreated }) {
   const [menuItems, setMenuItems] = useState([])
   const [categories, setCategories] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState(null)
   const [cart, setCart] = useState([])
-  const [metodoPago, setMetodoPago] = useState('')
   const [procesando, setProcesando] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
 
