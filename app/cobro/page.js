@@ -82,6 +82,37 @@ export default function CobroPage() {
     setOrdersCobrados(cobrados || [])
   }
 
+  // Función para eliminar pedido
+  const handleEliminarPedido = async (orderId) => {
+    if (!confirm('¿Estás seguro de eliminar este pedido? Esta acción no se puede deshacer.')) {
+      return
+    }
+
+    try {
+      // Primero eliminar los items del pedido
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .delete()
+        .eq('order_id', orderId)
+
+      if (itemsError) throw itemsError
+
+      // Luego eliminar el pedido
+      const { error: orderError } = await supabase
+        .from('orders')
+        .delete()
+        .eq('id', orderId)
+
+      if (orderError) throw orderError
+
+      toast.success('Pedido eliminado correctamente')
+      loadOrders()
+    } catch (error) {
+      console.error('Error eliminando pedido:', error)
+      toast.error('Error al eliminar el pedido')
+    }
+  }
+
   const openPaymentDialog = (order) => {
     setSelectedOrder(order)
     setPaymentForm({
