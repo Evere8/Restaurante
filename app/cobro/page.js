@@ -1443,6 +1443,7 @@ function CobroRapidoSection({ restaurant, formatCurrency }) {
             <CardTitle className="flex items-center text-green-700">
               <Coins className="h-5 w-5 mr-2" />
               Seleccionar Productos
+              {isLoading && <span className="ml-2 text-sm text-gray-400">(Cargando...)</span>}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -1466,18 +1467,26 @@ function CobroRapidoSection({ restaurant, formatCurrency }) {
               </Select>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 max-h-[400px] overflow-y-auto">
-              {filteredProducts.map(product => (
-                <button
-                  key={product.id}
-                  onClick={() => addToCart(product)}
-                  className="p-3 bg-white border rounded-lg hover:bg-green-50 hover:border-green-400 transition-all text-left"
-                >
-                  <p className="font-medium text-sm truncate">{product.nombre}</p>
-                  <p className="text-green-600 font-bold">{formatCurrency(product.precio_base)}</p>
-                </button>
-              ))}
-            </div>
+            {isLoading ? (
+              <div className="text-center py-8 text-gray-400">Cargando productos...</div>
+            ) : menuItems.length === 0 ? (
+              <div className="text-center py-8 text-gray-400">
+                No hay productos en el menú. Agrega productos desde la sección Menú.
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 max-h-[400px] overflow-y-auto">
+                {filteredProducts.map(product => (
+                  <button
+                    key={product.id}
+                    onClick={() => addToCart(product)}
+                    className="p-3 bg-white border rounded-lg hover:bg-green-50 hover:border-green-400 transition-all text-left"
+                  >
+                    <p className="font-medium text-sm truncate">{product.nombre}</p>
+                    <p className="text-green-600 font-bold">{formatCurrency(product.precio_base)}</p>
+                  </button>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
