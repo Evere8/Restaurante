@@ -1015,6 +1015,11 @@ export default function CobroPage() {
               </Card>
             )}
           </TabsContent>
+
+          {/* Pestaña Cobro Rápido */}
+          <TabsContent value="rapido">
+            <CobroRapidoSection restaurant={restaurant} formatCurrency={formatCurrency} />
+          </TabsContent>
         </Tabs>
 
         {/* Dialog de Pago */}
