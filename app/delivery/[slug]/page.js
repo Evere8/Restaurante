@@ -565,14 +565,15 @@ export default function MenuPublicoPage() {
                   <div key={stage.key} className="flex flex-col items-center flex-1">
                     <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-1 transition-all ${
                       isActive ? statusInfo.color : 'bg-gray-200'
-                    } ${isCurrent ? 'ring-4 ring-offset-2 animate-pulse' : ''}`}
+                    } ${isCurrent && activeOrder.estado !== 'ENTREGADO' ? 'ring-4 ring-offset-2 animate-pulse' : ''}`}
                     style={isCurrent ? { ringColor: statusInfo.color.replace('bg-', '') } : {}}>
                       <StageIcon className={`h-5 w-5 ${isActive ? 'text-white' : 'text-gray-400'}`} />
                     </div>
                     <span className={`text-xs font-medium ${isActive ? 'text-gray-900' : 'text-gray-400'}`}>
                       {stage.label}
                     </span>
-                    {isCurrent && (
+                    {/* Solo mostrar cronómetro si NO está entregado */}
+                    {isCurrent && activeOrder.estado !== 'ENTREGADO' && (
                       <div className="flex items-center mt-1 bg-gray-100 rounded-full px-2 py-0.5">
                         <Timer className="h-3 w-3 mr-1 text-gray-500" />
                         <span className="text-xs font-mono text-gray-700">{formatTime(orderTimer)}</span>
