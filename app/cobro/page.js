@@ -1310,7 +1310,8 @@ export default function CobroPage() {
                 )}
 
                 <Button 
-                  className="w-full bg-orange-500 hover:bg-orange-600 py-6 text-lg"
+                  className="w-full hover:opacity-90 py-6 text-lg"
+                  style={{ backgroundColor: themeColors.secondary }}
                   onClick={handleProcessPayment}
                   disabled={paymentForm.generar_factura && (!paymentForm.factura_ruc || !paymentForm.factura_nombre)}
                 >
