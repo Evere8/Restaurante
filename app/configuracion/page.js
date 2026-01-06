@@ -187,12 +187,41 @@ export default function ConfiguracionPage() {
 
       if (error) throw error
 
-      // Guardar tipo_negocio y descripcion en localStorage como alternativa
+      // Guardar tipo_negocio y descripcion en localStorage como alternativa local
       const extraData = {
         tipo_negocio: restaurantForm.tipo_negocio,
         descripcion: restaurantForm.descripcion
       }
       localStorage.setItem(`restaurant_extra_${currentRestaurant.id}`, JSON.stringify(extraData))
+
+      // También guardar en menu_digital_config para que aparezca en el menú del cliente
+      try {
+        const { data: existingConfig } = await supabase
+          .from('menu_digital_config')
+          .select('id')
+          .eq('restaurant_id', currentRestaurant.id)
+          .single()
+
+        if (existingConfig) {
+          await supabase
+            .from('menu_digital_config')
+            .update({
+              descripcion: restaurantForm.descripcion,
+              tipo_negocio: restaurantForm.tipo_negocio
+            })
+            .eq('restaurant_id', currentRestaurant.id)
+        } else {
+          await supabase
+            .from('menu_digital_config')
+            .insert({
+              restaurant_id: currentRestaurant.id,
+              descripcion: restaurantForm.descripcion,
+              tipo_negocio: restaurantForm.tipo_negocio
+            })
+        }
+      } catch (configError) {
+        console.log('menu_digital_config update skipped:', configError.message)
+      }
 
       toast.success('Restaurante actualizado')
       await loadRestaurantData()
