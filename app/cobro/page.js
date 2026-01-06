@@ -1448,9 +1448,6 @@ function CobroRapidoSection({ restaurant, formatCurrency, onOrderCreated }) {
       setProcesando(false)
     }
   }
-    }
-    setProcesando(false)
-  }
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -1545,24 +1542,16 @@ function CobroRapidoSection({ restaurant, formatCurrency, onOrderCreated }) {
                 <span className="text-green-600">{formatCurrency(total)}</span>
               </div>
 
-              <Select value={metodoPago} onValueChange={setMetodoPago}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Método de pago" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="EFECTIVO">💵 Efectivo</SelectItem>
-                  <SelectItem value="TARJETA">💳 Tarjeta</SelectItem>
-                  <SelectItem value="TRANSFERENCIA">📱 Transferencia</SelectItem>
-                  <SelectItem value="QR">📷 QR</SelectItem>
-                </SelectContent>
-              </Select>
+              <p className="text-xs text-gray-500 text-center">
+                Al hacer clic se creará el pedido y se abrirá la ventana de cobro completa
+              </p>
 
               <Button 
                 className="w-full bg-green-500 hover:bg-green-600 py-6 text-lg"
-                onClick={handleCobroRapido}
-                disabled={cart.length === 0 || !metodoPago || procesando}
+                onClick={handleProcederACobro}
+                disabled={cart.length === 0 || procesando}
               >
-                {procesando ? 'Procesando...' : `⚡ Cobrar ${formatCurrency(total)}`}
+                {procesando ? 'Creando pedido...' : `⚡ Proceder a Cobrar ${formatCurrency(total)}`}
               </Button>
             </div>
           </CardContent>
