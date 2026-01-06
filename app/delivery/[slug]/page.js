@@ -476,8 +476,8 @@ export default function MenuPublicoPage() {
     }
 
     try {
-      // Si hay un pedido activo y está ENTREGADO, agregar más items
-      if (activeOrder && activeOrder.estado === 'ENTREGADO') {
+      // Si hay un pedido activo y está ENTREGADO, agregar más items (modo normal, sin cuentas separadas)
+      if (activeOrder && activeOrder.estado === 'ENTREGADO' && !cuentasSeparadas) {
         // Agregar nuevos items al pedido existente - marcados como nuevos con emoji
         const newItems = cart.map(item => ({
           order_id: activeOrder.id,
@@ -529,7 +529,87 @@ export default function MenuPublicoPage() {
         return
       }
 
-      // Crear nuevo pedido
+      // MODO CUENTAS SEPARADAS: Crear un pedido por cada cuenta
+      if (cuentasSeparadas && cuentas.length > 0) {
+        const tieneCuentasConProductos = cuentas.some(c => c.productos.length > 0)
+        if (!tieneCuentasConProductos) {
+          toast.error('Todas las cuentas están vacías')
+          return
+        }
+
+        const pedidosCreados = []
+        
+        for (const cuenta of cuentas) {
+          if (cuenta.productos.length === 0) continue
+          
+          const cuentaTotal = calculateCuentaTotal(cuenta)
+
+          // Crear pedido con nombre_cuenta y grupo_mesa_id
+          const { data: order, error: orderError } = await supabase
+            .from('orders')
+            .insert({
+              restaurant_id: restaurant.id,
+              tipo: checkoutForm.tipo === 'LOCAL' ? 'SALA' : 'PARA_LLEVAR',
+              mesa: checkoutForm.mesa,
+              estado: 'PENDIENTE',
+              origen: 'DIGITAL',
+              nota_cliente: `Cuenta de: ${cuenta.nombre}${checkoutForm.nombre_cliente ? ` - ${checkoutForm.nombre_cliente}` : ''}`,
+              subtotal: cuentaTotal,
+              total: cuentaTotal,
+              nombre_cuenta: cuenta.nombre,
+              grupo_mesa_id: grupoMesaId
+            })
+            .select()
+            .single()
+
+          if (orderError) throw orderError
+
+          const orderItems = cuenta.productos.map(item => ({
+            order_id: order.id,
+            menu_item_id: item.isPromotion ? null : item.id,
+            cantidad: item.cantidad,
+            precio_unitario: item.precio,
+            total_item: item.precio * item.cantidad,
+            nombre_item_snapshot: item.comentario ? `${item.nombre} (${item.comentario})` : item.nombre
+          }))
+
+          const { error: itemsError } = await supabase
+            .from('order_items')
+            .insert(orderItems)
+
+          if (itemsError) throw itemsError
+
+          // Cargar pedido completo
+          const { data: fullOrder } = await supabase
+            .from('orders')
+            .select('*, order_items(*)')
+            .eq('id', order.id)
+            .single()
+          
+          pedidosCreados.push(fullOrder)
+        }
+
+        // Guardar todos los pedidos para seguimiento
+        setActiveOrders(pedidosCreados)
+        setActiveOrder(pedidosCreados[0]) // El primero como principal
+        localStorage.setItem(`activeOrders_${slug}`, JSON.stringify(pedidosCreados))
+        localStorage.setItem(`activeOrder_${slug}`, JSON.stringify(pedidosCreados[0]))
+        
+        // Limpiar
+        setCuentasSeparadas(false)
+        setCuentas([])
+        setCuentaActiva(0)
+        setGrupoMesaId(null)
+        setCart([])
+        setCheckoutOpen(false)
+        setConfirmModal(true)
+        setShowOrderStatus(true)
+        
+        toast.success(`¡${pedidosCreados.length} pedidos creados!`)
+        return
+      }
+
+      // MODO NORMAL: Crear un solo pedido
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert({
