@@ -1018,14 +1018,19 @@ export default function PedidosPage() {
                     <Textarea value={orderForm.nota_cocina} onChange={(e) => setOrderForm({...orderForm, nota_cocina: e.target.value})} rows={2} />
                   </div>
 
-                  <div className="bg-orange-50 p-3 rounded-lg">
+                  <div className="p-3 rounded-lg" style={{ backgroundColor: `${themeColors.secondary}15` }}>
                     <div className="flex justify-between items-center">
                       <span className="font-bold text-lg">TOTAL:</span>
-                      <span className="font-bold text-2xl text-orange-600">{formatCurrency(calculateTotal())}</span>
+                      <span className="font-bold text-2xl" style={{ color: themeColors.secondary }}>{formatCurrency(calculateTotal())}</span>
                     </div>
                   </div>
 
-                  <Button className="w-full bg-orange-500 hover:bg-orange-600" onClick={handleCreateOrder} disabled={cart.length === 0}>
+                  <Button 
+                    className="w-full hover:opacity-90" 
+                    style={{ backgroundColor: themeColors.secondary }}
+                    onClick={handleCreateOrder} 
+                    disabled={cart.length === 0}
+                  >
                     Crear Pedido
                   </Button>
                 </div>
