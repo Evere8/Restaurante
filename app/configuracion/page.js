@@ -466,7 +466,8 @@ export default function ConfiguracionPage() {
                       <div className="flex space-x-2">
                         <Label 
                           htmlFor="logo-upload" 
-                          className="cursor-pointer inline-flex items-center px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 transition-colors"
+                          className="cursor-pointer inline-flex items-center px-4 py-2 text-white rounded-md hover:opacity-90 transition-colors"
+                          style={{ backgroundColor: themeColors.secondary }}
                         >
                           <Upload className="h-4 w-4 mr-2" />
                           {uploadingLogo ? 'Subiendo...' : 'Subir Logo'}
