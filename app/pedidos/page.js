@@ -1288,17 +1288,41 @@ export default function PedidosPage() {
                   <div className="p-3 rounded-lg" style={{ backgroundColor: `${themeColors.secondary}15` }}>
                     <div className="flex justify-between items-center">
                       <span className="font-bold text-lg">TOTAL:</span>
-                      <span className="font-bold text-2xl" style={{ color: themeColors.secondary }}>{formatCurrency(calculateTotal())}</span>
+                      <span className="font-bold text-2xl" style={{ color: themeColors.secondary }}>
+                        {formatCurrency(cuentasSeparadas ? calculateTotalGeneral() : calculateTotal())}
+                      </span>
                     </div>
                   </div>
+
+                  {/* Resumen de cuentas separadas */}
+                  {cuentasSeparadas && cuentas.length > 0 && (
+                    <div className="bg-blue-50 p-3 rounded-lg mb-3">
+                      <h4 className="text-sm font-medium text-blue-800 mb-2">Resumen de cuentas:</h4>
+                      {cuentas.map((cuenta, i) => (
+                        <div key={i} className="flex justify-between text-sm">
+                          <span>{cuenta.nombre}</span>
+                          <span className="font-medium">
+                            {cuenta.productos.length} items - {formatCurrency(calculateTotalCuenta(cuenta))}
+                          </span>
+                        </div>
+                      ))}
+                      <div className="border-t border-blue-200 mt-2 pt-2 flex justify-between font-bold text-blue-800">
+                        <span>Total General:</span>
+                        <span>{formatCurrency(calculateTotalGeneral())}</span>
+                      </div>
+                    </div>
+                  )}
 
                   <Button 
                     className="w-full hover:opacity-90" 
                     style={{ backgroundColor: themeColors.secondary }}
                     onClick={handleCreateOrder} 
-                    disabled={cart.length === 0}
+                    disabled={cuentasSeparadas ? !cuentas.some(c => c.productos.length > 0) : cart.length === 0}
                   >
-                    Crear Pedido
+                    {cuentasSeparadas 
+                      ? `Crear ${cuentas.filter(c => c.productos.length > 0).length} Pedidos Separados`
+                      : 'Crear Pedido'
+                    }
                   </Button>
                 </div>
               </div>
