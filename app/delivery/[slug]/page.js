@@ -310,38 +310,41 @@ export default function MenuPublicoPage() {
     try {
       // Si hay un pedido activo y está ENTREGADO, agregar más items
       if (activeOrder && activeOrder.estado === 'ENTREGADO') {
-        // Agregar nuevos items al pedido existente - marcados como nuevos
+        // Agregar nuevos items al pedido existente - marcados como nuevos con emoji
         const newItems = cart.map(item => ({
           order_id: activeOrder.id,
           menu_item_id: item.isPromotion ? null : item.id,
           cantidad: item.cantidad,
           precio_unitario: item.precio,
           total_item: item.precio * item.cantidad,
-          nombre_item_snapshot: `🆕 ${item.comentario ? `${item.nombre} (${item.comentario})` : item.nombre}`,
-          es_adicional: true
+          nombre_item_snapshot: `🆕 ${item.comentario ? `${item.nombre} (${item.comentario})` : item.nombre}`
         }))
 
         const { error: itemsError } = await supabase
           .from('order_items')
           .insert(newItems)
 
-        if (itemsError) throw itemsError
+        if (itemsError) {
+          console.error('Error insertando items:', itemsError)
+          throw itemsError
+        }
 
         // Actualizar total del pedido y cambiar estado a PENDIENTE
         const newTotal = activeOrderTotal + cartTotal
-        const notaNuevos = `⚠️ PEDIDO ADICIONAL desde MENÚ DIGITAL - Nuevos items: ${cart.map(i => `${i.cantidad}x ${i.nombre}`).join(', ')}`
         
         const { error: updateError } = await supabase
           .from('orders')
           .update({ 
             estado: 'PENDIENTE',
             subtotal: newTotal,
-            total: newTotal,
-            nota_cocina: notaNuevos
+            total: newTotal
           })
           .eq('id', activeOrder.id)
 
-        if (updateError) throw updateError
+        if (updateError) {
+          console.error('Error actualizando pedido:', updateError)
+          throw updateError
+        }
 
         // Recargar pedido
         const { data: updatedOrder } = await supabase
