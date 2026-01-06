@@ -659,12 +659,6 @@ export default function MenuPublicoPage() {
           backgroundImage: config?.imagen_portada ? `url(${config.imagen_portada})` : 'none'
         }}
       >
-        {/* Debug: mostrar si hay imagen */}
-        {!config?.imagen_portada && (
-          <div className="absolute top-2 left-2 bg-yellow-500 text-white text-xs px-2 py-1 rounded z-10 opacity-75">
-            Sin portada
-          </div>
-        )}
         <div className="absolute inset-0 bg-black/40"></div>
         <div className="absolute bottom-0 left-0 right-0 p-4">
           <div className="flex items-end space-x-4">
