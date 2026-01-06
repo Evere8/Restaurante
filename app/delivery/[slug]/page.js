@@ -77,6 +77,48 @@ export default function MenuPublicoPage() {
   // Cargar pedido activo desde localStorage y verificar que aún existe
   useEffect(() => {
     const checkSavedOrder = async () => {
+      // Primero verificar si hay múltiples pedidos (cuentas separadas)
+      const savedOrders = localStorage.getItem(`activeOrders_${slug}`)
+      
+      if (savedOrders) {
+        const orders = JSON.parse(savedOrders)
+        const orderIds = orders.map(o => o.id)
+        
+        // Verificar que los pedidos aún existen
+        const { data: updatedOrders, error } = await supabase
+          .from('orders')
+          .select('*, order_items(*)')
+          .in('id', orderIds)
+        
+        if (error || !updatedOrders || updatedOrders.length === 0) {
+          console.log('Pedidos guardados ya no existen, limpiando...')
+          localStorage.removeItem(`activeOrder_${slug}`)
+          localStorage.removeItem(`activeOrders_${slug}`)
+          setActiveOrder(null)
+          setActiveOrders([])
+          setShowOrderStatus(false)
+          return
+        }
+        
+        // Si todos están pagados, limpiar
+        if (updatedOrders.every(o => o.estado === 'PAGADO')) {
+          localStorage.removeItem(`activeOrder_${slug}`)
+          localStorage.removeItem(`activeOrders_${slug}`)
+          setActiveOrder(null)
+          setActiveOrders([])
+          setShowOrderStatus(false)
+          return
+        }
+        
+        // Los pedidos existen y están activos
+        setActiveOrders(updatedOrders)
+        setActiveOrder(updatedOrders[0])
+        setShowOrderStatus(true)
+        setCheckoutForm(prev => ({ ...prev, mesa: updatedOrders[0].mesa || '' }))
+        return
+      }
+      
+      // Modo normal - un solo pedido
       const savedOrder = localStorage.getItem(`activeOrder_${slug}`)
       if (savedOrder) {
         const order = JSON.parse(savedOrder)
