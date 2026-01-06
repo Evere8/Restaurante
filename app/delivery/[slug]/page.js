@@ -754,7 +754,12 @@ export default function MenuPublicoPage() {
 
   // Vista de seguimiento de pedido
   if (showOrderStatus && activeOrder && activeOrder.estado !== 'PAGADO') {
-    const statusInfo = getStatusInfo(activeOrder.estado)
+    // Cargar pedidos separados desde localStorage si existen
+    const savedOrders = typeof window !== 'undefined' ? localStorage.getItem(`activeOrders_${slug}`) : null
+    const ordersToShow = savedOrders ? JSON.parse(savedOrders) : [activeOrder]
+    const currentOrder = ordersToShow[activeOrderTab] || activeOrder
+    
+    const statusInfo = getStatusInfo(currentOrder.estado)
     const StatusIcon = statusInfo.icon
     const stages = [
       { key: 'PENDIENTE', label: 'Recibido', icon: Clock },
@@ -770,27 +775,59 @@ export default function MenuPublicoPage() {
         {/* Header */}
         <div className="p-4 text-white" style={{ backgroundColor: colors.primary }}>
           <div className="flex items-center justify-between">
-            <h1 className="text-xl font-bold">Tu Pedido</h1>
+            <h1 className="text-xl font-bold">
+              {ordersToShow.length > 1 ? 'Tus Pedidos' : 'Tu Pedido'}
+            </h1>
             {/* Solo mostrar cronómetro si NO está entregado */}
-            {activeOrder.estado !== 'ENTREGADO' && (
+            {currentOrder.estado !== 'ENTREGADO' && (
               <div className="flex items-center bg-white/20 px-3 py-1 rounded-full">
                 <Timer className="h-4 w-4 mr-2" />
                 <span className="font-mono text-lg">{formatTime(orderTimer)}</span>
               </div>
             )}
-            {activeOrder.estado === 'ENTREGADO' && (
+            {currentOrder.estado === 'ENTREGADO' && (
               <div className="flex items-center bg-green-500 px-3 py-1 rounded-full">
                 <Check className="h-4 w-4 mr-2" />
                 <span className="text-sm font-medium">Entregado</span>
               </div>
             )}
           </div>
-          <p className="text-sm text-white/80">Mesa {activeOrder.mesa}</p>
+          <p className="text-sm text-white/80">Mesa {currentOrder.mesa}</p>
+          
+          {/* Pestañas de cuentas separadas */}
+          {ordersToShow.length > 1 && (
+            <div className="flex flex-wrap gap-2 mt-3">
+              {ordersToShow.map((order, index) => (
+                <button
+                  key={order.id}
+                  onClick={() => setActiveOrderTab(index)}
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                    activeOrderTab === index 
+                      ? 'bg-white text-gray-900' 
+                      : 'bg-white/20 text-white'
+                  }`}
+                >
+                  {order.nombre_cuenta || `Pedido ${index + 1}`}
+                  {order.estado === 'ENTREGADO' && ' ✓'}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Estado del pedido con cronómetros por etapa */}
         <div className="p-4">
           <div className="bg-white rounded-2xl shadow-lg p-6 text-center">
+            {/* Indicador de cuenta si hay múltiples */}
+            {ordersToShow.length > 1 && currentOrder.nombre_cuenta && (
+              <div className="mb-4 pb-3 border-b">
+                <span className="text-sm text-gray-500">Cuenta de</span>
+                <h3 className="text-lg font-bold" style={{ color: colors.primary }}>
+                  {currentOrder.nombre_cuenta}
+                </h3>
+              </div>
+            )}
+            
             <div className={`w-20 h-20 rounded-full ${statusInfo.color} flex items-center justify-center mx-auto mb-4 animate-pulse`}>
               <StatusIcon className="h-10 w-10 text-white" />
             </div>
@@ -801,19 +838,19 @@ export default function MenuPublicoPage() {
             <div className="flex justify-between items-start mb-6 px-2">
               {stages.map((stage, i) => {
                 const stageStates = ['PENDIENTE', 'NUEVO']
-                const isActive = stageStates.includes(activeOrder.estado) ? i === 0 :
-                               activeOrder.estado === 'PREPARANDO' ? i <= 1 :
-                               activeOrder.estado === 'LISTO' ? i <= 2 :
-                               activeOrder.estado === 'ENTREGADO' ? i <= 3 : false
-                const isCurrent = (stageStates.includes(activeOrder.estado) && i === 0) ||
-                                  (activeOrder.estado === stage.key)
+                const isActive = stageStates.includes(currentOrder.estado) ? i === 0 :
+                               currentOrder.estado === 'PREPARANDO' ? i <= 1 :
+                               currentOrder.estado === 'LISTO' ? i <= 2 :
+                               currentOrder.estado === 'ENTREGADO' ? i <= 3 : false
+                const isCurrent = (stageStates.includes(currentOrder.estado) && i === 0) ||
+                                  (currentOrder.estado === stage.key)
                 const StageIcon = stage.icon
                 
                 return (
                   <div key={stage.key} className="flex flex-col items-center flex-1">
                     <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-1 transition-all ${
                       isActive ? statusInfo.color : 'bg-gray-200'
-                    } ${isCurrent && activeOrder.estado !== 'ENTREGADO' ? 'ring-4 ring-offset-2 animate-pulse' : ''}`}
+                    } ${isCurrent && currentOrder.estado !== 'ENTREGADO' ? 'ring-4 ring-offset-2 animate-pulse' : ''}`}
                     style={isCurrent ? { ringColor: statusInfo.color.replace('bg-', '') } : {}}>
                       <StageIcon className={`h-5 w-5 ${isActive ? 'text-white' : 'text-gray-400'}`} />
                     </div>
@@ -821,7 +858,7 @@ export default function MenuPublicoPage() {
                       {stage.label}
                     </span>
                     {/* Solo mostrar cronómetro si NO está entregado */}
-                    {isCurrent && activeOrder.estado !== 'ENTREGADO' && (
+                    {isCurrent && currentOrder.estado !== 'ENTREGADO' && (
                       <div className="flex items-center mt-1 bg-gray-100 rounded-full px-2 py-0.5">
                         <Timer className="h-3 w-3 mr-1 text-gray-500" />
                         <span className="text-xs font-mono text-gray-700">{formatTime(orderTimer)}</span>
@@ -841,10 +878,10 @@ export default function MenuPublicoPage() {
               <div 
                 className={`h-full transition-all duration-500 ${statusInfo.color}`}
                 style={{ 
-                  width: activeOrder.estado === 'PENDIENTE' || activeOrder.estado === 'NUEVO' ? '25%' :
-                         activeOrder.estado === 'PREPARANDO' ? '50%' :
-                         activeOrder.estado === 'LISTO' ? '75%' :
-                         activeOrder.estado === 'ENTREGADO' ? '100%' : '0%'
+                  width: currentOrder.estado === 'PENDIENTE' || currentOrder.estado === 'NUEVO' ? '25%' :
+                         currentOrder.estado === 'PREPARANDO' ? '50%' :
+                         currentOrder.estado === 'LISTO' ? '75%' :
+                         currentOrder.estado === 'ENTREGADO' ? '100%' : '0%'
                 }}
               ></div>
             </div>
@@ -854,7 +891,7 @@ export default function MenuPublicoPage() {
           <div className="mt-6 bg-white rounded-2xl shadow-lg p-4">
             <h3 className="font-bold mb-3">Detalle del pedido</h3>
             <div className="space-y-3">
-              {activeOrder.order_items?.map((item, i) => (
+              {currentOrder.order_items?.map((item, i) => (
                 <div key={i} className="flex justify-between items-center py-2 border-b last:border-0">
                   <div>
                     <p className="font-medium capitalize">{item.nombre_item_snapshot}</p>
@@ -869,13 +906,32 @@ export default function MenuPublicoPage() {
             <div className="border-t mt-3 pt-3 flex justify-between items-center">
               <span className="font-bold text-lg">Total</span>
               <span className="font-bold text-xl" style={{ color: colors.primary }}>
-                {formatPrice(activeOrder.total)}
+                {formatPrice(currentOrder.total)}
               </span>
             </div>
           </div>
 
+          {/* Resumen de todas las cuentas si hay múltiples */}
+          {ordersToShow.length > 1 && (
+            <div className="mt-4 bg-gray-50 rounded-xl p-4">
+              <h4 className="font-medium text-sm text-gray-600 mb-2">Resumen de todas las cuentas</h4>
+              {ordersToShow.map((order, i) => (
+                <div key={order.id} className="flex justify-between text-sm py-1">
+                  <span>{order.nombre_cuenta || `Pedido ${i + 1}`}</span>
+                  <span className="font-medium">{formatPrice(order.total)}</span>
+                </div>
+              ))}
+              <div className="border-t mt-2 pt-2 flex justify-between font-bold">
+                <span>Total General</span>
+                <span style={{ color: colors.primary }}>
+                  {formatPrice(ordersToShow.reduce((sum, o) => sum + o.total, 0))}
+                </span>
+              </div>
+            </div>
+          )}
+
           {/* Botón para agregar más productos (solo si está entregado) */}
-          {activeOrder.estado === 'ENTREGADO' && (
+          {currentOrder.estado === 'ENTREGADO' && (
             <div className="mt-6">
               <Button 
                 className="w-full py-6 text-white text-lg"
@@ -893,7 +949,7 @@ export default function MenuPublicoPage() {
         </div>
 
         {/* Botón ver menú si no está entregado */}
-        {activeOrder.estado !== 'ENTREGADO' && (
+        {currentOrder.estado !== 'ENTREGADO' && (
           <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t">
             <Button 
               variant="outline"
