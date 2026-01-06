@@ -477,22 +477,24 @@ export default function PedidosPage() {
     }
 
     try {
-      // Crear nuevos order_items con marca de "adicional"
+      // Crear nuevos order_items con marca de "adicional" en el nombre
       const orderItems = cart.map(item => ({
         order_id: addingToOrder.id,
         menu_item_id: item.id,
         nombre_item_snapshot: `🆕 ${item.nombre}`, // Marcar como nuevo con emoji
         precio_unitario: parseFloat(item.precio_base),
         cantidad: item.cantidad,
-        total_item: parseFloat(item.precio_base) * item.cantidad,
-        es_adicional: true // Campo para identificar items adicionales
+        total_item: parseFloat(item.precio_base) * item.cantidad
       }))
 
       const { error: itemsError } = await supabase
         .from('order_items')
         .insert(orderItems)
 
-      if (itemsError) throw itemsError
+      if (itemsError) {
+        console.error('Error insertando items:', itemsError)
+        throw itemsError
+      }
 
       // Calcular nuevo total
       const newItemsTotal = cart.reduce((sum, item) => sum + (parseFloat(item.precio_base) * item.cantidad), 0)
@@ -505,12 +507,14 @@ export default function PedidosPage() {
         .update({ 
           estado: 'PENDIENTE',
           total: newTotal,
-          subtotal: newTotal,
-          nota_cocina: `⚠️ PEDIDO ADICIONAL - Nuevos items agregados: ${cart.map(i => `${i.cantidad}x ${i.nombre}`).join(', ')}`
+          subtotal: newTotal
         })
         .eq('id', addingToOrder.id)
 
-      if (updateError) throw updateError
+      if (updateError) {
+        console.error('Error actualizando pedido:', updateError)
+        throw updateError
+      }
 
       // Reproducir sonido de nuevo pedido
       playNotificationSound()
@@ -522,7 +526,7 @@ export default function PedidosPage() {
       loadOrders()
     } catch (error) {
       console.error('Error agregando items:', error)
-      toast.error('Error al agregar productos al pedido')
+      toast.error('Error al agregar productos al pedido: ' + (error.message || 'Error desconocido'))
     }
   }
 
