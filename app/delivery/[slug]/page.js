@@ -310,14 +310,15 @@ export default function MenuPublicoPage() {
     try {
       // Si hay un pedido activo y está ENTREGADO, agregar más items
       if (activeOrder && activeOrder.estado === 'ENTREGADO') {
-        // Agregar nuevos items al pedido existente
+        // Agregar nuevos items al pedido existente - marcados como nuevos
         const newItems = cart.map(item => ({
           order_id: activeOrder.id,
           menu_item_id: item.isPromotion ? null : item.id,
           cantidad: item.cantidad,
           precio_unitario: item.precio,
           total_item: item.precio * item.cantidad,
-          nombre_item_snapshot: item.comentario ? `${item.nombre} (${item.comentario})` : item.nombre
+          nombre_item_snapshot: `🆕 ${item.comentario ? `${item.nombre} (${item.comentario})` : item.nombre}`,
+          es_adicional: true
         }))
 
         const { error: itemsError } = await supabase
@@ -328,12 +329,15 @@ export default function MenuPublicoPage() {
 
         // Actualizar total del pedido y cambiar estado a PENDIENTE
         const newTotal = activeOrderTotal + cartTotal
+        const notaNuevos = `⚠️ PEDIDO ADICIONAL desde MENÚ DIGITAL - Nuevos items: ${cart.map(i => `${i.cantidad}x ${i.nombre}`).join(', ')}`
+        
         const { error: updateError } = await supabase
           .from('orders')
           .update({ 
             estado: 'PENDIENTE',
             subtotal: newTotal,
-            total: newTotal
+            total: newTotal,
+            nota_cocina: notaNuevos
           })
           .eq('id', activeOrder.id)
 
