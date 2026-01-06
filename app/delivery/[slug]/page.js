@@ -100,18 +100,27 @@ export default function MenuPublicoPage() {
         .eq('id', activeOrder.id)
         .single()
 
-      if (data) {
-        setActiveOrder(data)
-        localStorage.setItem(`activeOrder_${slug}`, JSON.stringify(data))
-        
-        // Si está pagado, limpiar
-        if (data.estado === 'PAGADO') {
-          localStorage.removeItem(`activeOrder_${slug}`)
-          setActiveOrder(null)
-          setShowOrderStatus(false)
-          setCart([])
-          toast.success('¡Gracias por tu compra!')
-        }
+      // Si el pedido fue eliminado o no existe
+      if (error || !data) {
+        console.log('Pedido eliminado o no encontrado, limpiando estado...')
+        localStorage.removeItem(`activeOrder_${slug}`)
+        setActiveOrder(null)
+        setShowOrderStatus(false)
+        setCart([])
+        toast.info('El pedido ya no está disponible')
+        return
+      }
+
+      setActiveOrder(data)
+      localStorage.setItem(`activeOrder_${slug}`, JSON.stringify(data))
+      
+      // Si está pagado, limpiar
+      if (data.estado === 'PAGADO') {
+        localStorage.removeItem(`activeOrder_${slug}`)
+        setActiveOrder(null)
+        setShowOrderStatus(false)
+        setCart([])
+        toast.success('¡Gracias por tu compra!')
       }
     }
 
