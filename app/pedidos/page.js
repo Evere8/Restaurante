@@ -49,6 +49,8 @@ export default function PedidosPage() {
 
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [addItemsDialogOpen, setAddItemsDialogOpen] = useState(false)
+  const [addingToOrder, setAddingToOrder] = useState(null) // Pedido al que se agregará más productos
 
   useEffect(() => {
     if (!authLoading && !user) {
