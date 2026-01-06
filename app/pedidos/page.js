@@ -573,7 +573,11 @@ export default function PedidosPage() {
                 <span className="text-sm">{soundEnabled ? 'Sonido ON' : 'Sonido OFF'}</span>
               </button>
             </div>
-            <Button className="bg-orange-500 hover:bg-orange-600" onClick={openCreateDialog}>
+            <Button 
+              className="hover:opacity-90" 
+              style={{ backgroundColor: themeColors.secondary }}
+              onClick={openCreateDialog}
+            >
               <Plus className="mr-2 h-4 w-4" /> Nuevo Pedido
             </Button>
           </div>
@@ -584,7 +588,7 @@ export default function PedidosPage() {
             <TabsTrigger value="preparacion">
               🔥 En Preparación
               {orders.preparacion.length > 0 && (
-                <Badge className="ml-2 bg-orange-500">{orders.preparacion.length}</Badge>
+                <Badge className="ml-2" style={{ backgroundColor: themeColors.secondary }}>{orders.preparacion.length}</Badge>
               )}
             </TabsTrigger>
             <TabsTrigger value="paraEntregar">
