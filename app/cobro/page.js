@@ -1320,7 +1320,7 @@ function CobroRapidoSection({ restaurant, formatCurrency }) {
         .from('menu_items')
         .select('*, menu_categories(nombre)')
         .eq('restaurant_id', restaurant.id)
-        .eq('activo', true)
+        .eq('disponible', true)
 
       if (itemsError) {
         console.error('Error loading items:', itemsError)
