@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useCurrency } from '@/contexts/CurrencyContext'
+import { useTheme } from '@/contexts/ThemeContext'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import Sidebar from '@/components/Sidebar'
@@ -21,6 +22,7 @@ import { toast } from 'sonner'
 export default function CobroPage() {
   const { user, restaurant, loading: authLoading } = useAuth()
   const { formatCurrency, currency } = useCurrency()
+  const { colors: themeColors } = useTheme()
   const router = useRouter()
   const [ordersACobrar, setOrdersACobrar] = useState([])
   const [ordersCobrados, setOrdersCobrados] = useState([])
