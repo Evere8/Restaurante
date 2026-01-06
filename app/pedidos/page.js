@@ -514,7 +514,14 @@ export default function PedidosPage() {
   }
 
   const handleCreateOrder = async () => {
-    if (cart.length === 0) {
+    // Validaciones
+    if (cuentasSeparadas) {
+      const tieneCuentasConProductos = cuentas.some(c => c.productos.length > 0)
+      if (!tieneCuentasConProductos) {
+        toast.error('Todas las cuentas están vacías')
+        return
+      }
+    } else if (cart.length === 0) {
       toast.error('El carrito está vacío')
       return
     }
@@ -525,45 +532,103 @@ export default function PedidosPage() {
     }
 
     try {
-      const subtotal = calculateTotal()
-      const total = subtotal
+      if (cuentasSeparadas && cuentas.length > 0) {
+        // MODO CUENTAS SEPARADAS: Crear un pedido por cada cuenta
+        const pedidosCreados = []
+        
+        for (const cuenta of cuentas) {
+          if (cuenta.productos.length === 0) continue
+          
+          const subtotal = calculateTotalCuenta(cuenta)
+          const total = subtotal
 
-      // Crear pedido
-      const { data: newOrder, error: orderError } = await supabase
-        .from('orders')
-        .insert([{
-          restaurant_id: restaurant.id,
-          customer_id: orderForm.customer_id || null,
-          tipo: orderForm.tipo,
-          mesa: orderForm.mesa,
-          subtotal,
-          total,
-          estado: 'NUEVO',
-          nota_cliente: orderForm.nota_cliente,
-          nota_cocina: orderForm.nota_cocina
-        }])
-        .select()
-        .single()
+          // Crear pedido con nombre_cuenta y grupo_mesa_id
+          const { data: newOrder, error: orderError } = await supabase
+            .from('orders')
+            .insert([{
+              restaurant_id: restaurant.id,
+              customer_id: orderForm.customer_id || null,
+              tipo: orderForm.tipo,
+              mesa: orderForm.mesa,
+              subtotal,
+              total,
+              estado: 'NUEVO',
+              nota_cliente: orderForm.nota_cliente,
+              nota_cocina: `Cuenta de: ${cuenta.nombre}${orderForm.nota_cocina ? '\n' + orderForm.nota_cocina : ''}`,
+              nombre_cuenta: cuenta.nombre,
+              grupo_mesa_id: grupoMesaId
+            }])
+            .select()
+            .single()
 
-      if (orderError) throw orderError
+          if (orderError) throw orderError
 
-      // Crear items del pedido
-      const orderItems = cart.map(item => ({
-        order_id: newOrder.id,
-        menu_item_id: item.id,
-        nombre_item_snapshot: item.nombre,
-        precio_unitario: parseFloat(item.precio_base),
-        cantidad: item.cantidad,
-        total_item: parseFloat(item.precio_base) * item.cantidad
-      }))
+          // Crear items del pedido
+          const orderItems = cuenta.productos.map(item => ({
+            order_id: newOrder.id,
+            menu_item_id: item.id,
+            nombre_item_snapshot: item.nombre,
+            precio_unitario: parseFloat(item.precio_base),
+            cantidad: item.cantidad,
+            total_item: parseFloat(item.precio_base) * item.cantidad
+          }))
 
-      const { error: itemsError } = await supabase
-        .from('order_items')
-        .insert(orderItems)
+          const { error: itemsError } = await supabase
+            .from('order_items')
+            .insert(orderItems)
 
-      if (itemsError) throw itemsError
+          if (itemsError) throw itemsError
+          
+          pedidosCreados.push({ nombre: cuenta.nombre, total })
+        }
 
-      toast.success('Pedido creado exitosamente')
+        // Mostrar resumen de pedidos creados
+        const resumen = pedidosCreados.map(p => `${p.nombre}: ${formatCurrency(p.total)}`).join(', ')
+        toast.success(`Creados ${pedidosCreados.length} pedidos separados: ${resumen}`)
+        
+      } else {
+        // MODO NORMAL: Un solo pedido
+        const subtotal = calculateTotal()
+        const total = subtotal
+
+        // Crear pedido
+        const { data: newOrder, error: orderError } = await supabase
+          .from('orders')
+          .insert([{
+            restaurant_id: restaurant.id,
+            customer_id: orderForm.customer_id || null,
+            tipo: orderForm.tipo,
+            mesa: orderForm.mesa,
+            subtotal,
+            total,
+            estado: 'NUEVO',
+            nota_cliente: orderForm.nota_cliente,
+            nota_cocina: orderForm.nota_cocina
+          }])
+          .select()
+          .single()
+
+        if (orderError) throw orderError
+
+        // Crear items del pedido
+        const orderItems = cart.map(item => ({
+          order_id: newOrder.id,
+          menu_item_id: item.id,
+          nombre_item_snapshot: item.nombre,
+          precio_unitario: parseFloat(item.precio_base),
+          cantidad: item.cantidad,
+          total_item: parseFloat(item.precio_base) * item.cantidad
+        }))
+
+        const { error: itemsError } = await supabase
+          .from('order_items')
+          .insert(orderItems)
+
+        if (itemsError) throw itemsError
+
+        toast.success('Pedido creado exitosamente')
+      }
+      
       setCreateDialogOpen(false)
       resetForm()
       loadOrders()
@@ -575,6 +640,10 @@ export default function PedidosPage() {
 
   const resetForm = () => {
     setCart([])
+    setCuentasSeparadas(false)
+    setCuentas([])
+    setCuentaActiva(0)
+    setGrupoMesaId(null)
     setOrderForm({
       tipo: 'SALA',
       mesa: '',
