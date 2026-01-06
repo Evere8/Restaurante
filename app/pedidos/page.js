@@ -632,14 +632,27 @@ export default function PedidosPage() {
                           <span className="font-semibold">Nota:</span> {order.nota_cliente}
                         </div>
                       )}
+                      {order.nota_cocina && (
+                        <div className="bg-orange-100 p-2 rounded text-xs border border-orange-300">
+                          <span className="font-semibold text-orange-700">🔔 Cocina:</span> 
+                          <span className="text-orange-800">{order.nota_cocina}</span>
+                        </div>
+                      )}
                       <div className="border-t pt-2 mt-2">
                         <p className="font-semibold mb-1">Items:</p>
-                        {order.order_items?.map(item => (
-                          <div key={item.id} className="flex justify-between text-xs">
-                            <span>{item.cantidad}x {item.nombre_item_snapshot}</span>
-                            <span>{formatCurrency(item.precio_unitario * item.cantidad)}</span>
-                          </div>
-                        ))}
+                        {order.order_items?.map(item => {
+                          const esNuevo = item.nombre_item_snapshot?.startsWith('🆕') || item.es_adicional
+                          return (
+                            <div key={item.id} className={`flex justify-between text-xs py-1 ${esNuevo ? 'bg-green-100 px-2 rounded border-l-4 border-green-500 my-1' : ''}`}>
+                              <span className={esNuevo ? 'font-bold text-green-700' : ''}>
+                                {item.cantidad}x {item.nombre_item_snapshot}
+                              </span>
+                              <span className={esNuevo ? 'font-bold text-green-700' : ''}>
+                                {formatCurrency(item.precio_unitario * item.cantidad)}
+                              </span>
+                            </div>
+                          )
+                        })}
                       </div>
                       <div className="border-t pt-2 mt-2 flex justify-between font-bold text-lg">
                         <span>Total:</span>
