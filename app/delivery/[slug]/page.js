@@ -804,9 +804,8 @@ export default function MenuPublicoPage() {
 
   // Vista de seguimiento de pedido
   if (showOrderStatus && activeOrder && activeOrder.estado !== 'PAGADO') {
-    // Cargar pedidos separados desde localStorage si existen
-    const savedOrders = typeof window !== 'undefined' ? localStorage.getItem(`activeOrders_${slug}`) : null
-    const ordersToShow = savedOrders ? JSON.parse(savedOrders) : [activeOrder]
+    // Usar activeOrders del estado (se actualiza con el polling)
+    const ordersToShow = activeOrders.length > 0 ? activeOrders : [activeOrder]
     const currentOrder = ordersToShow[activeOrderTab] || activeOrder
     
     const statusInfo = getStatusInfo(currentOrder.estado)
