@@ -198,16 +198,22 @@ export default function ConfiguracionPage() {
       try {
         const { data: existingConfig } = await supabase
           .from('menu_digital_config')
-          .select('id')
+          .select('id, colores')
           .eq('restaurant_id', currentRestaurant.id)
           .single()
+
+        // Guardar tipo_negocio dentro del objeto colores para evitar error de columna inexistente
+        const updatedColores = {
+          ...(existingConfig?.colores || {}),
+          tipo_negocio: restaurantForm.tipo_negocio
+        }
 
         if (existingConfig) {
           await supabase
             .from('menu_digital_config')
             .update({
               descripcion: restaurantForm.descripcion,
-              tipo_negocio: restaurantForm.tipo_negocio
+              colores: updatedColores
             })
             .eq('restaurant_id', currentRestaurant.id)
         } else {
@@ -216,7 +222,7 @@ export default function ConfiguracionPage() {
             .insert({
               restaurant_id: currentRestaurant.id,
               descripcion: restaurantForm.descripcion,
-              tipo_negocio: restaurantForm.tipo_negocio
+              colores: updatedColores
             })
         }
       } catch (configError) {
