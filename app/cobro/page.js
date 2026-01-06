@@ -1384,30 +1384,24 @@ function CobroRapidoSection({ restaurant, formatCurrency, onOrderCreated }) {
 
   const total = cart.reduce((sum, item) => sum + (parseFloat(item.precio_base) * item.cantidad), 0)
 
-  const handleCobroRapido = async () => {
+  const handleProcederACobro = async () => {
     if (cart.length === 0) {
       toast.error('Agrega productos al carrito')
-      return
-    }
-    if (!metodoPago) {
-      toast.error('Selecciona un método de pago')
       return
     }
 
     setProcesando(true)
     try {
-      // Crear pedido directamente como PAGADO
+      // Crear pedido como ENTREGADO (listo para cobrar)
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert({
           restaurant_id: restaurant.id,
           tipo: 'PARA_LLEVAR',
-          estado: 'PAGADO',
+          estado: 'ENTREGADO',
           subtotal: total,
           total: total,
           descuento: 0,
-          metodo_pago: metodoPago,
-          fecha_pago: new Date().toISOString(),
           origen: 'COBRO_RAPIDO'
         })
         .select()
@@ -1431,12 +1425,29 @@ function CobroRapidoSection({ restaurant, formatCurrency, onOrderCreated }) {
 
       if (itemsError) throw itemsError
 
-      toast.success(`¡Cobro exitoso! Total: ${formatCurrency(total)}`)
+      // Obtener el pedido completo con items para el diálogo de pago
+      const { data: completeOrder } = await supabase
+        .from('orders')
+        .select('*, order_items(*)')
+        .eq('id', order.id)
+        .single()
+
+      // Limpiar carrito y llamar al callback para abrir diálogo de pago
       setCart([])
-      setMetodoPago('')
+      setProcesando(false)
+      
+      // Llamar al callback del componente padre para abrir el diálogo de pago
+      if (onOrderCreated) {
+        onOrderCreated(completeOrder)
+      }
+      
+      toast.success('Pedido creado. Procede con el cobro.')
     } catch (error) {
       console.error('Error en cobro rápido:', error)
-      toast.error('Error al procesar el cobro')
+      toast.error('Error al crear el pedido: ' + (error.message || 'Error desconocido'))
+      setProcesando(false)
+    }
+  }
     }
     setProcesando(false)
   }
