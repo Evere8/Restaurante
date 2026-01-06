@@ -684,6 +684,16 @@ export default function PedidosPage() {
                           </Button>
                         )}
                         
+                        {order.estado === 'PENDIENTE' && (
+                          <Button 
+                            size="sm" 
+                            className="w-full bg-yellow-500 hover:bg-yellow-600 text-white"
+                            onClick={() => handleIniciarPreparacion(order.id)}
+                          >
+                            <Play className="h-4 w-4 mr-1" /> Iniciar Preparación
+                          </Button>
+                        )}
+                        
                         {order.estado === 'PREPARANDO' && (
                           <Button 
                             size="sm" 
