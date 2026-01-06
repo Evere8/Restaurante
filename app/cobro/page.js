@@ -1289,3 +1289,236 @@ export default function CobroPage() {
     </div>
   )
 }
+
+// Componente separado para Cobro Rápido
+function CobroRapidoSection({ restaurant, formatCurrency }) {
+  const [menuItems, setMenuItems] = useState([])
+  const [categories, setCategories] = useState([])
+  const [searchTerm, setSearchTerm] = useState('')
+  const [selectedCategory, setSelectedCategory] = useState(null)
+  const [cart, setCart] = useState([])
+  const [metodoPago, setMetodoPago] = useState('')
+  const [procesando, setProcesando] = useState(false)
+
+  useEffect(() => {
+    loadProducts()
+  }, [restaurant])
+
+  const loadProducts = async () => {
+    if (!restaurant) return
+    
+    const { data: items } = await supabase
+      .from('menu_items')
+      .select('*, menu_categories(nombre)')
+      .eq('restaurant_id', restaurant.id)
+      .eq('activo', true)
+
+    const { data: cats } = await supabase
+      .from('menu_categories')
+      .select('*')
+      .eq('restaurant_id', restaurant.id)
+
+    setMenuItems(items || [])
+    setCategories(cats || [])
+  }
+
+  const filteredProducts = menuItems.filter(item => {
+    const matchesSearch = !searchTerm || 
+      item.nombre.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesCategory = !selectedCategory || item.categoria_id === selectedCategory
+    return matchesSearch && matchesCategory
+  })
+
+  const addToCart = (product) => {
+    const existing = cart.find(i => i.id === product.id)
+    if (existing) {
+      setCart(cart.map(i => i.id === product.id ? {...i, cantidad: i.cantidad + 1} : i))
+    } else {
+      setCart([...cart, { ...product, cantidad: 1 }])
+    }
+    toast.success(`${product.nombre} agregado`)
+  }
+
+  const updateQuantity = (id, delta) => {
+    setCart(cart.map(item => {
+      if (item.id === id) {
+        const newQty = item.cantidad + delta
+        return newQty > 0 ? { ...item, cantidad: newQty } : item
+      }
+      return item
+    }).filter(i => i.cantidad > 0))
+  }
+
+  const removeFromCart = (id) => {
+    setCart(cart.filter(i => i.id !== id))
+  }
+
+  const total = cart.reduce((sum, item) => sum + (parseFloat(item.precio_base) * item.cantidad), 0)
+
+  const handleCobroRapido = async () => {
+    if (cart.length === 0) {
+      toast.error('Agrega productos al carrito')
+      return
+    }
+    if (!metodoPago) {
+      toast.error('Selecciona un método de pago')
+      return
+    }
+
+    setProcesando(true)
+    try {
+      // Crear pedido directamente como PAGADO
+      const { data: order, error: orderError } = await supabase
+        .from('orders')
+        .insert({
+          restaurant_id: restaurant.id,
+          tipo: 'PARA_LLEVAR',
+          estado: 'PAGADO',
+          subtotal: total,
+          total: total,
+          descuento: 0,
+          metodo_pago: metodoPago,
+          fecha_pago: new Date().toISOString(),
+          origen: 'COBRO_RAPIDO'
+        })
+        .select()
+        .single()
+
+      if (orderError) throw orderError
+
+      // Crear items del pedido
+      const orderItems = cart.map(item => ({
+        order_id: order.id,
+        menu_item_id: item.id,
+        nombre_item_snapshot: item.nombre,
+        precio_unitario: parseFloat(item.precio_base),
+        cantidad: item.cantidad,
+        total_item: parseFloat(item.precio_base) * item.cantidad
+      }))
+
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .insert(orderItems)
+
+      if (itemsError) throw itemsError
+
+      toast.success(`¡Cobro exitoso! Total: ${formatCurrency(total)}`)
+      setCart([])
+      setMetodoPago('')
+    } catch (error) {
+      console.error('Error en cobro rápido:', error)
+      toast.error('Error al procesar el cobro')
+    }
+    setProcesando(false)
+  }
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      {/* Panel de productos */}
+      <div className="lg:col-span-2 space-y-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center text-green-700">
+              <Coins className="h-5 w-5 mr-2" />
+              Seleccionar Productos
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2 mb-4">
+              <Input
+                placeholder="Buscar producto..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="flex-1 min-w-[200px]"
+              />
+              <Select value={selectedCategory || 'all'} onValueChange={(val) => setSelectedCategory(val === 'all' ? null : val)}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Categoría" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas</SelectItem>
+                  {categories.map(cat => (
+                    <SelectItem key={cat.id} value={cat.id}>{cat.nombre}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 max-h-[400px] overflow-y-auto">
+              {filteredProducts.map(product => (
+                <button
+                  key={product.id}
+                  onClick={() => addToCart(product)}
+                  className="p-3 bg-white border rounded-lg hover:bg-green-50 hover:border-green-400 transition-all text-left"
+                >
+                  <p className="font-medium text-sm truncate">{product.nombre}</p>
+                  <p className="text-green-600 font-bold">{formatCurrency(product.precio_base)}</p>
+                </button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Carrito de cobro rápido */}
+      <div className="space-y-4">
+        <Card className="border-2 border-green-400">
+          <CardHeader className="bg-green-50 pb-2">
+            <CardTitle className="text-green-700">🛒 Carrito Rápido</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4">
+            {cart.length === 0 ? (
+              <p className="text-center text-gray-400 py-6">Selecciona productos para cobrar</p>
+            ) : (
+              <div className="space-y-2 max-h-[250px] overflow-y-auto">
+                {cart.map(item => (
+                  <div key={item.id} className="flex items-center justify-between bg-gray-50 p-2 rounded">
+                    <div className="flex-1">
+                      <p className="font-medium text-sm">{item.nombre}</p>
+                      <p className="text-xs text-gray-500">{formatCurrency(item.precio_base)} c/u</p>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <Button size="sm" variant="outline" className="h-7 w-7 p-0" onClick={() => updateQuantity(item.id, -1)}>-</Button>
+                      <span className="w-6 text-center font-bold">{item.cantidad}</span>
+                      <Button size="sm" variant="outline" className="h-7 w-7 p-0" onClick={() => updateQuantity(item.id, 1)}>+</Button>
+                      <Button size="sm" variant="destructive" className="h-7 w-7 p-0 ml-1" onClick={() => removeFromCart(item.id)}>
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="border-t mt-4 pt-4 space-y-3">
+              <div className="flex justify-between text-xl font-bold">
+                <span>TOTAL:</span>
+                <span className="text-green-600">{formatCurrency(total)}</span>
+              </div>
+
+              <Select value={metodoPago} onValueChange={setMetodoPago}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Método de pago" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="EFECTIVO">💵 Efectivo</SelectItem>
+                  <SelectItem value="TARJETA">💳 Tarjeta</SelectItem>
+                  <SelectItem value="TRANSFERENCIA">📱 Transferencia</SelectItem>
+                  <SelectItem value="QR">📷 QR</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Button 
+                className="w-full bg-green-500 hover:bg-green-600 py-6 text-lg"
+                onClick={handleCobroRapido}
+                disabled={cart.length === 0 || !metodoPago || procesando}
+              >
+                {procesando ? 'Procesando...' : `⚡ Cobrar ${formatCurrency(total)}`}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  )
+}
