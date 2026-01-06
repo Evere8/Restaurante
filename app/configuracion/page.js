@@ -23,6 +23,7 @@ import { toast } from 'sonner'
 export default function ConfiguracionPage() {
   const { user, restaurant: currentRestaurant, loading: authLoading, reloadRestaurant } = useAuth()
   const { currency, updateCurrency } = useCurrency()
+  const { colors: themeColors } = useTheme()
   const router = useRouter()
   const [restaurant, setRestaurant] = useState(null)
   const [users, setUsers] = useState([])
