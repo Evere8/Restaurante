@@ -1143,12 +1143,79 @@ export default function PedidosPage() {
 
               {/* Carrito */}
               <div className="lg:border-l lg:pl-4 flex flex-col mt-4 lg:mt-0">
-                <h3 className="font-bold text-lg mb-3 flex items-center">
-                  <ShoppingCart className="mr-2 h-5 w-5" /> Carrito ({cart.length})
-                </h3>
+                {/* Header del carrito con botón de cuentas separadas */}
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-bold text-lg flex items-center">
+                    <ShoppingCart className="mr-2 h-5 w-5" /> 
+                    {cuentasSeparadas ? 'Cuentas Separadas' : `Carrito (${cart.length})`}
+                  </h3>
+                  {!cuentasSeparadas ? (
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={iniciarCuentasSeparadas}
+                      className="text-xs"
+                    >
+                      <Users className="h-4 w-4 mr-1" /> Separar Cuentas
+                    </Button>
+                  ) : (
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={cancelarCuentasSeparadas}
+                      className="text-xs text-red-600 border-red-300"
+                    >
+                      <X className="h-4 w-4 mr-1" /> Cancelar
+                    </Button>
+                  )}
+                </div>
 
-                <div className="space-y-2 mb-4">
-                  {cart.map(item => (
+                {/* Pestañas de cuentas separadas */}
+                {cuentasSeparadas && cuentas.length > 0 && (
+                  <div className="mb-3">
+                    <div className="flex flex-wrap gap-1 mb-2">
+                      {cuentas.map((cuenta, index) => (
+                        <button
+                          key={index}
+                          onClick={() => setCuentaActiva(index)}
+                          className={`px-3 py-1 rounded-full text-xs font-medium transition-all flex items-center gap-1 ${
+                            cuentaActiva === index 
+                              ? 'text-white' 
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                          style={cuentaActiva === index ? { backgroundColor: themeColors.secondary } : {}}
+                        >
+                          {cuenta.nombre}
+                          <span className="bg-white/30 px-1.5 rounded-full">
+                            {cuenta.productos.length}
+                          </span>
+                          {cuentas.length > 1 && (
+                            <span 
+                              onClick={(e) => { e.stopPropagation(); eliminarCuenta(index) }}
+                              className="ml-1 hover:bg-red-500 hover:text-white rounded-full p-0.5"
+                            >
+                              <X className="h-3 w-3" />
+                            </span>
+                          )}
+                        </button>
+                      ))}
+                      <button
+                        onClick={agregarNuevaCuenta}
+                        className="px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 hover:bg-green-200 flex items-center"
+                      >
+                        <UserPlus className="h-3 w-3 mr-1" /> Agregar
+                      </button>
+                    </div>
+                    <div className="text-xs text-gray-500 flex justify-between">
+                      <span>Mesa: {orderForm.mesa || '(sin asignar)'}</span>
+                      <span className="font-medium">Total General: {formatCurrency(calculateTotalGeneral())}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Lista de productos del carrito actual */}
+                <div className="space-y-2 mb-4 max-h-[200px] overflow-y-auto">
+                  {getCurrentCartItems().map(item => (
                     <div key={item.id} className="bg-gray-50 p-2 rounded-lg">
                       <div className="flex items-start justify-between mb-2">
                         <span className="text-sm font-medium">{item.nombre}</span>
@@ -1166,10 +1233,15 @@ export default function PedidosPage() {
                             <Plus className="h-3 w-3" />
                           </Button>
                         </div>
-                        <span className="font-bold text-orange-600">{formatCurrency(parseFloat(item.precio_base) * item.cantidad)}</span>
+                        <span className="font-bold" style={{ color: themeColors.secondary }}>{formatCurrency(parseFloat(item.precio_base) * item.cantidad)}</span>
                       </div>
                     </div>
                   ))}
+                  {getCurrentCartItems().length === 0 && (
+                    <div className="text-center text-gray-400 py-4">
+                      {cuentasSeparadas ? `No hay productos en la cuenta de ${cuentas[cuentaActiva]?.nombre || ''}` : 'Carrito vacío'}
+                    </div>
+                  )}
                 </div>
 
                 <div className="border-t pt-3 space-y-3">
