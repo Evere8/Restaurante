@@ -974,12 +974,21 @@ export default function CobroPage() {
                       <span className="text-2xl font-bold text-orange-600">{formatCurrency(order.total)}</span>
                     </div>
 
-                    <Button 
-                      className="w-full bg-orange-500 hover:bg-orange-600 text-lg py-6"
-                      onClick={() => openPaymentDialog(order)}
-                    >
-                      <CreditCard className="mr-2 h-5 w-5" /> Cobrar
-                    </Button>
+                    <div className="flex space-x-2">
+                      <Button 
+                        className="flex-1 bg-orange-500 hover:bg-orange-600 text-lg py-6"
+                        onClick={() => openPaymentDialog(order)}
+                      >
+                        <CreditCard className="mr-2 h-5 w-5" /> Cobrar
+                      </Button>
+                      <Button 
+                        variant="destructive"
+                        className="py-6"
+                        onClick={() => handleEliminarPedido(order.id)}
+                      >
+                        <Trash2 className="h-5 w-5" />
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               )})}
