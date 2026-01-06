@@ -477,14 +477,15 @@ export default function PedidosPage() {
     }
 
     try {
-      // Crear nuevos order_items
+      // Crear nuevos order_items con marca de "adicional"
       const orderItems = cart.map(item => ({
         order_id: addingToOrder.id,
         menu_item_id: item.id,
-        nombre_item_snapshot: item.nombre,
+        nombre_item_snapshot: `🆕 ${item.nombre}`, // Marcar como nuevo con emoji
         precio_unitario: parseFloat(item.precio_base),
         cantidad: item.cantidad,
-        total_item: parseFloat(item.precio_base) * item.cantidad
+        total_item: parseFloat(item.precio_base) * item.cantidad,
+        es_adicional: true // Campo para identificar items adicionales
       }))
 
       const { error: itemsError } = await supabase
@@ -504,11 +505,15 @@ export default function PedidosPage() {
         .update({ 
           estado: 'PENDIENTE',
           total: newTotal,
-          subtotal: newTotal
+          subtotal: newTotal,
+          nota_cocina: `⚠️ PEDIDO ADICIONAL - Nuevos items agregados: ${cart.map(i => `${i.cantidad}x ${i.nombre}`).join(', ')}`
         })
         .eq('id', addingToOrder.id)
 
       if (updateError) throw updateError
+
+      // Reproducir sonido de nuevo pedido
+      playNotificationSound()
 
       toast.success('Productos agregados al pedido. El pedido volvió a preparación.')
       setAddItemsDialogOpen(false)
