@@ -1401,7 +1401,6 @@ function CobroRapidoSection({ restaurant, formatCurrency, onOrderCreated }) {
           estado: 'ENTREGADO',
           subtotal: total,
           total: total,
-          descuento: 0,
           origen: 'COBRO_RAPIDO'
         })
         .select()
