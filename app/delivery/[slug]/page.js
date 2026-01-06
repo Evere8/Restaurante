@@ -1398,12 +1398,40 @@ export default function MenuPublicoPage() {
             <div className="text-center py-8">
               <div className="text-4xl mb-3">🛒</div>
               <p className="text-gray-500">Tu carrito está vacío</p>
+              <Button 
+                variant="outline" 
+                className="mt-4"
+                onClick={() => setCartOpen(false)}
+              >
+                Ver Menú
+              </Button>
             </div>
           ) : getCurrentCartItems().length === 0 && cuentasSeparadas ? (
-            <div className="text-center py-8">
+            <div className="text-center py-6">
               <div className="text-4xl mb-3">📝</div>
-              <p className="text-gray-500">Cuenta de {cuentas[cuentaActiva]?.nombre} vacía</p>
-              <p className="text-xs text-gray-400 mt-1">Agrega productos desde el menú</p>
+              <p className="text-gray-600 font-medium">Cuenta de {cuentas[cuentaActiva]?.nombre}</p>
+              <p className="text-sm text-gray-400 mt-1 mb-4">Esta cuenta no tiene productos aún</p>
+              <Button 
+                className="text-white"
+                style={{ backgroundColor: colors.primary }}
+                onClick={() => setCartOpen(false)}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Agregar Productos
+              </Button>
+              
+              {/* Mostrar resumen de otras cuentas si tienen productos */}
+              {cuentas.some(c => c.productos.length > 0) && (
+                <div className="mt-4 p-3 bg-gray-50 rounded-lg text-left">
+                  <p className="text-xs text-gray-500 mb-2">Otras cuentas:</p>
+                  {cuentas.map((cuenta, i) => cuenta.productos.length > 0 && (
+                    <div key={i} className="flex justify-between text-sm py-1">
+                      <span>{cuenta.nombre}</span>
+                      <span className="font-medium">{cuenta.productos.length} items</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           ) : (
             <>
