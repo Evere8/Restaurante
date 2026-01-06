@@ -1588,6 +1588,52 @@ export default function PedidosPage() {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Dialog para ingresar nombre de cuenta */}
+        <Dialog open={nombreCuentaDialog} onOpenChange={setNombreCuentaDialog}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="flex items-center">
+                <Users className="mr-2 h-5 w-5" />
+                {cuentas.length === 0 ? 'Crear Primera Cuenta' : 'Nueva Cuenta'}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <p className="text-sm text-gray-600">
+                {cuentas.length === 0 
+                  ? 'Ingresa el nombre de la primera persona para crear cuentas separadas.'
+                  : 'Ingresa el nombre de la persona para agregar otra cuenta.'}
+              </p>
+              <div className="space-y-2">
+                <Label>Nombre de la persona</Label>
+                <Input 
+                  placeholder="Ej: Juan, María..."
+                  value={nuevoNombreCuenta}
+                  onChange={(e) => setNuevoNombreCuenta(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && confirmarNuevaCuenta()}
+                  autoFocus
+                />
+              </div>
+            </div>
+            <div className="flex justify-end space-x-2">
+              <Button variant="outline" onClick={() => {
+                setNombreCuentaDialog(false)
+                if (cuentas.length === 0) {
+                  setCuentasSeparadas(false)
+                }
+              }}>
+                Cancelar
+              </Button>
+              <Button 
+                onClick={confirmarNuevaCuenta}
+                style={{ backgroundColor: themeColors.secondary }}
+                className="hover:opacity-90"
+              >
+                {cuentas.length === 0 ? 'Crear Cuenta' : 'Agregar'}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
         </div>
       </div>
     </div>
