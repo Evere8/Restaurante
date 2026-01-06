@@ -789,7 +789,13 @@ export default function ConfiguracionPage() {
                       </div>
                       <div className="flex justify-end space-x-2 mt-4">
                         <Button variant="outline" onClick={() => setUserDialogOpen(false)}>Cancelar</Button>
-                        <Button className="bg-orange-500 hover:bg-orange-600" onClick={handleSaveUser}>Guardar</Button>
+                        <Button 
+                          className="hover:opacity-90" 
+                          style={{ backgroundColor: themeColors.secondary }}
+                          onClick={handleSaveUser}
+                        >
+                          Guardar
+                        </Button>
                       </div>
                     </DialogContent>
                   </Dialog>
