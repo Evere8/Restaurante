@@ -973,12 +973,13 @@ export default function CobroPage() {
 
                     <div className="border-t pt-3 flex justify-between items-center">
                       <span className="text-lg font-bold">TOTAL:</span>
-                      <span className="text-2xl font-bold text-orange-600">{formatCurrency(order.total)}</span>
+                      <span className="text-2xl font-bold" style={{ color: themeColors.secondary }}>{formatCurrency(order.total)}</span>
                     </div>
 
                     <div className="flex space-x-2">
                       <Button 
-                        className="flex-1 bg-orange-500 hover:bg-orange-600 text-lg py-6"
+                        className="flex-1 hover:opacity-90 text-lg py-6"
+                        style={{ backgroundColor: themeColors.secondary }}
                         onClick={() => openPaymentDialog(order)}
                       >
                         <CreditCard className="mr-2 h-5 w-5" /> Cobrar
