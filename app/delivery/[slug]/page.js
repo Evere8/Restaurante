@@ -480,10 +480,33 @@ export default function MenuPublicoPage() {
     )
   }
 
+  // Calcular tiempo por etapa
+  const getStageTimer = (stage) => {
+    if (!activeOrder) return 0
+    const now = Date.now()
+    const createdAt = new Date(activeOrder.created_at).getTime()
+    const stages = ['PENDIENTE', 'PREPARANDO', 'LISTO', 'ENTREGADO']
+    const currentIndex = stages.indexOf(activeOrder.estado)
+    const stageIndex = stages.indexOf(stage)
+    
+    if (stageIndex > currentIndex) return 0
+    if (stageIndex === currentIndex) {
+      // Etapa actual: mostrar tiempo transcurrido
+      return Math.floor((now - createdAt) / 1000)
+    }
+    return 0 // Etapas completadas podrían mostrar tiempo guardado si lo tuviéramos
+  }
+
   // Vista de seguimiento de pedido
   if (showOrderStatus && activeOrder && activeOrder.estado !== 'PAGADO') {
     const statusInfo = getStatusInfo(activeOrder.estado)
     const StatusIcon = statusInfo.icon
+    const stages = [
+      { key: 'PENDIENTE', label: 'Recibido', icon: Clock },
+      { key: 'PREPARANDO', label: 'Preparando', icon: ChefHat },
+      { key: 'LISTO', label: 'Listo', icon: Check },
+      { key: 'ENTREGADO', label: 'Entregado', icon: Utensils }
+    ]
 
     return (
       <div className="min-h-screen pb-24" style={{ backgroundColor: colors.background }}>
@@ -495,35 +518,70 @@ export default function MenuPublicoPage() {
             <h1 className="text-xl font-bold">Tu Pedido</h1>
             <div className="flex items-center bg-white/20 px-3 py-1 rounded-full">
               <Timer className="h-4 w-4 mr-2" />
-              <span className="font-mono">{formatTime(orderTimer)}</span>
+              <span className="font-mono text-lg">{formatTime(orderTimer)}</span>
             </div>
           </div>
           <p className="text-sm text-white/80">Mesa {activeOrder.mesa}</p>
         </div>
 
-        {/* Estado del pedido */}
-        <div className="p-6">
+        {/* Estado del pedido con cronómetros por etapa */}
+        <div className="p-4">
           <div className="bg-white rounded-2xl shadow-lg p-6 text-center">
-            <div className={`w-20 h-20 rounded-full ${statusInfo.color} flex items-center justify-center mx-auto mb-4`}>
+            <div className={`w-20 h-20 rounded-full ${statusInfo.color} flex items-center justify-center mx-auto mb-4 animate-pulse`}>
               <StatusIcon className="h-10 w-10 text-white" />
             </div>
             <h2 className="text-2xl font-bold mb-2">{statusInfo.label}</h2>
-            <p className="text-gray-600 mb-4">{statusInfo.message}</p>
+            <p className="text-gray-600 mb-6">{statusInfo.message}</p>
             
-            {/* Timeline de estados */}
-            <div className="flex justify-center items-center space-x-2 mb-6">
-              {['PENDIENTE', 'PREPARANDO', 'LISTO', 'ENTREGADO'].map((status, i) => {
-                const isActive = ['PENDIENTE', 'NUEVO'].includes(activeOrder.estado) ? i === 0 :
+            {/* Timeline detallado con cronómetro por etapa */}
+            <div className="flex justify-between items-start mb-6 px-2">
+              {stages.map((stage, i) => {
+                const stageStates = ['PENDIENTE', 'NUEVO']
+                const isActive = stageStates.includes(activeOrder.estado) ? i === 0 :
                                activeOrder.estado === 'PREPARANDO' ? i <= 1 :
                                activeOrder.estado === 'LISTO' ? i <= 2 :
                                activeOrder.estado === 'ENTREGADO' ? i <= 3 : false
+                const isCurrent = (stageStates.includes(activeOrder.estado) && i === 0) ||
+                                  (activeOrder.estado === stage.key)
+                const StageIcon = stage.icon
+                
                 return (
-                  <div key={status} className="flex items-center">
-                    <div className={`w-4 h-4 rounded-full ${isActive ? statusInfo.color : 'bg-gray-300'}`}></div>
-                    {i < 3 && <div className={`w-8 h-1 ${isActive ? statusInfo.color : 'bg-gray-300'}`}></div>}
+                  <div key={stage.key} className="flex flex-col items-center flex-1">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-1 transition-all ${
+                      isActive ? statusInfo.color : 'bg-gray-200'
+                    } ${isCurrent ? 'ring-4 ring-offset-2 animate-pulse' : ''}`}
+                    style={isCurrent ? { ringColor: statusInfo.color.replace('bg-', '') } : {}}>
+                      <StageIcon className={`h-5 w-5 ${isActive ? 'text-white' : 'text-gray-400'}`} />
+                    </div>
+                    <span className={`text-xs font-medium ${isActive ? 'text-gray-900' : 'text-gray-400'}`}>
+                      {stage.label}
+                    </span>
+                    {isCurrent && (
+                      <div className="flex items-center mt-1 bg-gray-100 rounded-full px-2 py-0.5">
+                        <Timer className="h-3 w-3 mr-1 text-gray-500" />
+                        <span className="text-xs font-mono text-gray-700">{formatTime(orderTimer)}</span>
+                      </div>
+                    )}
+                    {i < stages.length - 1 && (
+                      <div className={`hidden sm:block absolute h-0.5 w-12 ${isActive ? statusInfo.color : 'bg-gray-200'}`} 
+                           style={{ left: `${(i + 1) * 25}%`, top: '20px' }}></div>
+                    )}
                   </div>
                 )
               })}
+            </div>
+            
+            {/* Línea de progreso horizontal */}
+            <div className="w-full bg-gray-200 rounded-full h-2 mb-4 overflow-hidden">
+              <div 
+                className={`h-full transition-all duration-500 ${statusInfo.color}`}
+                style={{ 
+                  width: activeOrder.estado === 'PENDIENTE' || activeOrder.estado === 'NUEVO' ? '25%' :
+                         activeOrder.estado === 'PREPARANDO' ? '50%' :
+                         activeOrder.estado === 'LISTO' ? '75%' :
+                         activeOrder.estado === 'ENTREGADO' ? '100%' : '0%'
+                }}
+              ></div>
             </div>
           </div>
 
