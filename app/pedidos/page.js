@@ -1049,11 +1049,11 @@ export default function PedidosPage() {
                       </div>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
-                          <Button size="sm" variant="outline" onClick={() => updateQuantity(item.id, -1)}>
+                          <Button size="sm" variant="outline" onClick={() => updateCartQuantity(item.id, -1)}>
                             <Minus className="h-3 w-3" />
                           </Button>
                           <span className="font-bold">{item.cantidad}</span>
-                          <Button size="sm" variant="outline" onClick={() => updateQuantity(item.id, 1)}>
+                          <Button size="sm" variant="outline" onClick={() => updateCartQuantity(item.id, 1)}>
                             <Plus className="h-3 w-3" />
                           </Button>
                         </div>
