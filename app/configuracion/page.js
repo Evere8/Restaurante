@@ -890,7 +890,11 @@ export default function ConfiguracionPage() {
                   </div>
                 </div>
                 <div className="flex justify-end pt-4">
-                  <Button className="bg-orange-500 hover:bg-orange-600" onClick={handleSavePreferences}>
+                  <Button 
+                    className="hover:opacity-90" 
+                    style={{ backgroundColor: themeColors.secondary }}
+                    onClick={handleSavePreferences}
+                  >
                     Guardar Preferencias
                   </Button>
                 </div>
