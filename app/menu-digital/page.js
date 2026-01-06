@@ -738,7 +738,7 @@ export default function MenuDigitalPage() {
                       Imagen de Portada
                     </CardTitle>
                     <CardDescription>
-                      Imagen de fondo del encabezado del menú
+                      Imagen de fondo del encabezado del menú (aparece detrás del logo)
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -764,17 +764,56 @@ export default function MenuDigitalPage() {
                       </div>
                     )}
 
-                    <div>
-                      <Label>Usar URL de imagen (recomendado)</Label>
+                    {/* Opción 1: Subir archivo */}
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Opción 1: Subir imagen</Label>
+                      <Input 
+                        type="file" 
+                        accept="image/*" 
+                        onChange={(e) => handleImageUpload(e, 'portada')} 
+                        disabled={uploadingImage}
+                      />
+                      <p className="text-xs text-gray-500">
+                        Tamaño recomendado: 1200x400px (formato horizontal)
+                      </p>
+                    </div>
+
+                    {/* Opción 2: URL */}
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Opción 2: Usar URL de imagen</Label>
                       <Input
                         value={config.imagen_portada}
                         onChange={(e) => setConfig({ ...config, imagen_portada: e.target.value })}
                         placeholder="https://ejemplo.com/imagen.jpg"
-                        className="mt-2"
                       />
-                      <p className="text-xs text-gray-500 mt-1">
+                      <p className="text-xs text-gray-500">
                         Puedes usar imágenes de Unsplash, Pexels o cualquier URL pública
                       </p>
+                    </div>
+
+                    {/* Preview de cómo se verá */}
+                    <div className="bg-gray-50 p-3 rounded-lg border">
+                      <p className="text-xs font-medium text-gray-600 mb-2">Vista previa del encabezado:</p>
+                      <div 
+                        className="relative h-20 rounded-lg overflow-hidden bg-cover bg-center"
+                        style={{ 
+                          backgroundColor: config.colores?.secondary || '#1e3a5f',
+                          backgroundImage: config.imagen_portada ? `url(${config.imagen_portada})` : 'none'
+                        }}
+                      >
+                        <div className="absolute inset-0 bg-black/40"></div>
+                        <div className="absolute bottom-2 left-3 flex items-end space-x-2">
+                          {restaurant?.logo_url ? (
+                            <img src={restaurant.logo_url} alt="Logo" className="w-10 h-10 rounded bg-white p-0.5 object-contain" />
+                          ) : (
+                            <div className="w-10 h-10 rounded bg-white flex items-center justify-center text-lg">🍽️</div>
+                          )}
+                          <div className="text-white text-xs">
+                            <p className="font-bold">{restaurant?.nombre || 'Tu Restaurante'}</p>
+                            <p className="opacity-80 text-[10px]">Descripción</p>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
