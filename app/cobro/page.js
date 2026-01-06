@@ -853,16 +853,31 @@ export default function CobroPage() {
           <TabsList>
             <TabsTrigger value="acobrar">A Cobrar ({ordersACobrar.length})</TabsTrigger>
             <TabsTrigger value="cobrados">Cobrados ({ordersCobrados.length})</TabsTrigger>
+            <TabsTrigger value="rapido" className="bg-green-100 text-green-700 data-[state=active]:bg-green-500 data-[state=active]:text-white">
+              ⚡ Cobro Rápido
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="acobrar">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {ordersACobrar.map(order => (
-                <Card key={order.id} className="border-2 border-orange-200">
-                  <CardHeader className="bg-orange-50">
+              {ordersACobrar.map(order => {
+                // Identificar items nuevos (tienen 🆕 o es_adicional)
+                const itemsOriginales = order.order_items?.filter(i => !i.nombre_item_snapshot?.startsWith('🆕') && !i.es_adicional) || []
+                const itemsNuevos = order.order_items?.filter(i => i.nombre_item_snapshot?.startsWith('🆕') || i.es_adicional) || []
+                
+                return (
+                <Card key={order.id} className={`border-2 ${itemsNuevos.length > 0 ? 'border-green-400 shadow-lg' : 'border-orange-200'}`}>
+                  <CardHeader className={itemsNuevos.length > 0 ? 'bg-green-50' : 'bg-orange-50'}>
                     <div className="flex items-start justify-between">
                       <div>
-                        <CardTitle className="text-lg">Pedido #{order.id.slice(0, 8)}</CardTitle>
+                        <CardTitle className="text-lg flex items-center">
+                          Pedido #{order.id.slice(0, 8)}
+                          {itemsNuevos.length > 0 && (
+                            <span className="ml-2 bg-green-500 text-white text-xs px-2 py-0.5 rounded-full animate-pulse">
+                              +{itemsNuevos.length} NUEVO
+                            </span>
+                          )}
+                        </CardTitle>
                         <p className="text-sm text-gray-600 mt-1">
                           {new Date(order.created_at).toLocaleString('es-ES')}
                         </p>
@@ -890,14 +905,37 @@ export default function CobroPage() {
                       )}
                     </div>
 
+                    {/* Nota de cocina si hay items nuevos */}
+                    {order.nota_cocina && (
+                      <div className="bg-yellow-100 p-2 rounded text-xs border border-yellow-300">
+                        <span className="font-bold text-yellow-800">⚠️ Nota:</span>
+                        <span className="text-yellow-900 ml-1">{order.nota_cocina}</span>
+                      </div>
+                    )}
+
                     <div className="border-t pt-2">
                       <p className="font-semibold mb-1 text-sm">Productos:</p>
-                      {order.order_items?.map(item => (
+                      
+                      {/* Items originales */}
+                      {itemsOriginales.map(item => (
                         <div key={item.id} className="flex justify-between text-xs mb-1">
                           <span>{item.cantidad}x {item.nombre_item_snapshot}</span>
                           <span className="font-medium">{formatCurrency(item.precio_unitario * item.cantidad)}</span>
                         </div>
                       ))}
+                      
+                      {/* Items nuevos separados */}
+                      {itemsNuevos.length > 0 && (
+                        <div className="mt-2 pt-2 border-t border-green-300 bg-green-50 rounded p-2">
+                          <p className="text-xs font-bold text-green-700 mb-1">🆕 NUEVOS ITEMS:</p>
+                          {itemsNuevos.map(item => (
+                            <div key={item.id} className="flex justify-between text-xs mb-1 text-green-800 font-medium">
+                              <span>{item.cantidad}x {item.nombre_item_snapshot?.replace('🆕 ', '')}</span>
+                              <span>{formatCurrency(item.precio_unitario * item.cantidad)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     <div className="border-t pt-3 flex justify-between items-center">
@@ -913,7 +951,7 @@ export default function CobroPage() {
                     </Button>
                   </CardContent>
                 </Card>
-              ))}
+              )})}
             </div>
 
             {ordersACobrar.length === 0 && (
