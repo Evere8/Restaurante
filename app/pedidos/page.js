@@ -462,6 +462,65 @@ export default function PedidosPage() {
     setCreateDialogOpen(true)
   }
 
+  // Función para abrir dialog de agregar más items a pedido entregado
+  const openAddItemsDialog = (order) => {
+    setAddingToOrder(order)
+    setCart([])
+    setAddItemsDialogOpen(true)
+  }
+
+  // Función para agregar más items a un pedido existente (entregado)
+  const handleAddItemsToOrder = async () => {
+    if (!addingToOrder || cart.length === 0) {
+      toast.error('Agrega productos al carrito')
+      return
+    }
+
+    try {
+      // Crear nuevos order_items
+      const orderItems = cart.map(item => ({
+        order_id: addingToOrder.id,
+        menu_item_id: item.id,
+        nombre_item_snapshot: item.nombre,
+        precio_unitario: parseFloat(item.precio_base),
+        cantidad: item.cantidad,
+        total_item: parseFloat(item.precio_base) * item.cantidad
+      }))
+
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .insert(orderItems)
+
+      if (itemsError) throw itemsError
+
+      // Calcular nuevo total
+      const newItemsTotal = cart.reduce((sum, item) => sum + (parseFloat(item.precio_base) * item.cantidad), 0)
+      const currentTotal = parseFloat(addingToOrder.total) || 0
+      const newTotal = currentTotal + newItemsTotal
+
+      // Actualizar el pedido: cambiar estado a PENDIENTE y actualizar total
+      const { error: updateError } = await supabase
+        .from('orders')
+        .update({ 
+          estado: 'PENDIENTE',
+          total: newTotal,
+          subtotal: newTotal
+        })
+        .eq('id', addingToOrder.id)
+
+      if (updateError) throw updateError
+
+      toast.success('Productos agregados al pedido. El pedido volvió a preparación.')
+      setAddItemsDialogOpen(false)
+      setAddingToOrder(null)
+      setCart([])
+      loadOrders()
+    } catch (error) {
+      console.error('Error agregando items:', error)
+      toast.error('Error al agregar productos al pedido')
+    }
+  }
+
   if (authLoading || !user) {
     return <div className="flex items-center justify-center min-h-screen">Cargando...</div>
   }
