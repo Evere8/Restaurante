@@ -1018,7 +1018,15 @@ export default function CobroPage() {
 
           {/* Pestaña Cobro Rápido */}
           <TabsContent value="rapido">
-            <CobroRapidoSection restaurant={restaurant} formatCurrency={formatCurrency} />
+            <CobroRapidoSection 
+              restaurant={restaurant} 
+              formatCurrency={formatCurrency} 
+              onOrderCreated={(order) => {
+                // Cuando se crea el pedido desde cobro rápido, abrir diálogo de pago
+                openPaymentDialog(order)
+                loadOrders() // Recargar para que aparezca en "A Cobrar"
+              }}
+            />
           </TabsContent>
         </Tabs>
 
