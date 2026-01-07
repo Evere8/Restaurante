@@ -759,6 +759,8 @@ export default function MenuPublicoPage() {
     } catch (err) {
       console.error('Error creando pedido:', err)
       toast.error('Error al enviar el pedido: ' + (err.message || 'Intenta de nuevo'))
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
