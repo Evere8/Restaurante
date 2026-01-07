@@ -568,6 +568,13 @@ export default function MenuPublicoPage() {
       return
     }
 
+    // Prevenir doble envío
+    if (isSubmitting) {
+      console.log('Ya se está enviando el pedido...')
+      return
+    }
+    setIsSubmitting(true)
+
     try {
       // Si hay un pedido activo y está ENTREGADO, agregar más items (modo normal, sin cuentas separadas)
       if (activeOrder && activeOrder.estado === 'ENTREGADO' && !cuentasSeparadas) {
