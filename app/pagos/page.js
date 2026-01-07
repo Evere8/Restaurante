@@ -476,7 +476,7 @@ export default function PagosPage() {
         .from('pagos_gastos')
         .insert({
           restaurant_id: restaurant.id,
-          gasto_fijo_id: pagoGastoForm.gasto_fijo_id || null,
+          gasto_fijo_id: pagoGastoForm.gasto_fijo_id === 'manual' ? null : (pagoGastoForm.gasto_fijo_id || null),
           nombre: pagoGastoForm.nombre,
           categoria: pagoGastoForm.categoria,
           monto: parseFloat(pagoGastoForm.monto),
