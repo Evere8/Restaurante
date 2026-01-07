@@ -1694,9 +1694,19 @@ export default function MenuPublicoPage() {
               className="w-full text-white py-5 text-base"
               style={{ backgroundColor: colors.primary }}
               onClick={handleCheckout}
+              disabled={isSubmitting}
             >
-              <Send className="h-4 w-4 mr-2" />
-              {activeOrder?.estado === 'ENTREGADO' ? 'Agregar al pedido' : 'Enviar Pedido'}
+              {isSubmitting ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Enviando...
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4 mr-2" />
+                  {activeOrder?.estado === 'ENTREGADO' ? 'Agregar al pedido' : 'Enviar Pedido'}
+                </>
+              )}
             </Button>
           </div>
         </DialogContent>
