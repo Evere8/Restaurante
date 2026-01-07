@@ -1432,10 +1432,10 @@ export default function PagosPage() {
                 }}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar o dejar vacío" />
+                  <SelectValue placeholder="Seleccionar gasto fijo o dejar vacío" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">-- Gasto manual --</SelectItem>
+                  <SelectItem value="manual">-- Gasto manual --</SelectItem>
                   {gastosFijos.map(g => (
                     <SelectItem key={g.id} value={g.id}>
                       {g.nombre} - {formatCurrency(g.monto)}
