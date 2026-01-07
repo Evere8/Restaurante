@@ -1309,10 +1309,12 @@ export default function MenuPublicoPage() {
             {filteredProducts.map(product => {
               const inCart = cart.filter(item => item.id === product.id)
               const totalInCart = inCart.reduce((sum, item) => sum + item.cantidad, 0)
+              const productPromo = getDiscountedPrice(product)
+              
               return (
                 <div 
                   key={product.id}
-                  className="bg-white rounded-lg shadow-sm overflow-hidden cursor-pointer"
+                  className={`bg-white rounded-lg shadow-sm overflow-hidden cursor-pointer ${productPromo ? 'ring-2 ring-red-400' : ''}`}
                   onClick={() => openProductModal(product)}
                 >
                   <div className="relative">
@@ -1321,6 +1323,12 @@ export default function MenuPublicoPage() {
                     ) : (
                       <div className="w-full h-20 bg-gray-50 flex items-center justify-center">
                         <span className="text-2xl">🍽️</span>
+                      </div>
+                    )}
+                    {/* Badge de promoción */}
+                    {productPromo && (
+                      <div className="absolute top-1 left-1 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
+                        {productPromo.tipo === '2x1' ? '2x1' : `-${productPromo.descuento}%`}
                       </div>
                     )}
                     {totalInCart > 0 && (
@@ -1334,9 +1342,23 @@ export default function MenuPublicoPage() {
                   </div>
                   <div className="p-2">
                     <h3 className="font-medium text-xs line-clamp-2 capitalize leading-tight">{product.nombre}</h3>
-                    <p className="font-bold text-xs mt-1" style={{ color: colors.primary }}>
-                      {formatPrice(product.precio_base)}
-                    </p>
+                    {productPromo ? (
+                      <div className="mt-1">
+                        <span className="text-[10px] text-gray-400 line-through mr-1">
+                          {formatPrice(product.precio_base)}
+                        </span>
+                        <span className="font-bold text-xs text-red-600">
+                          {productPromo.tipo === '2x1' 
+                            ? `2x ${formatPrice(product.precio_base)}`
+                            : formatPrice(productPromo.precioFinal)
+                          }
+                        </span>
+                      </div>
+                    ) : (
+                      <p className="font-bold text-xs mt-1" style={{ color: colors.primary }}>
+                        {formatPrice(product.precio_base)}
+                      </p>
+                    )}
                   </div>
                 </div>
               )
