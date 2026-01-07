@@ -496,16 +496,42 @@ export default function MenuPublicoPage() {
   const addToCartFromModal = () => {
     if (!selectedProduct) return
 
+    // Calcular precio correcto considerando promociones
+    let precioFinal = selectedProduct.precio
+    let cantidadFinal = productQuantity
+    let nombrePromo = ''
+    
+    // Si es promoción 2x1, ajustar el precio
+    if (selectedProduct.productPromo?.tipo === '2x1') {
+      // Para 2x1: por cada 2 unidades, cobras 1
+      const pares = Math.floor(productQuantity / 2)
+      const impares = productQuantity % 2
+      // El precio total sería: (pares * precio) + (impares * precio)
+      // Efectivamente pagas la mitad por los pares
+      precioFinal = selectedProduct.precio_base // Precio unitario normal
+      nombrePromo = ' (2x1)'
+    } else if (selectedProduct.productPromo?.tipo === 'porcentaje') {
+      precioFinal = selectedProduct.productPromo.precioFinal
+      nombrePromo = ` (-${selectedProduct.productPromo.descuento}%)`
+    }
+
     const cartItem = {
-      id: selectedProduct.isPromotion ? `promo-${selectedProduct.promoData.id}` : selectedProduct.id,
-      nombre: selectedProduct.isPromotion ? selectedProduct.promoData.nombre : selectedProduct.nombre,
-      precio: selectedProduct.precio,
-      precio_original: selectedProduct.isPromotion ? selectedProduct.promoData.precio_original : selectedProduct.precio_base,
-      img_url: selectedProduct.isPromotion ? selectedProduct.promoData.imagen_url : selectedProduct.img_url,
-      cantidad: productQuantity,
+      id: selectedProduct.isPromotion && !selectedProduct.productPromo 
+        ? `promo-${selectedProduct.promoData.id}` 
+        : selectedProduct.id,
+      nombre: (selectedProduct.isPromotion && !selectedProduct.productPromo 
+        ? selectedProduct.promoData.nombre 
+        : selectedProduct.nombre) + nombrePromo,
+      precio: precioFinal,
+      precio_original: selectedProduct.precio_base,
+      img_url: selectedProduct.isPromotion && !selectedProduct.productPromo 
+        ? selectedProduct.promoData?.imagen_url 
+        : selectedProduct.img_url,
+      cantidad: cantidadFinal,
       comentario: productComment,
       isPromotion: selectedProduct.isPromotion,
-      promoData: selectedProduct.promoData
+      promoData: selectedProduct.promoData,
+      productPromo: selectedProduct.productPromo // Guardar info de promoción
     }
 
     if (cuentasSeparadas && cuentas.length > 0) {
