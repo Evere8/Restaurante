@@ -143,6 +143,29 @@ export default function Sidebar() {
           className="p-4 border-t"
           style={{ borderColor: `${adminColors.primary}88` }}
         >
+          {/* Control de Sonido Global */}
+          <div className="mb-3 flex items-center justify-between bg-white/10 rounded-lg p-2">
+            <button
+              onClick={toggleSound}
+              className="flex items-center space-x-2 text-white hover:text-white/80 transition-colors"
+            >
+              {soundEnabled ? (
+                <Volume2 className="h-4 w-4 text-green-300" />
+              ) : (
+                <VolumeX className="h-4 w-4 text-red-300" />
+              )}
+              <span className="text-xs">{soundEnabled ? 'Sonido ON' : 'Sonido OFF'}</span>
+            </button>
+            {soundEnabled && (
+              <button
+                onClick={testSound}
+                className="text-xs text-white/60 hover:text-white underline"
+              >
+                Probar
+              </button>
+            )}
+          </div>
+          
           <Button
             variant="ghost"
             onClick={logout}
