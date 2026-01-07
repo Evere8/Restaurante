@@ -51,6 +51,7 @@ export default function MenuPublicoPage() {
   const [whatsappModal, setWhatsappModal] = useState(false)
   const [confirmModal, setConfirmModal] = useState(false)
   const [addedModal, setAddedModal] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false) // Prevenir doble envío
 
   // Formularios
   const [checkoutForm, setCheckoutForm] = useState({
