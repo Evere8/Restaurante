@@ -344,16 +344,28 @@ export default function MenuPublicoPage() {
         .eq('activo', true)
         .order('orden')
 
-      setCategories(cats || [])
+      // Separar categorías principales de subcategorías
+      const mainCategories = (cats || []).filter(c => !c.parent_id)
+      const subCategories = (cats || []).filter(c => c.parent_id)
+      
+      setCategories(mainCategories)
 
       const { data: prods } = await supabase
         .from('menu_items')
-        .select('*, menu_categories(id, nombre)')
+        .select('*, menu_categories(id, nombre, parent_id, orden)')
         .eq('restaurant_id', activeRest.id)
         .eq('disponible', true)
+        .order('orden_display', { ascending: true })
         .order('nombre')
 
-      setProducts(prods || [])
+      // Agregar info de subcategoría a cada producto
+      const productsWithSubcat = (prods || []).map(p => ({
+        ...p,
+        subcategory: subCategories.find(sc => sc.id === p.subcategory_id),
+        mainCategory: p.menu_categories
+      }))
+      
+      setProducts(productsWithSubcat)
       setLoading(false)
 
     } catch (err) {
