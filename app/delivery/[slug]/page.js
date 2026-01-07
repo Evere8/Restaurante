@@ -353,7 +353,7 @@ export default function MenuPublicoPage() {
 
       const { data: prods, error: prodsError } = await supabase
         .from('menu_items')
-        .select('*, menu_categories(id, nombre)')
+        .select('*')
         .eq('restaurant_id', activeRest.id)
         .eq('disponible', true)
         .order('nombre')
@@ -362,14 +362,19 @@ export default function MenuPublicoPage() {
         console.error('Error cargando productos:', prodsError)
       }
 
-      // Agregar info de subcategoría a cada producto (si existe)
-      const productsWithSubcat = (prods || []).map(p => ({
-        ...p,
-        subcategory: p.subcategory_id ? subCategories.find(sc => sc.id === p.subcategory_id) : null,
-        mainCategory: p.menu_categories
-      }))
+      // Agregar info de categoría manualmente
+      const productsWithCat = (prods || []).map(p => {
+        const category = cats?.find(c => c.id === p.category_id)
+        const subcategory = p.subcategory_id ? subCategories.find(sc => sc.id === p.subcategory_id) : null
+        return {
+          ...p,
+          menu_categories: category,
+          subcategory,
+          mainCategory: category
+        }
+      })
       
-      setProducts(productsWithSubcat)
+      setProducts(productsWithCat)
       setLoading(false)
 
     } catch (err) {
