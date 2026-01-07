@@ -39,6 +39,7 @@ export default function MenuPage() {
     precio_base: '',
     coste: '',
     category_id: '',
+    subcategory_id: '', // Nueva subcategoría
     img_url: '',
     tiempo_preparacion_min: 15,
     disponible: true,
@@ -50,7 +51,9 @@ export default function MenuPage() {
     stock_minimo_alerta: 1,
     dias_alerta_vencimiento_stock: 7,
     cantidad_inicial: '',
-    unidad_medida: 'unidad'
+    unidad_medida: 'unidad',
+    orden_display: 0,
+    destacado: false
   })
 
   const [recetaItems, setRecetaItems] = useState([])
