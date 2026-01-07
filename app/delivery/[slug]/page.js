@@ -604,6 +604,17 @@ export default function MenuPublicoPage() {
     }
   }
 
+  // Calcular precio de un item considerando promociones 2x1
+  const calculateItemTotal = (item) => {
+    if (item.productPromo?.tipo === '2x1') {
+      // Para 2x1: por cada 2 unidades, cobras 1
+      const pares = Math.floor(item.cantidad / 2)
+      const impares = item.cantidad % 2
+      return (pares * item.precio_original) + (impares * item.precio_original)
+    }
+    return item.precio * item.cantidad
+  }
+
   // Funciones de cálculo actualizadas
   const getCurrentCartItems = () => {
     if (cuentasSeparadas && cuentas.length > 0) {
@@ -613,19 +624,19 @@ export default function MenuPublicoPage() {
   }
 
   const calculateCuentaTotal = (cuenta) => {
-    return cuenta.productos.reduce((sum, item) => sum + (item.precio * item.cantidad), 0)
+    return cuenta.productos.reduce((sum, item) => sum + calculateItemTotal(item), 0)
   }
 
   const calculateTotalGeneral = () => {
     if (cuentasSeparadas && cuentas.length > 0) {
       return cuentas.reduce((total, cuenta) => total + calculateCuentaTotal(cuenta), 0)
     }
-    return cart.reduce((sum, item) => sum + (item.precio * item.cantidad), 0)
+    return cart.reduce((sum, item) => sum + calculateItemTotal(item), 0)
   }
 
   const cartTotal = cuentasSeparadas && cuentas.length > 0 
     ? calculateCuentaTotal(cuentas[cuentaActiva] || { productos: [] })
-    : cart.reduce((sum, item) => sum + (item.precio * item.cantidad), 0)
+    : cart.reduce((sum, item) => sum + calculateItemTotal(item), 0)
     
   const cartCount = cuentasSeparadas && cuentas.length > 0
     ? cuentas.reduce((total, cuenta) => total + cuenta.productos.reduce((sum, item) => sum + item.cantidad, 0), 0)
