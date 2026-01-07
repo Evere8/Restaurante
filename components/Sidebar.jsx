@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
+import { useNotificationSound } from '@/contexts/NotificationSoundContext'
 import { Button } from '@/components/ui/button'
-import { LogOut, Home, Utensils, ShoppingCart, ChefHat, CreditCard, Users, Tag, BarChart3, Settings, Code, Menu, X, Package, FileText, Smartphone } from 'lucide-react'
+import { LogOut, Home, Utensils, ShoppingCart, ChefHat, CreditCard, Users, Tag, BarChart3, Settings, Code, Menu, X, Package, FileText, Smartphone, Volume2, VolumeX } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
