@@ -378,6 +378,42 @@ export default function MenuPublicoPage() {
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
+  // Obtener promoción activa para un producto específico
+  const getProductPromotion = (productId) => {
+    for (const promo of promotions) {
+      const hasProduct = promo.promocion_items?.some(pi => pi.menu_item_id === productId)
+      if (hasProduct && promo.activa) {
+        return promo
+      }
+    }
+    return null
+  }
+
+  // Calcular precio con descuento para un producto
+  const getDiscountedPrice = (product) => {
+    const promo = getProductPromotion(product.id)
+    if (!promo) return null
+    
+    if (promo.tipo_descuento === 'porcentaje') {
+      return {
+        precioOriginal: product.precio_base,
+        precioFinal: Math.round(product.precio_base * (1 - promo.porcentaje_descuento / 100)),
+        tipo: 'porcentaje',
+        descuento: promo.porcentaje_descuento,
+        promo
+      }
+    } else if (promo.tipo_descuento === '2x1') {
+      return {
+        precioOriginal: product.precio_base,
+        precioFinal: product.precio_base, // El precio unitario es el mismo, pero llevas 2
+        tipo: '2x1',
+        descuento: 50, // Efectivamente 50% al llevar 2
+        promo
+      }
+    }
+    return null
+  }
+
   // Filtrar productos por categoría y búsqueda
   const filteredProducts = products.filter(p => {
     const matchesCategory = selectedCategory === 'all' || p.category_id === selectedCategory
@@ -390,13 +426,18 @@ export default function MenuPublicoPage() {
   const popularProducts = products.slice(0, 6)
 
   const openProductModal = (product, isPromotion = false, promoData = null) => {
+    // Si el producto tiene promoción individual, aplicarla
+    const productPromo = !isPromotion ? getDiscountedPrice(product) : null
+    
     setSelectedProduct({
       ...product,
-      isPromotion,
-      promoData,
-      precio: isPromotion ? promoData.precio_final : product.precio_base
+      isPromotion: isPromotion || !!productPromo,
+      promoData: promoData || productPromo?.promo,
+      productPromo: productPromo,
+      precio: isPromotion ? promoData.precio_final : 
+              productPromo ? productPromo.precioFinal : product.precio_base
     })
-    setProductQuantity(1)
+    setProductQuantity(productPromo?.tipo === '2x1' ? 2 : 1) // Para 2x1, empezar con 2
     setProductComment('')
   }
 
