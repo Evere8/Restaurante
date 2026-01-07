@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useNotificationSound } from '@/contexts/NotificationSoundContext'
 import { Button } from '@/components/ui/button'
-import { LogOut, Home, Utensils, ShoppingCart, ChefHat, CreditCard, Users, Tag, BarChart3, Settings, Code, Menu, X, Package, FileText, Smartphone, Volume2, VolumeX } from 'lucide-react'
+import { LogOut, Home, Utensils, ShoppingCart, ChefHat, CreditCard, Users, Tag, BarChart3, Settings, Code, Menu, X, Package, FileText, Smartphone, Volume2, VolumeX, Wallet } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
@@ -35,6 +35,7 @@ export default function Sidebar() {
     { href: '/pedidos', label: 'Pedidos', icon: ShoppingCart, permission: 'pedidos' },
     { href: '/kds', label: 'Cocina', icon: ChefHat, permission: 'kds' },
     { href: '/cobro', label: 'Cobro', icon: CreditCard, permission: 'cobro' },
+    { href: '/pagos', label: 'Pagos', icon: Wallet, permission: 'configuracion' },
     { href: '/clientes', label: 'Clientes', icon: Users, permission: 'clientes' },
     { href: '/cupones', label: 'Cupones', icon: Tag, permission: 'cupones' },
     { href: '/reportes', label: 'Reportes', icon: BarChart3, permission: 'reportes' },
