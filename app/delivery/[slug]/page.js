@@ -628,6 +628,7 @@ export default function MenuPublicoPage() {
           .single()
 
         setActiveOrder(updatedOrder)
+        setTimerStartTime(Date.now()) // Reiniciar el timer cuando se agregan nuevos items
         localStorage.setItem(`activeOrder_${slug}`, JSON.stringify(updatedOrder))
         setCart([])
         setCheckoutOpen(false)
