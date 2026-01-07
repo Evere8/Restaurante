@@ -96,14 +96,23 @@ export default function MenuPage() {
   const loadProducts = async () => {
     const { data, error } = await supabase
       .from('menu_items')
-      .select('*, menu_categories(nombre)')
+      .select('*')
       .eq('restaurant_id', restaurant.id)
       .order('nombre', { ascending: true })
 
     if (error) {
       toast.error('Error cargando productos')
+      console.error('Error:', error)
     } else {
-      setProducts(data || [])
+      // Agregar nombre de categoría manualmente
+      const productsWithCategory = (data || []).map(p => {
+        const cat = categories.find(c => c.id === p.category_id)
+        return {
+          ...p,
+          menu_categories: cat ? { nombre: cat.nombre } : null
+        }
+      })
+      setProducts(productsWithCategory)
     }
   }
 
