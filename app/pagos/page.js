@@ -920,45 +920,107 @@ export default function PagosPage() {
                     </div>
                   ) : (
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                      {empleados.map(emp => (
-                        <Card key={emp.id} className="border hover:shadow-md transition-shadow">
-                          <CardContent className="pt-4">
-                            <div className="flex items-start justify-between">
-                              <div>
-                                <h3 className="font-bold">{emp.nombre} {emp.apellido}</h3>
-                                <p className="text-sm text-gray-500">{emp.cargo || 'Sin cargo'}</p>
-                                {emp.telefono && <p className="text-xs text-gray-400">{emp.telefono}</p>}
+                      {empleados.map(emp => {
+                        // Buscar pago pendiente del mes actual
+                        const hoy = new Date()
+                        const periodoActual = hoy.toLocaleString('es', { month: 'long', year: 'numeric' })
+                        const pagoPendiente = pagosEmpleados.find(p => 
+                          p.empleado_id === emp.id && 
+                          p.periodo === periodoActual && 
+                          p.estado === 'pendiente'
+                        )
+                        
+                        return (
+                          <Card key={emp.id} className="border hover:shadow-md transition-shadow">
+                            <CardContent className="pt-4">
+                              <div className="flex items-start justify-between">
+                                <div>
+                                  <h3 className="font-bold">{emp.nombre} {emp.apellido}</h3>
+                                  <p className="text-sm text-gray-500">{emp.cargo || 'Sin cargo'}</p>
+                                  {emp.telefono && <p className="text-xs text-gray-400">{emp.telefono}</p>}
+                                </div>
+                                <Badge variant={emp.tipo_pago === 'mensual' ? 'default' : 'secondary'}>
+                                  {emp.tipo_pago}
+                                </Badge>
                               </div>
-                              <Badge variant={emp.tipo_pago === 'mensual' ? 'default' : 'secondary'}>
-                                {emp.tipo_pago}
-                              </Badge>
-                            </div>
-                            <div className="mt-3 pt-3 border-t">
-                              <div className="flex justify-between items-center">
-                                <span className="text-sm text-gray-500">Salario Base:</span>
-                                <span className="font-bold">{formatCurrency(emp.salario_base)}</span>
+                              
+                              <div className="mt-3 pt-3 border-t">
+                                <div className="flex justify-between items-center">
+                                  <span className="text-sm text-gray-500">Salario Base:</span>
+                                  <span className="font-bold">{formatCurrency(emp.salario_base)}</span>
+                                </div>
+                                
+                                {/* Mostrar pago pendiente si existe */}
+                                {pagoPendiente && (
+                                  <div className="mt-2 p-2 bg-orange-50 rounded-lg">
+                                    <p className="text-xs text-orange-600 font-medium">{periodoActual}</p>
+                                    <div className="grid grid-cols-2 gap-1 mt-1 text-xs">
+                                      {pagoPendiente.monto_horas_extras > 0 && (
+                                        <span>H.Extras: {formatCurrency(pagoPendiente.monto_horas_extras)}</span>
+                                      )}
+                                      {pagoPendiente.monto_turnos_dobles > 0 && (
+                                        <span>T.Dobles: {formatCurrency(pagoPendiente.monto_turnos_dobles)}</span>
+                                      )}
+                                      {pagoPendiente.bonificaciones > 0 && (
+                                        <span>Bonif: {formatCurrency(pagoPendiente.bonificaciones)}</span>
+                                      )}
+                                      {pagoPendiente.descuentos > 0 && (
+                                        <span className="text-red-500">Desc: -{formatCurrency(pagoPendiente.descuentos)}</span>
+                                      )}
+                                      {pagoPendiente.adelantos > 0 && (
+                                        <span className="text-red-500">Adel: -{formatCurrency(pagoPendiente.adelantos)}</span>
+                                      )}
+                                    </div>
+                                    <div className="flex justify-between items-center mt-2 pt-2 border-t border-orange-200">
+                                      <span className="font-medium text-sm">Total:</span>
+                                      <span className="font-bold text-orange-600">{formatCurrency(pagoPendiente.total_pagar)}</span>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
-                            </div>
-                            <div className="flex gap-2 mt-3">
-                              <Button 
-                                size="sm" 
-                                variant="outline" 
-                                className="flex-1"
-                                onClick={() => openEditEmpleado(emp)}
-                              >
-                                <Edit className="h-3 w-3 mr-1" /> Editar
-                              </Button>
-                              <Button 
-                                size="sm" 
-                                className="flex-1"
-                                onClick={() => selectEmpleadoParaPago(emp)}
-                              >
-                                <DollarSign className="h-3 w-3 mr-1" /> Pagar
-                              </Button>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
+                              
+                              <div className="flex flex-col gap-2 mt-3">
+                                <div className="flex gap-2">
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline" 
+                                    className="flex-1"
+                                    onClick={() => openEditEmpleado(emp)}
+                                  >
+                                    <Edit className="h-3 w-3 mr-1" /> Editar
+                                  </Button>
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline"
+                                    className="flex-1 text-blue-600 border-blue-300 hover:bg-blue-50"
+                                    onClick={() => openExtraDialog(emp)}
+                                  >
+                                    <Plus className="h-3 w-3 mr-1" /> Agregar Extra
+                                  </Button>
+                                </div>
+                                
+                                {pagoPendiente ? (
+                                  <Button 
+                                    size="sm" 
+                                    className="w-full bg-green-600 hover:bg-green-700"
+                                    onClick={() => marcarPagoEmpleadoPagado(pagoPendiente.id)}
+                                  >
+                                    <CheckCircle2 className="h-3 w-3 mr-1" /> Marcar como Pagado
+                                  </Button>
+                                ) : (
+                                  <Button 
+                                    size="sm" 
+                                    className="w-full"
+                                    onClick={() => crearPagoMensualBase(emp)}
+                                  >
+                                    <DollarSign className="h-3 w-3 mr-1" /> Crear Pago del Mes
+                                  </Button>
+                                )}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        )
+                      })}
                     </div>
                   )}
                 </CardContent>
