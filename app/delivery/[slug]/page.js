@@ -441,13 +441,17 @@ export default function MenuPublicoPage() {
 
   // Agrupar productos por subcategoría para mejor visualización
   const groupedProducts = () => {
-    if (searchQuery) return { 'Resultados de búsqueda': filteredProducts }
+    // Si no hay productos, retornar vacío
+    if (filteredProducts.length === 0) return {}
+    
+    // Si hay búsqueda activa, mostrar resultados sin agrupar
+    if (searchQuery) return { '': filteredProducts }
     
     const groups = {}
     const noSubcat = []
     
     filteredProducts.forEach(p => {
-      if (p.subcategory) {
+      if (p.subcategory && p.subcategory.nombre) {
         const subcatName = p.subcategory.nombre
         if (!groups[subcatName]) {
           groups[subcatName] = { orden: p.subcategory.orden || 999, products: [] }
@@ -458,6 +462,11 @@ export default function MenuPublicoPage() {
       }
     })
     
+    // Si todos los productos no tienen subcategoría, mostrar sin título
+    if (Object.keys(groups).length === 0) {
+      return { '': noSubcat }
+    }
+    
     // Ordenar subcategorías por su orden
     const sortedGroups = Object.entries(groups)
       .sort((a, b) => a[1].orden - b[1].orden)
@@ -466,17 +475,12 @@ export default function MenuPublicoPage() {
         return acc
       }, {})
     
-    // Si hay productos sin subcategoría, agregarlos al final o inicio
+    // Si hay productos sin subcategoría, agregarlos al final
     if (noSubcat.length > 0) {
-      if (Object.keys(sortedGroups).length > 0) {
-        sortedGroups['Otros Productos'] = noSubcat
-      } else {
-        // Si no hay subcategorías, mostrar todos sin título
-        return { '': filteredProducts }
-      }
+      sortedGroups['Otros Productos'] = noSubcat
     }
     
-    return Object.keys(sortedGroups).length > 0 ? sortedGroups : { '': filteredProducts }
+    return sortedGroups
   }
 
   const popularProducts = products.filter(p => p.destacado).slice(0, 6) || products.slice(0, 6)
