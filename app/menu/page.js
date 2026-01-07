@@ -57,7 +57,9 @@ export default function MenuPage() {
 
   const [categoryForm, setCategoryForm] = useState({
     nombre: '',
-    orden: 0
+    orden: 0,
+    parent_id: null, // Para subcategorías
+    descripcion: ''
   })
 
   useEffect(() => {
