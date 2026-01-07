@@ -31,6 +31,7 @@ export default function MenuPublicoPage() {
   const [activeOrders, setActiveOrders] = useState([]) // Para cuentas separadas
   const [activeOrderTab, setActiveOrderTab] = useState(0) // Pestaña activa en seguimiento
   const [orderTimer, setOrderTimer] = useState(0)
+  const [timerStartTime, setTimerStartTime] = useState(null) // Para reiniciar el timer cuando se agregan items
   const [showOrderStatus, setShowOrderStatus] = useState(false)
   const timerRef = useRef(null)
 
