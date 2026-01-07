@@ -1772,6 +1772,87 @@ export default function PagosPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Dialog: Agregar Extra a Empleado */}
+      <Dialog open={extraDialogOpen} onOpenChange={setExtraDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              Agregar Extra - {selectedEmpleadoExtra?.nombre} {selectedEmpleadoExtra?.apellido}
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div>
+              <Label>Tipo de Extra</Label>
+              <Select 
+                value={extraForm.tipo} 
+                onValueChange={v => setExtraForm({...extraForm, tipo: v})}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="horas_extras">Horas Extras</SelectItem>
+                  <SelectItem value="turno_doble">Turno Doble</SelectItem>
+                  <SelectItem value="bonificacion">Bonificación</SelectItem>
+                  <SelectItem value="descuento">Descuento</SelectItem>
+                  <SelectItem value="adelanto">Adelanto</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {(extraForm.tipo === 'horas_extras' || extraForm.tipo === 'turno_doble') && (
+              <div>
+                <Label>Cantidad</Label>
+                <Input
+                  type="number"
+                  value={extraForm.cantidad}
+                  onChange={e => setExtraForm({...extraForm, cantidad: e.target.value})}
+                  placeholder={extraForm.tipo === 'horas_extras' ? 'Número de horas' : 'Número de turnos'}
+                />
+              </div>
+            )}
+            
+            <div>
+              <Label>Monto (Gs.) *</Label>
+              <Input
+                type="number"
+                value={extraForm.monto}
+                onChange={e => setExtraForm({...extraForm, monto: e.target.value})}
+                placeholder="Monto total a sumar/restar"
+              />
+              {(extraForm.tipo === 'descuento' || extraForm.tipo === 'adelanto') && (
+                <p className="text-xs text-red-500 mt-1">Este monto se restará del total</p>
+              )}
+            </div>
+            
+            <div>
+              <Label>Descripción (opcional)</Label>
+              <Input
+                value={extraForm.descripcion}
+                onChange={e => setExtraForm({...extraForm, descripcion: e.target.value})}
+                placeholder="Ej: Horas del sábado 15/01"
+              />
+            </div>
+            
+            <div className="bg-gray-50 p-3 rounded-lg">
+              <p className="text-sm text-gray-500">
+                Este {extraForm.tipo === 'descuento' || extraForm.tipo === 'adelanto' ? 'descuento' : 'extra'} se 
+                {extraForm.tipo === 'descuento' || extraForm.tipo === 'adelanto' ? ' restará del' : ' sumará al'} pago 
+                del mes actual. Si no existe un pago pendiente, se creará automáticamente con el salario base.
+              </p>
+            </div>
+          </div>
+          
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="outline" onClick={() => setExtraDialogOpen(false)}>Cancelar</Button>
+            <Button onClick={handleSaveExtra}>
+              {extraForm.tipo === 'descuento' || extraForm.tipo === 'adelanto' ? 'Restar del Pago' : 'Agregar al Pago'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
