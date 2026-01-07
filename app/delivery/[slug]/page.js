@@ -1466,6 +1466,9 @@ export default function MenuPublicoPage() {
                 </div>
               )
             })}
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>
