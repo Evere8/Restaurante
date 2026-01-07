@@ -73,11 +73,45 @@ export default function MenuPage() {
 
   useEffect(() => {
     if (user && restaurant) {
-      loadCategories()
-      loadProducts()
-      loadStockItems()
+      loadData()
     }
   }, [user, restaurant])
+
+  const loadData = async () => {
+    // Cargar categorías primero
+    const { data: catsData } = await supabase
+      .from('menu_categories')
+      .select('*')
+      .eq('restaurant_id', restaurant.id)
+      .order('orden', { ascending: true })
+    
+    setCategories(catsData || [])
+
+    // Cargar productos
+    const { data: prodsData, error: prodsError } = await supabase
+      .from('menu_items')
+      .select('*')
+      .eq('restaurant_id', restaurant.id)
+      .order('nombre', { ascending: true })
+
+    if (prodsError) {
+      toast.error('Error cargando productos')
+      console.error('Error:', prodsError)
+    } else {
+      // Agregar nombre de categoría manualmente
+      const productsWithCategory = (prodsData || []).map(p => {
+        const cat = (catsData || []).find(c => c.id === p.category_id)
+        return {
+          ...p,
+          menu_categories: cat ? { nombre: cat.nombre } : null
+        }
+      })
+      setProducts(productsWithCategory)
+    }
+
+    // Cargar stock items
+    loadStockItems()
+  }
 
   const loadCategories = async () => {
     const { data, error } = await supabase
