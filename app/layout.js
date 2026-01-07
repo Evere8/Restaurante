@@ -3,6 +3,7 @@ import './globals.css'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { CurrencyProvider } from '@/contexts/CurrencyContext'
 import { ThemeProvider } from '@/contexts/ThemeContext'
+import { NotificationSoundProvider } from '@/contexts/NotificationSoundContext'
 import { Toaster } from 'sonner'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -19,8 +20,10 @@ export default function RootLayout({ children }) {
         <AuthProvider>
           <CurrencyProvider>
             <ThemeProvider>
-              {children}
-              <Toaster position="top-right" richColors />
+              <NotificationSoundProvider>
+                {children}
+                <Toaster position="top-right" richColors />
+              </NotificationSoundProvider>
             </ThemeProvider>
           </CurrencyProvider>
         </AuthProvider>
