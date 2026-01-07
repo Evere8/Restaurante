@@ -1386,7 +1386,7 @@ export default function MenuPublicoPage() {
         </div>
       </div>
 
-      {/* Lista de productos - 3 columnas */}
+      {/* Lista de productos - Agrupados por subcategoría */}
       <div className="px-3 py-3">
         {filteredProducts.length === 0 ? (
           <div className="text-center py-12">
@@ -1394,11 +1394,25 @@ export default function MenuPublicoPage() {
             <p className="text-gray-500">No se encontraron productos</p>
           </div>
         ) : (
-          <div className="grid grid-cols-3 gap-2">
-            {filteredProducts.map(product => {
-              const inCart = cart.filter(item => item.id === product.id)
-              const totalInCart = inCart.reduce((sum, item) => sum + item.cantidad, 0)
-              const productPromo = getDiscountedPrice(product)
+          <div className="space-y-4">
+            {Object.entries(groupedProducts()).map(([groupName, groupProducts]) => (
+              <div key={groupName || 'all'}>
+                {/* Título de subcategoría */}
+                {groupName && (
+                  <div className="mb-2 pb-1 border-b border-gray-200">
+                    <h3 className="font-bold text-sm text-gray-700 flex items-center">
+                      <span className="w-1 h-4 rounded mr-2" style={{ backgroundColor: colors.primary }}></span>
+                      {groupName}
+                    </h3>
+                  </div>
+                )}
+                
+                {/* Grid de productos */}
+                <div className="grid grid-cols-3 gap-2">
+                  {groupProducts.map(product => {
+                    const inCart = cart.filter(item => item.id === product.id)
+                    const totalInCart = inCart.reduce((sum, item) => sum + item.cantidad, 0)
+                    const productPromo = getDiscountedPrice(product)
               
               return (
                 <div 
