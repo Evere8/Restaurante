@@ -1392,17 +1392,32 @@ export default function MenuPublicoPage() {
           {selectedProduct && (
             <>
               {(selectedProduct.img_url || selectedProduct.promoData?.imagen_url) && (
-                <img 
-                  src={selectedProduct.isPromotion ? selectedProduct.promoData.imagen_url : selectedProduct.img_url}
-                  alt={selectedProduct.nombre}
-                  className="w-full h-40 object-cover rounded-lg -mt-6 -mx-6 mb-4"
-                  style={{ width: 'calc(100% + 48px)', maxWidth: 'none' }}
-                />
+                <div className="relative">
+                  <img 
+                    src={selectedProduct.isPromotion && selectedProduct.promoData?.imagen_url 
+                      ? selectedProduct.promoData.imagen_url 
+                      : selectedProduct.img_url}
+                    alt={selectedProduct.nombre}
+                    className="w-full h-40 object-cover rounded-lg -mt-6 -mx-6 mb-4"
+                    style={{ width: 'calc(100% + 48px)', maxWidth: 'none' }}
+                  />
+                  {/* Badge de promoción en el modal */}
+                  {(selectedProduct.productPromo || selectedProduct.promoData) && (
+                    <div className="absolute top-2 left-2 bg-red-500 text-white text-sm font-bold px-3 py-1 rounded-full shadow-lg">
+                      {selectedProduct.productPromo?.tipo === '2x1' || selectedProduct.promoData?.tipo_descuento === '2x1'
+                        ? '🎉 2x1' 
+                        : `🏷️ -${selectedProduct.productPromo?.descuento || selectedProduct.promoData?.porcentaje_descuento}%`
+                      }
+                    </div>
+                  )}
+                </div>
               )}
 
               <DialogHeader>
                 <DialogTitle className="text-lg capitalize">
-                  {selectedProduct.isPromotion ? selectedProduct.promoData.nombre : selectedProduct.nombre}
+                  {selectedProduct.isPromotion && !selectedProduct.productPromo 
+                    ? selectedProduct.promoData?.nombre 
+                    : selectedProduct.nombre}
                 </DialogTitle>
               </DialogHeader>
 
@@ -1410,15 +1425,49 @@ export default function MenuPublicoPage() {
                 <p className="text-gray-600 text-sm">{selectedProduct.descripcion}</p>
               )}
 
+              {/* Mostrar info de promoción */}
+              {selectedProduct.productPromo && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3 my-2">
+                  {selectedProduct.productPromo.tipo === '2x1' ? (
+                    <div className="text-center">
+                      <p className="text-red-600 font-bold text-lg">🎉 ¡Promoción 2x1!</p>
+                      <p className="text-sm text-red-500">Llevas 2, pagas solo 1</p>
+                      <p className="text-xs text-gray-500 mt-1">Cantidad mínima: 2 unidades</p>
+                    </div>
+                  ) : (
+                    <div className="text-center">
+                      <p className="text-red-600 font-bold">🏷️ ¡Descuento {selectedProduct.productPromo.descuento}%!</p>
+                      <div className="flex items-center justify-center gap-2 mt-1">
+                        <span className="text-gray-400 line-through text-sm">
+                          {formatPrice(selectedProduct.productPromo.precioOriginal)}
+                        </span>
+                        <span className="text-red-600 font-bold text-lg">
+                          {formatPrice(selectedProduct.productPromo.precioFinal)}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="flex items-center justify-between py-2">
-                <span className="text-xl font-bold" style={{ color: colors.primary }}>
-                  {formatPrice(selectedProduct.precio)}
-                </span>
+                {selectedProduct.productPromo?.tipo === '2x1' ? (
+                  <div>
+                    <span className="text-xl font-bold text-red-600">
+                      {formatPrice(selectedProduct.precio)} x 2
+                    </span>
+                    <p className="text-xs text-green-600">¡Pagas solo 1!</p>
+                  </div>
+                ) : (
+                  <span className="text-xl font-bold" style={{ color: selectedProduct.productPromo ? '#dc2626' : colors.primary }}>
+                    {formatPrice(selectedProduct.precio)}
+                  </span>
+                )}
               </div>
 
               <div className="flex items-center justify-center space-x-4 py-3 bg-gray-50 rounded-xl">
                 <button
-                  onClick={() => setProductQuantity(Math.max(1, productQuantity - 1))}
+                  onClick={() => setProductQuantity(Math.max(selectedProduct.productPromo?.tipo === '2x1' ? 2 : 1, productQuantity - 1))}
                   className="w-10 h-10 rounded-full bg-white border-2 flex items-center justify-center"
                 >
                   <Minus className="h-4 w-4" />
@@ -1432,6 +1481,11 @@ export default function MenuPublicoPage() {
                   <Plus className="h-4 w-4" />
                 </button>
               </div>
+              {selectedProduct.productPromo?.tipo === '2x1' && (
+                <p className="text-xs text-center text-gray-500">
+                  Incrementa de a 2 para mantener la promoción
+                </p>
+              )}
 
               <div className="space-y-2">
                 <label className="text-sm font-medium flex items-center text-gray-700">
