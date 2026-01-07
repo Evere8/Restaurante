@@ -399,6 +399,181 @@ export default function PagosPage() {
     })
   }
 
+  // Abrir modal para agregar extras a un empleado
+  const openExtraDialog = (empleado) => {
+    setSelectedEmpleadoExtra(empleado)
+    setExtraForm({
+      tipo: 'horas_extras',
+      cantidad: '',
+      monto: '',
+      descripcion: ''
+    })
+    setExtraDialogOpen(true)
+  }
+
+  // Guardar extra (horas extras, turno doble, etc.)
+  const handleSaveExtra = async () => {
+    if (!extraForm.monto) {
+      toast.error('El monto es requerido')
+      return
+    }
+
+    const monto = parseFloat(extraForm.monto) || 0
+    const cantidad = parseFloat(extraForm.cantidad) || 1
+    
+    // Obtener el mes actual para el periodo
+    const hoy = new Date()
+    const periodo = hoy.toLocaleString('es', { month: 'long', year: 'numeric' })
+
+    try {
+      // Buscar si ya existe un pago pendiente para este empleado en este periodo
+      const { data: existingPago } = await supabase
+        .from('pagos_empleados')
+        .select('*')
+        .eq('empleado_id', selectedEmpleadoExtra.id)
+        .eq('periodo', periodo)
+        .eq('estado', 'pendiente')
+        .single()
+
+      if (existingPago) {
+        // Actualizar el pago existente
+        const updates = {}
+        let nuevoTotal = existingPago.total_pagar
+
+        if (extraForm.tipo === 'horas_extras') {
+          updates.horas_extras = (existingPago.horas_extras || 0) + cantidad
+          updates.monto_horas_extras = (existingPago.monto_horas_extras || 0) + monto
+          nuevoTotal += monto
+        } else if (extraForm.tipo === 'turno_doble') {
+          updates.turnos_dobles = (existingPago.turnos_dobles || 0) + cantidad
+          updates.monto_turnos_dobles = (existingPago.monto_turnos_dobles || 0) + monto
+          nuevoTotal += monto
+        } else if (extraForm.tipo === 'bonificacion') {
+          updates.bonificaciones = (existingPago.bonificaciones || 0) + monto
+          nuevoTotal += monto
+        } else if (extraForm.tipo === 'descuento') {
+          updates.descuentos = (existingPago.descuentos || 0) + monto
+          nuevoTotal -= monto
+        } else if (extraForm.tipo === 'adelanto') {
+          updates.adelantos = (existingPago.adelantos || 0) + monto
+          nuevoTotal -= monto
+        }
+
+        updates.total_pagar = nuevoTotal
+        updates.notas = existingPago.notas 
+          ? `${existingPago.notas}\n${new Date().toLocaleDateString()}: ${extraForm.descripcion || extraForm.tipo}`
+          : `${new Date().toLocaleDateString()}: ${extraForm.descripcion || extraForm.tipo}`
+
+        await supabase
+          .from('pagos_empleados')
+          .update(updates)
+          .eq('id', existingPago.id)
+
+        toast.success('Extra agregado al pago existente')
+      } else {
+        // Crear nuevo pago con el salario base + el extra
+        const salarioBase = selectedEmpleadoExtra.salario_base || 0
+        let totalPagar = salarioBase
+
+        const newPago = {
+          restaurant_id: restaurant.id,
+          empleado_id: selectedEmpleadoExtra.id,
+          periodo: periodo,
+          salario_base: salarioBase,
+          horas_extras: 0,
+          monto_horas_extras: 0,
+          turnos_dobles: 0,
+          monto_turnos_dobles: 0,
+          bonificaciones: 0,
+          descuentos: 0,
+          adelantos: 0,
+          estado: 'pendiente',
+          metodo_pago: 'efectivo',
+          notas: `${new Date().toLocaleDateString()}: ${extraForm.descripcion || extraForm.tipo}`
+        }
+
+        if (extraForm.tipo === 'horas_extras') {
+          newPago.horas_extras = cantidad
+          newPago.monto_horas_extras = monto
+          totalPagar += monto
+        } else if (extraForm.tipo === 'turno_doble') {
+          newPago.turnos_dobles = cantidad
+          newPago.monto_turnos_dobles = monto
+          totalPagar += monto
+        } else if (extraForm.tipo === 'bonificacion') {
+          newPago.bonificaciones = monto
+          totalPagar += monto
+        } else if (extraForm.tipo === 'descuento') {
+          newPago.descuentos = monto
+          totalPagar -= monto
+        } else if (extraForm.tipo === 'adelanto') {
+          newPago.adelantos = monto
+          totalPagar -= monto
+        }
+
+        newPago.total_pagar = totalPagar
+
+        await supabase
+          .from('pagos_empleados')
+          .insert(newPago)
+
+        toast.success('Pago creado con el extra agregado')
+      }
+
+      setExtraDialogOpen(false)
+      loadPagosEmpleados()
+    } catch (err) {
+      console.error('Error guardando extra:', err)
+      toast.error('Error al guardar')
+    }
+  }
+
+  // Crear pago mensual base para un empleado
+  const crearPagoMensualBase = async (empleado) => {
+    const hoy = new Date()
+    const periodo = hoy.toLocaleString('es', { month: 'long', year: 'numeric' })
+
+    // Verificar si ya existe
+    const { data: existingPago } = await supabase
+      .from('pagos_empleados')
+      .select('id')
+      .eq('empleado_id', empleado.id)
+      .eq('periodo', periodo)
+      .eq('estado', 'pendiente')
+      .single()
+
+    if (existingPago) {
+      toast.info('Ya existe un pago pendiente para este periodo')
+      return
+    }
+
+    try {
+      await supabase
+        .from('pagos_empleados')
+        .insert({
+          restaurant_id: restaurant.id,
+          empleado_id: empleado.id,
+          periodo: periodo,
+          salario_base: empleado.salario_base || 0,
+          horas_extras: 0,
+          monto_horas_extras: 0,
+          turnos_dobles: 0,
+          monto_turnos_dobles: 0,
+          bonificaciones: 0,
+          descuentos: 0,
+          adelantos: 0,
+          total_pagar: empleado.salario_base || 0,
+          estado: 'pendiente',
+          metodo_pago: 'efectivo'
+        })
+
+      toast.success(`Pago de ${periodo} creado`)
+      loadPagosEmpleados()
+    } catch (err) {
+      toast.error('Error creando pago')
+    }
+  }
+
   // CRUD Gastos Fijos
   const handleSaveGastoFijo = async () => {
     if (!gastoFijoForm.nombre || !gastoFijoForm.monto) {
