@@ -1698,36 +1698,67 @@ export default function MenuPublicoPage() {
           ) : (
             <>
               <div className="space-y-2 mb-4">
-                {getCurrentCartItems().map((item, index) => (
-                  <div key={`${item.id}-${index}`} className="p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <h4 className="font-medium capitalize text-sm">{item.nombre}</h4>
-                        {item.comentario && (
-                          <p className="text-xs text-gray-500 italic">&quot;{item.comentario}&quot;</p>
-                        )}
-                        <p className="text-sm mt-1" style={{ color: colors.primary }}>
-                          {formatPrice(item.precio)} x {item.cantidad}
-                        </p>
+                {getCurrentCartItems().map((item, index) => {
+                  const itemTotal = calculateItemTotal(item)
+                  const hasPromo = item.productPromo || item.isPromotion
+                  
+                  return (
+                    <div key={`${item.id}-${index}`} className={`p-3 rounded-lg ${hasPromo ? 'bg-red-50 border border-red-200' : 'bg-gray-50'}`}>
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h4 className="font-medium capitalize text-sm flex items-center gap-1">
+                            {item.nombre}
+                            {item.productPromo?.tipo === '2x1' && (
+                              <span className="text-[10px] bg-red-500 text-white px-1.5 py-0.5 rounded">2x1</span>
+                            )}
+                            {item.productPromo?.tipo === 'porcentaje' && (
+                              <span className="text-[10px] bg-red-500 text-white px-1.5 py-0.5 rounded">-{item.productPromo.descuento}%</span>
+                            )}
+                          </h4>
+                          {item.comentario && (
+                            <p className="text-xs text-gray-500 italic">&quot;{item.comentario}&quot;</p>
+                          )}
+                          {item.productPromo?.tipo === '2x1' ? (
+                            <div className="text-sm mt-1">
+                              <span className="text-gray-500">{item.cantidad} unidades</span>
+                              <p className="text-xs text-green-600">
+                                Pagas {Math.ceil(item.cantidad / 2)} x {formatPrice(item.precio_original)}
+                              </p>
+                            </div>
+                          ) : (
+                            <p className="text-sm mt-1" style={{ color: hasPromo ? '#dc2626' : colors.primary }}>
+                              {formatPrice(item.precio)} x {item.cantidad}
+                            </p>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          {item.productPromo && item.precio_original !== item.precio && (
+                            <span className="text-xs text-gray-400 line-through block">
+                              {formatPrice(item.precio_original * item.cantidad)}
+                            </span>
+                          )}
+                          <span className={`font-bold text-sm ${hasPromo ? 'text-red-600' : ''}`}>
+                            {formatPrice(itemTotal)}
+                          </span>
+                        </div>
                       </div>
-                      <span className="font-bold text-sm">{formatPrice(item.precio * item.cantidad)}</span>
-                    </div>
-                    <div className="flex items-center justify-between mt-2">
-                      <div className="flex items-center space-x-2">
-                        <button onClick={() => updateCartQuantity(index, -1)} className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center">
-                          <Minus className="h-3 w-3" />
-                        </button>
-                        <span className="w-6 text-center text-sm font-medium">{item.cantidad}</span>
-                        <button onClick={() => updateCartQuantity(index, 1)} className="w-6 h-6 rounded-full text-white flex items-center justify-center" style={{ backgroundColor: colors.primary }}>
-                          <Plus className="h-3 w-3" />
+                      <div className="flex items-center justify-between mt-2">
+                        <div className="flex items-center space-x-2">
+                          <button onClick={() => updateCartQuantity(index, -1)} className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center">
+                            <Minus className="h-3 w-3" />
+                          </button>
+                          <span className="w-6 text-center text-sm font-medium">{item.cantidad}</span>
+                          <button onClick={() => updateCartQuantity(index, 1)} className="w-6 h-6 rounded-full text-white flex items-center justify-center" style={{ backgroundColor: colors.primary }}>
+                            <Plus className="h-3 w-3" />
+                          </button>
+                        </div>
+                        <button onClick={() => removeFromCart(index)} className="text-red-500 text-xs">
+                          Eliminar
                         </button>
                       </div>
-                      <button onClick={() => removeFromCart(index)} className="text-red-500 text-xs">
-                        Eliminar
-                      </button>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
 
               <div className="border-t pt-3">
