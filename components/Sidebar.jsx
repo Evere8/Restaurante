@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils'
 
 export default function Sidebar() {
   const { user, restaurant, logout } = useAuth()
+  const { soundEnabled, toggleSound, testSound } = useNotificationSound()
   const pathname = usePathname()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [adminColors, setAdminColors] = useState({
