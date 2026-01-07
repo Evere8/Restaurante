@@ -163,17 +163,22 @@ export default function MenuPublicoPage() {
 
   // Timer para el pedido
   useEffect(() => {
-    if (activeOrder && activeOrder.estado !== 'PAGADO') {
+    if (activeOrder && activeOrder.estado !== 'PAGADO' && activeOrder.estado !== 'ENTREGADO') {
+      // Usar timerStartTime si existe, sino usar created_at del pedido
+      const startTime = timerStartTime || new Date(activeOrder.created_at).getTime()
+      
       timerRef.current = setInterval(() => {
-        const startTime = new Date(activeOrder.created_at).getTime()
         const now = Date.now()
         setOrderTimer(Math.floor((now - startTime) / 1000))
       }, 1000)
+    } else if (activeOrder?.estado === 'ENTREGADO') {
+      // Si está entregado, detener el timer
+      setOrderTimer(0)
     }
     return () => {
       if (timerRef.current) clearInterval(timerRef.current)
     }
-  }, [activeOrder])
+  }, [activeOrder, timerStartTime])
 
   // Polling para actualizar estado del pedido (incluyendo cuentas separadas)
   useEffect(() => {
