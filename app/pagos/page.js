@@ -75,6 +75,16 @@ export default function PagosPage() {
     metodo_pago: 'efectivo',
     notas: ''
   })
+
+  // Formulario para agregar extras incrementales
+  const [extraDialogOpen, setExtraDialogOpen] = useState(false)
+  const [selectedEmpleadoExtra, setSelectedEmpleadoExtra] = useState(null)
+  const [extraForm, setExtraForm] = useState({
+    tipo: 'horas_extras', // horas_extras, turno_doble, bonificacion, descuento, adelanto
+    cantidad: '',
+    monto: '',
+    descripcion: ''
+  })
   
   const [gastoFijoForm, setGastoFijoForm] = useState({
     nombre: '',
