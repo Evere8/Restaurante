@@ -440,9 +440,20 @@ export default function MenuPage() {
     setEditingCategory(category)
     setCategoryForm({
       nombre: category.nombre,
-      orden: category.orden
+      orden: category.orden || 0,
+      parent_id: category.parent_id || null,
+      descripcion: category.descripcion || '',
+      icono: category.icono || ''
     })
     setCategoryDialogOpen(true)
+  }
+  
+  // Obtener solo categorías principales (sin parent_id)
+  const mainCategories = categories.filter(c => !c.parent_id)
+  
+  // Obtener subcategorías de una categoría principal
+  const getSubcategories = (parentId) => {
+    return categories.filter(c => c.parent_id === parentId)
   }
 
   const addRecetaItem = () => {
