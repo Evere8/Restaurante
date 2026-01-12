@@ -1124,7 +1124,7 @@ export default function MenuPage() {
               <ul className="text-sm text-blue-700 space-y-1 list-disc list-inside">
                 <li>Las <strong>Categorías Principales</strong> aparecen como filtros en el menú del cliente</li>
                 <li>Las <strong>Subcategorías</strong> aparecen como títulos de sección dentro de cada categoría</li>
-                <li>Asigna productos a subcategorías desde la pestaña "Productos" al editar</li>
+                <li>Asigna productos a subcategorías desde la pestaña &quot;Productos&quot; al editar</li>
                 <li>Usa iconos (emojis) para hacer el menú más visual</li>
               </ul>
             </div>
