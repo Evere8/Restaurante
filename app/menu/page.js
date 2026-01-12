@@ -179,6 +179,7 @@ export default function MenuPage() {
         precio_base: parseFloat(productForm.precio_base),
         coste: productForm.coste ? parseFloat(productForm.coste) : null,
         category_id: productForm.category_id || null,
+        subcategory_id: productForm.subcategory_id || null,
         img_url: productForm.img_url,
         tiempo_preparacion_min: parseInt(productForm.tiempo_preparacion_min),
         disponible: productForm.disponible,
@@ -186,7 +187,9 @@ export default function MenuPage() {
         dias_alerta_vencimiento: parseInt(productForm.dias_alerta_vencimiento),
         fecha_compra: productForm.fecha_compra || null,
         usar_stock_avanzado: productForm.usar_stock_avanzado,
-        crear_en_stock: productForm.crear_en_stock
+        crear_en_stock: productForm.crear_en_stock,
+        orden_display: parseInt(productForm.orden_display) || 0,
+        destacado: productForm.destacado || false
       }
 
       let savedProductId
