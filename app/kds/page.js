@@ -139,6 +139,41 @@ export default function KDSPage() {
     return buttons[status]
   }
 
+  // Helper para detectar si un item es nuevo (agregado después del pedido original)
+  const isNewItem = (itemName) => {
+    return itemName && itemName.startsWith('🆕')
+  }
+
+  // Renderizar item de orden con estilo especial para items nuevos
+  const renderOrderItem = (item) => {
+    const itemIsNew = isNewItem(item.nombre_item_snapshot)
+    const displayName = itemIsNew 
+      ? item.nombre_item_snapshot.replace('🆕 ', '') 
+      : item.nombre_item_snapshot
+
+    return (
+      <div 
+        key={item.id} 
+        className={`flex items-center justify-between text-sm p-2 rounded transition-all ${
+          itemIsNew 
+            ? 'bg-gradient-to-r from-green-100 to-emerald-50 border-2 border-green-400 animate-pulse shadow-sm' 
+            : 'bg-gray-50'
+        }`}
+      >
+        <span className="font-semibold">{item.cantidad}x</span>
+        <span className="flex-1 ml-2 flex items-center">
+          {itemIsNew && (
+            <span className="inline-flex items-center mr-2 px-2 py-0.5 bg-green-500 text-white text-xs font-bold rounded-full">
+              <Sparkles className="h-3 w-3 mr-1" />
+              NUEVO
+            </span>
+          )}
+          {displayName}
+        </span>
+      </div>
+    )
+  }
+
   const tipoColors = {
     SALA: 'bg-blue-100 text-blue-800',
     PARA_LLEVAR: 'bg-green-100 text-green-800',
