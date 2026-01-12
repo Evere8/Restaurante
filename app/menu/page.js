@@ -390,7 +390,7 @@ export default function MenuPage() {
   }
 
   const resetCategoryForm = () => {
-    setCategoryForm({ nombre: '', orden: 0 })
+    setCategoryForm({ nombre: '', orden: 0, parent_id: null, descripcion: '', icono: '' })
     setEditingCategory(null)
   }
 
