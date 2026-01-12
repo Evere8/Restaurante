@@ -851,15 +851,28 @@ export default function MenuPage() {
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <CardTitle className="text-lg">{product.nombre}</CardTitle>
-                        {product.menu_categories && (
-                          <Badge variant="outline" className="mt-1">{product.menu_categories.nombre}</Badge>
-                        )}
-                        {product.usar_stock_avanzado && (
-                          <Badge className="mt-1 bg-green-500">✨ Stock Avanzado</Badge>
-                        )}
-                        {product.crear_en_stock && (
-                          <Badge className="mt-1 bg-blue-500">📦 En Stock</Badge>
-                        )}
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {product.menu_categories && (
+                            <Badge variant="outline">{product.menu_categories.nombre}</Badge>
+                          )}
+                          {product.subcategory_id && categories.find(c => c.id === product.subcategory_id) && (
+                            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                              <FolderTree className="h-3 w-3 mr-1" />
+                              {categories.find(c => c.id === product.subcategory_id)?.nombre}
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {product.usar_stock_avanzado && (
+                            <Badge className="bg-green-500 text-xs">✨ Stock Avanzado</Badge>
+                          )}
+                          {product.crear_en_stock && (
+                            <Badge className="bg-blue-500 text-xs">📦 En Stock</Badge>
+                          )}
+                          {product.destacado && (
+                            <Badge className="bg-yellow-500 text-xs">⭐ Destacado</Badge>
+                          )}
+                        </div>
                       </div>
                       <Badge variant={product.disponible ? 'default' : 'destructive'}>
                         {product.disponible ? 'Disponible' : 'No disponible'}
