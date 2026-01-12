@@ -576,18 +576,41 @@ export default function MenuPage() {
                       <Input value={productForm.nombre} onChange={(e) => setProductForm({...productForm, nombre: e.target.value})} />
                     </div>
                     <div className="space-y-2">
-                      <Label>Categoría</Label>
-                      <Select value={productForm.category_id} onValueChange={(val) => setProductForm({...productForm, category_id: val})}>
+                      <Label>Categoría Principal</Label>
+                      <Select value={productForm.category_id} onValueChange={(val) => setProductForm({...productForm, category_id: val, subcategory_id: ''})}>
                         <SelectTrigger>
-                          <SelectValue placeholder="Seleccionar" />
+                          <SelectValue placeholder="Seleccionar categoría" />
                         </SelectTrigger>
                         <SelectContent>
-                          {categories.map(cat => (
+                          {mainCategories.map(cat => (
                             <SelectItem key={cat.id} value={cat.id}>{cat.nombre}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     </div>
+                    
+                    {/* Subcategoría - solo si hay subcategorías para la categoría seleccionada */}
+                    {productForm.category_id && getSubcategories(productForm.category_id).length > 0 && (
+                      <div className="space-y-2">
+                        <Label>Subcategoría <span className="text-gray-400 text-xs">(opcional)</span></Label>
+                        <Select 
+                          value={productForm.subcategory_id || 'none'} 
+                          onValueChange={(val) => setProductForm({...productForm, subcategory_id: val === 'none' ? '' : val})}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleccionar subcategoría" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Sin subcategoría</SelectItem>
+                            {getSubcategories(productForm.category_id).map(sub => (
+                              <SelectItem key={sub.id} value={sub.id}>
+                                {sub.icono ? `${sub.icono} ` : ''}{sub.nombre}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                     <div className="col-span-2 space-y-2">
                       <Label>Descripción</Label>
                       <Textarea value={productForm.descripcion} onChange={(e) => setProductForm({...productForm, descripcion: e.target.value})} />
