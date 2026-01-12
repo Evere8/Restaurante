@@ -17,7 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Plus, Edit, Trash2, Package, AlertTriangle, X } from 'lucide-react'
+import { Plus, Edit, Trash2, Package, AlertTriangle, X, ChevronRight, FolderTree, Layers } from 'lucide-react'
 import { toast } from 'sonner'
 
 export default function MenuPage() {
