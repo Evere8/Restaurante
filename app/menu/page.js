@@ -62,8 +62,12 @@ export default function MenuPage() {
     nombre: '',
     orden: 0,
     parent_id: null, // Para subcategorías
-    descripcion: ''
+    descripcion: '',
+    icono: ''
   })
+  
+  // Estado para filtrar vista de categorías
+  const [showSubcategories, setShowSubcategories] = useState(true)
 
   useEffect(() => {
     if (!authLoading && !user) {
