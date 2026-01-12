@@ -255,12 +255,7 @@ export default function KDSPage() {
                     )}
 
                     <div className="space-y-1">
-                      {order.order_items?.map(item => (
-                        <div key={item.id} className="flex items-center justify-between text-sm bg-gray-50 p-2 rounded">
-                          <span className="font-semibold">{item.cantidad}x</span>
-                          <span className="flex-1 ml-2">{item.nombre_item_snapshot}</span>
-                        </div>
-                      ))}
+                      {order.order_items?.map(item => renderOrderItem(item))}
                     </div>
 
                     {order.nota_cocina && (
@@ -342,12 +337,7 @@ export default function KDSPage() {
                     )}
 
                     <div className="space-y-1">
-                      {order.order_items?.map(item => (
-                        <div key={item.id} className="flex items-center justify-between text-sm bg-gray-50 p-2 rounded">
-                          <span className="font-semibold">{item.cantidad}x</span>
-                          <span className="flex-1 ml-2">{item.nombre_item_snapshot}</span>
-                        </div>
-                      ))}
+                      {order.order_items?.map(item => renderOrderItem(item))}
                     </div>
 
                     {order.nota_cocina && (
@@ -429,12 +419,7 @@ export default function KDSPage() {
                     )}
 
                     <div className="space-y-1">
-                      {order.order_items?.map(item => (
-                        <div key={item.id} className="flex items-center justify-between text-sm bg-gray-50 p-2 rounded">
-                          <span className="font-semibold">{item.cantidad}x</span>
-                          <span className="flex-1 ml-2">{item.nombre_item_snapshot}</span>
-                        </div>
-                      ))}
+                      {order.order_items?.map(item => renderOrderItem(item))}
                     </div>
 
                     <Button 
