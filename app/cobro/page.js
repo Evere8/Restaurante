@@ -1367,16 +1367,7 @@ function CobroRapidoSection({ restaurant, formatCurrency, onOrderCreated }) {
     
     try {
       console.log('Loading products for restaurant:', restaurant.id)
-      const { data: items, error: itemsError } = await supabase
-        .from('menu_items')
-        .select('*, menu_categories(nombre)')
-        .eq('restaurant_id', restaurant.id)
-        .eq('disponible', true)
-
-      if (itemsError) {
-        console.error('Error loading items:', itemsError)
-      }
-
+      
       const { data: cats, error: catsError } = await supabase
         .from('menu_categories')
         .select('*')
@@ -1386,8 +1377,24 @@ function CobroRapidoSection({ restaurant, formatCurrency, onOrderCreated }) {
         console.error('Error loading categories:', catsError)
       }
 
+      const { data: items, error: itemsError } = await supabase
+        .from('menu_items')
+        .select('*')
+        .eq('restaurant_id', restaurant.id)
+        .eq('disponible', true)
+
+      if (itemsError) {
+        console.error('Error loading items:', itemsError)
+      }
+
+      // Agregar nombre de categoría manualmente
+      const itemsWithCategory = (items || []).map(item => ({
+        ...item,
+        menu_categories: (cats || []).find(c => c.id === item.category_id) || null
+      }))
+
       console.log('Loaded items:', items?.length, 'categories:', cats?.length)
-      setMenuItems(items || [])
+      setMenuItems(itemsWithCategory)
       setCategories(cats || [])
     } catch (e) {
       console.error('Error in loadProducts:', e)
