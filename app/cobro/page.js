@@ -1405,7 +1405,7 @@ function CobroRapidoSection({ restaurant, formatCurrency, onOrderCreated }) {
   const filteredProducts = menuItems.filter(item => {
     const matchesSearch = !searchTerm || 
       item.nombre.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesCategory = !selectedCategory || item.categoria_id === selectedCategory
+    const matchesCategory = !selectedCategory || selectedCategory === 'all' || item.category_id === selectedCategory
     return matchesSearch && matchesCategory
   })
 
