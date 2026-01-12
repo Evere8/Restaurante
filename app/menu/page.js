@@ -406,6 +406,7 @@ export default function MenuPage() {
       precio_base: product.precio_base,
       coste: product.coste || '',
       category_id: product.category_id || '',
+      subcategory_id: product.subcategory_id || '',
       img_url: cleanImgUrl,
       tiempo_preparacion_min: product.tiempo_preparacion_min,
       disponible: product.disponible,
@@ -415,7 +416,9 @@ export default function MenuPage() {
       usar_stock_avanzado: product.usar_stock_avanzado || false,
       crear_en_stock: product.crear_en_stock || false,
       stock_minimo_alerta: 1,
-      dias_alerta_vencimiento_stock: 7
+      dias_alerta_vencimiento_stock: 7,
+      orden_display: product.orden_display || 0,
+      destacado: product.destacado || false
     })
 
     // Cargar receta si existe
