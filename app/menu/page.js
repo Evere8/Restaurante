@@ -896,63 +896,225 @@ export default function MenuPage() {
           </TabsContent>
 
           <TabsContent value="categories">
-            <div className="flex justify-end mb-4">
-              <Dialog open={categoryDialogOpen} onOpenChange={(open) => {
-                setCategoryDialogOpen(open)
-                if (!open) resetCategoryForm()
-              }}>
-                <DialogTrigger asChild>
-                  <Button className="bg-orange-500 hover:bg-orange-600">
-                    <Plus className="mr-2 h-4 w-4" /> Nueva Categoría
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>{editingCategory ? 'Editar' : 'Nueva'} Categoría</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>Nombre *</Label>
-                      <Input value={categoryForm.nombre} onChange={(e) => setCategoryForm({...categoryForm, nombre: e.target.value})} />
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-2">
+                <Badge variant="outline" className="text-sm">
+                  <Layers className="h-3 w-3 mr-1" />
+                  {mainCategories.length} categorías
+                </Badge>
+                <Badge variant="outline" className="text-sm">
+                  <FolderTree className="h-3 w-3 mr-1" />
+                  {categories.filter(c => c.parent_id).length} subcategorías
+                </Badge>
+              </div>
+              <div className="flex space-x-2">
+                <Dialog open={categoryDialogOpen} onOpenChange={(open) => {
+                  setCategoryDialogOpen(open)
+                  if (!open) resetCategoryForm()
+                }}>
+                  <DialogTrigger asChild>
+                    <Button className="bg-orange-500 hover:bg-orange-600">
+                      <Plus className="mr-2 h-4 w-4" /> Nueva Categoría
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>{editingCategory ? 'Editar' : 'Nueva'} Categoría</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      {/* Tipo de categoría */}
+                      <div className="space-y-2">
+                        <Label>Tipo</Label>
+                        <Select 
+                          value={categoryForm.parent_id || 'principal'} 
+                          onValueChange={(val) => setCategoryForm({...categoryForm, parent_id: val === 'principal' ? null : val})}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleccionar tipo" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="principal">
+                              <span className="flex items-center">
+                                <Layers className="h-4 w-4 mr-2 text-orange-500" />
+                                Categoría Principal
+                              </span>
+                            </SelectItem>
+                            {mainCategories.filter(c => c.id !== editingCategory?.id).map(cat => (
+                              <SelectItem key={cat.id} value={cat.id}>
+                                <span className="flex items-center">
+                                  <FolderTree className="h-4 w-4 mr-2 text-blue-500" />
+                                  Subcategoría de: {cat.nombre}
+                                </span>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-gray-500">
+                          Las subcategorías aparecerán como títulos de sección en el menú del cliente
+                        </p>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label>Nombre *</Label>
+                        <Input value={categoryForm.nombre} onChange={(e) => setCategoryForm({...categoryForm, nombre: e.target.value})} />
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Orden</Label>
+                          <Input type="number" value={categoryForm.orden} onChange={(e) => setCategoryForm({...categoryForm, orden: parseInt(e.target.value) || 0})} />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Icono <span className="text-gray-400 text-xs">(emoji)</span></Label>
+                          <Input 
+                            value={categoryForm.icono} 
+                            onChange={(e) => setCategoryForm({...categoryForm, icono: e.target.value})} 
+                            placeholder="🍕"
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label>Descripción <span className="text-gray-400 text-xs">(opcional)</span></Label>
+                        <Textarea 
+                          value={categoryForm.descripcion} 
+                          onChange={(e) => setCategoryForm({...categoryForm, descripcion: e.target.value})} 
+                          placeholder="Descripción de la categoría..."
+                          rows={2}
+                        />
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label>Orden</Label>
-                      <Input type="number" value={categoryForm.orden} onChange={(e) => setCategoryForm({...categoryForm, orden: parseInt(e.target.value)})} />
+                    <div className="flex justify-end space-x-2 mt-4">
+                      <Button variant="outline" onClick={() => setCategoryDialogOpen(false)}>Cancelar</Button>
+                      <Button className="bg-orange-500 hover:bg-orange-600" onClick={handleSaveCategory}>Guardar</Button>
                     </div>
-                  </div>
-                  <div className="flex justify-end space-x-2 mt-4">
-                    <Button variant="outline" onClick={() => setCategoryDialogOpen(false)}>Cancelar</Button>
-                    <Button className="bg-orange-500 hover:bg-orange-600" onClick={handleSaveCategory}>Guardar</Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
+                  </DialogContent>
+                </Dialog>
+              </div>
             </div>
 
+            {/* Lista de categorías con jerarquía */}
             <Card>
               <CardContent className="p-0">
                 <div className="divide-y">
-                  {categories.map(category => {
-                    const productCount = products.filter(p => p.category_id === category.id).length
-                    return (
-                      <div key={category.id} className="p-4 flex items-center justify-between hover:bg-gray-50">
-                        <div>
-                          <h3 className="font-semibold text-lg">{category.nombre}</h3>
-                          <p className="text-sm text-gray-600">{productCount} productos • Orden: {category.orden}</p>
+                  {mainCategories.length === 0 ? (
+                    <div className="p-8 text-center text-gray-500">
+                      <Layers className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                      <p>No hay categorías. Crea tu primera categoría.</p>
+                    </div>
+                  ) : (
+                    mainCategories.map(category => {
+                      const productCount = products.filter(p => p.category_id === category.id).length
+                      const subcats = getSubcategories(category.id)
+                      
+                      return (
+                        <div key={category.id}>
+                          {/* Categoría Principal */}
+                          <div className="p-4 flex items-center justify-between hover:bg-gray-50 bg-orange-50/30">
+                            <div className="flex items-center">
+                              <div className="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center mr-3">
+                                <span className="text-xl">{category.icono || '📁'}</span>
+                              </div>
+                              <div>
+                                <h3 className="font-semibold text-lg flex items-center">
+                                  {category.nombre}
+                                  <Badge variant="secondary" className="ml-2 text-xs">Principal</Badge>
+                                </h3>
+                                <p className="text-sm text-gray-600">
+                                  {productCount} productos • {subcats.length} subcategorías • Orden: {category.orden}
+                                </p>
+                                {category.descripcion && (
+                                  <p className="text-xs text-gray-500 mt-1">{category.descripcion}</p>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex space-x-2">
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                                onClick={() => {
+                                  setCategoryForm({ 
+                                    nombre: '', 
+                                    orden: subcats.length, 
+                                    parent_id: category.id, 
+                                    descripcion: '',
+                                    icono: '' 
+                                  })
+                                  setEditingCategory(null)
+                                  setCategoryDialogOpen(true)
+                                }}
+                              >
+                                <Plus className="h-4 w-4 mr-1" /> Subcategoría
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={() => openEditCategory(category)}>
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button size="sm" variant="destructive" onClick={() => handleDeleteCategory(category.id)}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                          
+                          {/* Subcategorías */}
+                          {subcats.length > 0 && (
+                            <div className="bg-gray-50/50">
+                              {subcats.map(subcat => {
+                                const subProductCount = products.filter(p => p.subcategory_id === subcat.id).length
+                                return (
+                                  <div 
+                                    key={subcat.id} 
+                                    className="p-3 pl-16 flex items-center justify-between hover:bg-gray-100 border-l-4 border-blue-200"
+                                  >
+                                    <div className="flex items-center">
+                                      <ChevronRight className="h-4 w-4 text-gray-400 mr-2" />
+                                      <div className="w-8 h-8 rounded bg-blue-100 flex items-center justify-center mr-2">
+                                        <span className="text-sm">{subcat.icono || '📂'}</span>
+                                      </div>
+                                      <div>
+                                        <h4 className="font-medium flex items-center">
+                                          {subcat.nombre}
+                                          <Badge variant="outline" className="ml-2 text-xs text-blue-600">Subcategoría</Badge>
+                                        </h4>
+                                        <p className="text-xs text-gray-500">
+                                          {subProductCount} productos • Orden: {subcat.orden}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <div className="flex space-x-2">
+                                      <Button size="sm" variant="ghost" onClick={() => openEditCategory(subcat)}>
+                                        <Edit className="h-4 w-4" />
+                                      </Button>
+                                      <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-700" onClick={() => handleDeleteCategory(subcat.id)}>
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          )}
                         </div>
-                        <div className="flex space-x-2">
-                          <Button size="sm" variant="outline" onClick={() => openEditCategory(category)}>
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button size="sm" variant="destructive" onClick={() => handleDeleteCategory(category.id)}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    )
-                  })}
+                      )
+                    })
+                  )}
                 </div>
               </CardContent>
             </Card>
+            
+            {/* Tip informativo */}
+            <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <h4 className="font-medium text-blue-800 flex items-center mb-2">
+                <FolderTree className="h-4 w-4 mr-2" />
+                💡 Cómo usar Subcategorías
+              </h4>
+              <ul className="text-sm text-blue-700 space-y-1 list-disc list-inside">
+                <li>Las <strong>Categorías Principales</strong> aparecen como filtros en el menú del cliente</li>
+                <li>Las <strong>Subcategorías</strong> aparecen como títulos de sección dentro de cada categoría</li>
+                <li>Asigna productos a subcategorías desde la pestaña "Productos" al editar</li>
+                <li>Usa iconos (emojis) para hacer el menú más visual</li>
+              </ul>
+            </div>
           </TabsContent>
         </Tabs>
         </div>
