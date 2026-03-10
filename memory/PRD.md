@@ -34,11 +34,12 @@ Sistema CRM completo para gestión de restaurantes con menú digital, pedidos, c
 - Sistema de promociones (2x1, porcentaje, precio fijo)
 
 ### 5. Pedidos (/pedidos)
-- Creación de pedidos
+- Creación de pedidos con descuentos promocionales visibles
 - Estados: NUEVO → PREPARANDO → LISTO → ENTREGADO
 - Cuentas separadas por mesa
 - Agregar productos a pedidos entregados
 - Edición de pedidos en cualquier estado
+- **Promociones visibles**: Productos con promoción muestran precio tachado, descuento en verde y badge de porcentaje
 
 ### 6. KDS/Cocina (/kds)
 - Pantalla de cocina
@@ -92,23 +93,30 @@ Sistema CRM completo para gestión de restaurantes con menú digital, pedidos, c
 ## Cambios Recientes (Marzo 2026)
 
 ### Bugs Corregidos
-1. **Error al actualizar pedido**: Corregido manejo de items con `menu_item_id` nulo en `/app/app/pedidos/page.js`
+1. **Error al actualizar pedido**: Corregido manejo de items con `menu_item_id` nulo en `/app/app/pedidos/page.js` usando IDs temporales únicos
 2. **Error al guardar promoción**: Corregida validación de `porcentaje_descuento` en `/app/app/menu-digital/page.js`
 
 ### Funcionalidades Añadidas
-3. **Pestaña Cobrados mejorada**: 
+3. **Promociones visibles en admin Pedidos**:
+   - Los productos con promoción muestran precio original tachado
+   - Precio con descuento en verde
+   - Badge con porcentaje de descuento (-X%)
+   - Toast de confirmación indica el descuento aplicado
+   - El total del carrito refleja precios con descuento
+
+4. **Pestaña Cobrados mejorada**: 
    - Muestra productos vendidos en cada tarjeta
    - Persistencia de 30 días
    - Botón exportar ventas del día a Excel/CSV
 
-4. **Reporte de Productos Vendidos**:
+5. **Reporte de Productos Vendidos**:
    - Nueva pestaña en /reportes
    - Tabla de productos con cantidades y fechas
    - Resumen por producto
    - Exportación a CSV
 
 ## Próximas Tareas (Backlog)
-- P2: Implementar lógica de promociones en página admin de Pedidos
+- P2: Verificar flujo completo de edición de pedidos entregados
 - P3: Dashboard de analytics avanzado
 - P3: Integración con delivery (terceros)
 
