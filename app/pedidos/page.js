@@ -500,13 +500,17 @@ export default function PedidosPage() {
   const openEditOrder = (order) => {
     setEditingOrder(order)
     // Generar IDs únicos temporales para items sin menu_item_id válido
-    setCart(order.order_items.map((item, index) => ({
-      id: item.menu_item_id || `temp_${order.id}_${index}_${Date.now()}`,
-      originalMenuItemId: item.menu_item_id, // Guardar el ID original para la BD
+    // Usar el ID del order_item para generar un ID estable
+    const cartItems = order.order_items.map((item, index) => ({
+      id: item.menu_item_id || `temp_item_${item.id || index}`,
+      originalMenuItemId: item.menu_item_id,
+      orderItemId: item.id, // Guardar el ID del order_item original
       nombre: item.nombre_item_snapshot,
       precio_base: item.precio_unitario,
       cantidad: item.cantidad
-    })))
+    }))
+    console.log('Cargando items para edición:', cartItems)
+    setCart(cartItems)
     setOrderForm({
       tipo: order.tipo,
       mesa: order.mesa || '',
@@ -518,6 +522,8 @@ export default function PedidosPage() {
   }
 
   const handleUpdateOrder = async () => {
+    console.log('Actualizando pedido, items en carrito:', cart)
+    
     if (cart.length === 0) {
       toast.error('El carrito está vacío')
       return
@@ -527,29 +533,43 @@ export default function PedidosPage() {
       const subtotal = calculateTotal()
       const total = subtotal
 
-      // Actualizar orden
+      // Actualizar orden - también cambiar estado a NUEVO si viene de ENTREGADO
+      const updateData = {
+        tipo: orderForm.tipo,
+        mesa: orderForm.mesa,
+        customer_id: orderForm.customer_id || null,
+        nota_cliente: orderForm.nota_cliente,
+        nota_cocina: orderForm.nota_cocina,
+        total: total
+      }
+      
+      // Si el pedido estaba entregado, volver a NUEVO
+      if (editingOrder.estado === 'ENTREGADO') {
+        updateData.estado = 'NUEVO'
+      }
+
       const { error: orderError } = await supabase
         .from('orders')
-        .update({
-          tipo: orderForm.tipo,
-          mesa: orderForm.mesa,
-          customer_id: orderForm.customer_id || null,
-          nota_cliente: orderForm.nota_cliente,
-          nota_cocina: orderForm.nota_cocina,
-          total: total
-        })
+        .update(updateData)
         .eq('id', editingOrder.id)
 
-      if (orderError) throw orderError
+      if (orderError) {
+        console.error('Error actualizando orden:', orderError)
+        throw orderError
+      }
 
       // Eliminar items viejos
-      await supabase
+      const { error: deleteError } = await supabase
         .from('order_items')
         .delete()
         .eq('order_id', editingOrder.id)
 
+      if (deleteError) {
+        console.error('Error eliminando items viejos:', deleteError)
+        throw deleteError
+      }
+
       // Insertar items nuevos
-      // Usar originalMenuItemId si existe, sino verificar si el ID es un UUID válido de la BD
       const orderItems = cart.map(item => {
         let menuItemId = null
         
@@ -557,7 +577,7 @@ export default function PedidosPage() {
         if (item.originalMenuItemId) {
           menuItemId = item.originalMenuItemId
         } 
-        // Si el id no es temporal y parece un UUID válido (36 caracteres con guiones)
+        // Si el id no es temporal y parece un UUID válido
         else if (item.id && typeof item.id === 'string' && !item.id.startsWith('temp_') && item.id.length >= 32) {
           menuItemId = item.id
         }
@@ -571,11 +591,16 @@ export default function PedidosPage() {
         }
       })
 
+      console.log('Insertando nuevos items:', orderItems)
+
       const { error: itemsError } = await supabase
         .from('order_items')
         .insert(orderItems)
 
-      if (itemsError) throw itemsError
+      if (itemsError) {
+        console.error('Error insertando items:', itemsError)
+        throw itemsError
+      }
 
       toast.success('Pedido actualizado exitosamente')
       setEditDialogOpen(false)
@@ -591,7 +616,7 @@ export default function PedidosPage() {
       loadOrders()
     } catch (error) {
       console.error('Error actualizando pedido:', error)
-      toast.error('Error al actualizar pedido')
+      toast.error('Error al actualizar pedido: ' + (error.message || 'Error desconocido'))
     }
   }
 

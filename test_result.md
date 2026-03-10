@@ -140,11 +140,11 @@ Por favor ejecutar todas las pruebas y reportar resultados detallados."
 frontend:
   - task: "Bug #1 - Error al actualizar pedido - Complete Flow Test"
     implemented: true
-    working: "NA"
+    working: false
     file: "/app/app/pedidos/page.js"
-    stuck_count: 0
+    stuck_count: 1
     priority: "high"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
         - working: "NA"
           agent: "testing"
@@ -155,6 +155,9 @@ frontend:
         - working: "NA"
           agent: "testing"
           comment: "TESTING ATTEMPTED: Due to modal overlay issues and complex order state management, could not complete full automated order lifecycle test (create->prepare->deliver->edit->remove items->update). The order creation interface is functional, but the complete bug reproduction flow requires manual testing or a more sophisticated automated approach to handle modal interactions and order state transitions properly."
+        - working: false
+          agent: "testing"
+          comment: "CRITICAL AUTHENTICATION ISSUE BLOCKING TEST: Cannot proceed with Bug #1 testing due to authentication failure. Attempted login with jose@gmail.com/jose123 as 'Desarrollador' but received error: 'No tienes permisos de desarrollador'. The user exists but lacks DESARROLLADOR role permissions. This is a blocking issue preventing any order flow testing. The authentication system is working but user role configuration is incorrect. REQUIRES USER ROLE PERMISSION FIX before Bug #1 can be tested."
 
   - task: "Bug #2 - Promociones visibles en Pedidos"
     implemented: true
@@ -184,7 +187,8 @@ test_plan:
   current_focus:
     - "Bug #1 - Error al actualizar pedido - Complete Flow Test"
     - "Bug #2 - Promociones visibles en Pedidos"
-  stuck_tasks: []
+  stuck_tasks: 
+    - "Bug #1 - Error al actualizar pedido - Complete Flow Test"
   test_all: false
   test_priority: "high_first"
 
@@ -199,3 +203,5 @@ agent_communication:
       message: "CRITICAL BUG FOUND: BUG #2 CONFIRMED - Promotions are NOT visible in order creation. Tested order interface extensively - all products show only regular prices (e.g., Latte Caramel Gs 24.000) with no promotion indicators: no strikethrough prices, no discount badges (-%), no promotional pricing. This is a confirmed bug affecting customer experience. BUG #1 testing partially completed - interface accessible but full flow needs more detailed testing."
     - agent: "testing"
       message: "FINAL TEST RESULTS COMPLETED: ✅ BUG #2 FIXED - Promotions now working correctly! Affogato product successfully shows: strikethrough original price (Gs 24.000), green discounted price (Gs 21.600), and -10% discount badge. The promotion corrections have been successfully implemented. ⚠️ BUG #1 testing incomplete due to modal complexity - order interface functional but full lifecycle test (edit->remove items->update) requires manual verification or simplified automation approach."
+    - agent: "testing"
+      message: "CRITICAL BLOCKING ISSUE FOUND: Cannot test Bug #1 due to authentication failure. User jose@gmail.com exists but lacks 'DESARROLLADOR' role permissions, receiving error 'No tienes permisos de desarrollador'. This prevents access to /pedidos and order management functionality. The authentication system is working correctly, but user role configuration is incorrect. URGENT: Fix user permissions for jose@gmail.com to have DESARROLLADOR role, or provide alternative credentials with proper permissions to complete Bug #1 testing."
