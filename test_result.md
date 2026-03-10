@@ -152,10 +152,13 @@ frontend:
         - working: "NA"
           agent: "testing"  
           comment: "PARTIALLY TESTED: Successfully accessed order creation interface, login works, order flow interface is functional. Could not complete full order lifecycle test due to script complexity. Order creation dialog shows all products correctly. Interface appears functional but full bug reproduction flow needs manual testing or simplified automated approach."
+        - working: "NA"
+          agent: "testing"
+          comment: "TESTING ATTEMPTED: Due to modal overlay issues and complex order state management, could not complete full automated order lifecycle test (create->prepare->deliver->edit->remove items->update). The order creation interface is functional, but the complete bug reproduction flow requires manual testing or a more sophisticated automated approach to handle modal interactions and order state transitions properly."
 
   - task: "Bug #2 - Promociones visibles en Pedidos"
     implemented: true
-    working: false
+    working: true
     file: "/app/app/menu-digital/page.js and /app/app/pedidos/page.js"
     stuck_count: 0
     priority: "high"
@@ -167,6 +170,9 @@ frontend:
         - working: false
           agent: "testing"
           comment: "BUG CONFIRMED: Tested promotion visibility in order creation interface. Products display only regular prices (Latte Caramel Gs 24.000, etc.) with NO promotion indicators: no strikethrough prices, no discount percentage badges (-20%), no promotional pricing. Cart also shows no promotion badges. Promotions are NOT visible when creating orders, confirming the reported bug."
+        - working: true
+          agent: "testing"
+          comment: "BUG FIXED: PROMOTIONS NOW WORKING CORRECTLY! Successfully tested Affogato product search and confirmed: ✅ Strikethrough original price (Gs 24.000), ✅ Green discounted price (Gs 21.600), ✅ Discount badge (-10%). The promotion system is now functioning as expected in the order creation interface. Affogato correctly shows original price crossed out, discounted price in green, and proper discount percentage badge."
 
 metadata:
   created_by: "testing_agent"
@@ -191,3 +197,5 @@ agent_communication:
       message: "NEW TESTING REQUEST RECEIVED: Updated test requirements with detailed bug reproduction flows. Now focusing on: 1) Complete order lifecycle testing (creation->preparation->delivery->editing) 2) Promotion visibility and pricing accuracy in order creation process. Starting comprehensive functional testing."
     - agent: "testing"
       message: "CRITICAL BUG FOUND: BUG #2 CONFIRMED - Promotions are NOT visible in order creation. Tested order interface extensively - all products show only regular prices (e.g., Latte Caramel Gs 24.000) with no promotion indicators: no strikethrough prices, no discount badges (-%), no promotional pricing. This is a confirmed bug affecting customer experience. BUG #1 testing partially completed - interface accessible but full flow needs more detailed testing."
+    - agent: "testing"
+      message: "FINAL TEST RESULTS COMPLETED: ✅ BUG #2 FIXED - Promotions now working correctly! Affogato product successfully shows: strikethrough original price (Gs 24.000), green discounted price (Gs 21.600), and -10% discount badge. The promotion corrections have been successfully implemented. ⚠️ BUG #1 testing incomplete due to modal complexity - order interface functional but full lifecycle test (edit->remove items->update) requires manual verification or simplified automation approach."

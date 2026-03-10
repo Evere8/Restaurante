@@ -158,11 +158,15 @@ export default function PedidosPage() {
 
   // Cargar promociones activas
   const loadPromotions = async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('promociones')
       .select('*, promocion_items(*, menu_items(id, nombre, precio_base))')
       .eq('restaurant_id', restaurant.id)
       .eq('activa', true)
+    
+    if (error) {
+      console.error('Error cargando promociones:', error)
+    }
     setPromotions(data || [])
   }
 
@@ -1202,19 +1206,30 @@ export default function PedidosPage() {
                   </div>
 
                   <div className="grid grid-cols-2 gap-2">
-                    {filteredProducts.map(product => (
-                      <Card key={product.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => addToCart(product)}>
-                        <CardContent className="p-3">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <h4 className="font-semibold text-sm">{product.nombre}</h4>
-                              <p className="text-lg font-bold text-orange-600 mt-1">{formatCurrency(product.precio_base)}</p>
+                    {filteredProducts.map(product => {
+                      const promoInfo = getDiscountedPrice(product)
+                      return (
+                        <Card key={product.id} className={`cursor-pointer hover:shadow-md transition-shadow ${promoInfo ? 'border-green-300 bg-green-50/30' : ''}`} onClick={() => addToCart(product)}>
+                          <CardContent className="p-3">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <h4 className="font-semibold text-sm">{product.nombre}</h4>
+                                {promoInfo ? (
+                                  <div className="mt-1">
+                                    <span className="text-xs text-gray-400 line-through mr-2">{formatCurrency(promoInfo.precioOriginal)}</span>
+                                    <span className="text-lg font-bold text-green-600">{formatCurrency(promoInfo.precioFinal)}</span>
+                                    <span className="ml-1 text-xs bg-green-500 text-white px-1.5 py-0.5 rounded">-{promoInfo.descuento}%</span>
+                                  </div>
+                                ) : (
+                                  <p className="text-lg font-bold text-orange-600 mt-1">{formatCurrency(product.precio_base)}</p>
+                                )}
+                              </div>
+                              <Plus className="h-5 w-5 text-orange-500" />
                             </div>
-                            <Plus className="h-5 w-5 text-orange-500" />
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+                          </CardContent>
+                        </Card>
+                      )
+                    })}
                   </div>
                 </div>
               </div>
@@ -1456,19 +1471,30 @@ export default function PedidosPage() {
                   </div>
 
                   <div className="grid grid-cols-2 gap-2">
-                    {filteredProducts.map(product => (
-                      <Card key={product.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => addToCart(product)}>
-                        <CardContent className="p-3">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <h4 className="font-semibold text-sm">{product.nombre}</h4>
-                              <p className="text-lg font-bold text-orange-600 mt-1">{formatCurrency(product.precio_base)}</p>
+                    {filteredProducts.map(product => {
+                      const promoInfo = getDiscountedPrice(product)
+                      return (
+                        <Card key={product.id} className={`cursor-pointer hover:shadow-md transition-shadow ${promoInfo ? 'border-green-300 bg-green-50/30' : ''}`} onClick={() => addToCart(product)}>
+                          <CardContent className="p-3">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <h4 className="font-semibold text-sm">{product.nombre}</h4>
+                                {promoInfo ? (
+                                  <div className="mt-1">
+                                    <span className="text-xs text-gray-400 line-through mr-2">{formatCurrency(promoInfo.precioOriginal)}</span>
+                                    <span className="text-lg font-bold text-green-600">{formatCurrency(promoInfo.precioFinal)}</span>
+                                    <span className="ml-1 text-xs bg-green-500 text-white px-1.5 py-0.5 rounded">-{promoInfo.descuento}%</span>
+                                  </div>
+                                ) : (
+                                  <p className="text-lg font-bold text-orange-600 mt-1">{formatCurrency(product.precio_base)}</p>
+                                )}
+                              </div>
+                              <Plus className="h-5 w-5 text-orange-500" />
                             </div>
-                            <Plus className="h-5 w-5 text-orange-500" />
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+                          </CardContent>
+                        </Card>
+                      )
+                    })}
                   </div>
                 </div>
               </div>
@@ -1596,19 +1622,30 @@ export default function PedidosPage() {
                   </div>
 
                   <div className="grid grid-cols-2 gap-2 max-h-[400px] overflow-y-auto">
-                    {filteredProducts.map(product => (
-                      <Card key={product.id} className="cursor-pointer hover:shadow-md transition-shadow border-purple-100 hover:border-purple-300" onClick={() => addToCart(product)}>
-                        <CardContent className="p-3">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <h4 className="font-semibold text-sm">{product.nombre}</h4>
-                              <p className="text-lg font-bold text-purple-600 mt-1">{formatCurrency(product.precio_base)}</p>
+                    {filteredProducts.map(product => {
+                      const promoInfo = getDiscountedPrice(product)
+                      return (
+                        <Card key={product.id} className={`cursor-pointer hover:shadow-md transition-shadow ${promoInfo ? 'border-green-300 bg-green-50/30' : 'border-purple-100 hover:border-purple-300'}`} onClick={() => addToCart(product)}>
+                          <CardContent className="p-3">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <h4 className="font-semibold text-sm">{product.nombre}</h4>
+                                {promoInfo ? (
+                                  <div className="mt-1">
+                                    <span className="text-xs text-gray-400 line-through mr-2">{formatCurrency(promoInfo.precioOriginal)}</span>
+                                    <span className="text-lg font-bold text-green-600">{formatCurrency(promoInfo.precioFinal)}</span>
+                                    <span className="ml-1 text-xs bg-green-500 text-white px-1.5 py-0.5 rounded">-{promoInfo.descuento}%</span>
+                                  </div>
+                                ) : (
+                                  <p className="text-lg font-bold text-purple-600 mt-1">{formatCurrency(product.precio_base)}</p>
+                                )}
+                              </div>
+                              <Plus className="h-5 w-5 text-purple-500" />
                             </div>
-                            <Plus className="h-5 w-5 text-purple-500" />
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+                          </CardContent>
+                        </Card>
+                      )
+                    })}
                   </div>
                 </div>
               </div>
