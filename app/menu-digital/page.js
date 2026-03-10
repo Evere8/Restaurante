@@ -365,34 +365,50 @@ export default function MenuDigitalPage() {
       return
     }
 
+    // Validar porcentaje si el tipo es porcentaje
+    if (promoForm.tipo_descuento === 'porcentaje') {
+      const porcentaje = parseFloat(promoForm.porcentaje_descuento)
+      if (isNaN(porcentaje) || porcentaje <= 0 || porcentaje > 100) {
+        toast.error('El porcentaje de descuento debe ser un número entre 1 y 100')
+        return
+      }
+    }
+
     try {
       // Calcular precio original y final
       const selectedItems = menuItems.filter(m => promoForm.items_ids.includes(m.id))
-      const precioOriginal = selectedItems.reduce((sum, item) => sum + item.precio_base, 0)
+      const precioOriginal = selectedItems.reduce((sum, item) => sum + parseFloat(item.precio_base || 0), 0)
       
       let precioFinal = precioOriginal
-      if (promoForm.tipo_descuento === 'porcentaje') {
-        precioFinal = precioOriginal * (1 - promoForm.porcentaje_descuento / 100)
+      const porcentajeDescuento = parseFloat(promoForm.porcentaje_descuento) || 0
+      
+      if (promoForm.tipo_descuento === 'porcentaje' && porcentajeDescuento > 0) {
+        precioFinal = precioOriginal * (1 - porcentajeDescuento / 100)
       } else if (promoForm.tipo_descuento === '2x1') {
         // Para 2x1, el precio es el del item más caro
-        precioFinal = Math.max(...selectedItems.map(i => i.precio_base))
+        precioFinal = Math.max(...selectedItems.map(i => parseFloat(i.precio_base) || 0))
+      }
+
+      // Preparar datos de la promoción con valores seguros
+      const promoData = {
+        nombre: promoForm.nombre,
+        tipo_descuento: promoForm.tipo_descuento || 'porcentaje',
+        porcentaje_descuento: porcentajeDescuento,
+        motivo: promoForm.motivo || '',
+        imagen_url: promoForm.imagen_url || '',
+        activa: promoForm.activa !== false,
+        precio_original: Math.round(precioOriginal),
+        precio_final: Math.round(precioFinal)
       }
 
       if (editingPromo) {
         // Actualizar
-        await supabase
+        const { error: updateError } = await supabase
           .from('promociones')
-          .update({
-            nombre: promoForm.nombre,
-            tipo_descuento: promoForm.tipo_descuento,
-            porcentaje_descuento: promoForm.porcentaje_descuento,
-            motivo: promoForm.motivo,
-            imagen_url: promoForm.imagen_url,
-            activa: promoForm.activa,
-            precio_original: precioOriginal,
-            precio_final: Math.round(precioFinal)
-          })
+          .update(promoData)
           .eq('id', editingPromo.id)
+
+        if (updateError) throw updateError
 
         // Eliminar items anteriores y agregar nuevos
         await supabase
@@ -400,12 +416,14 @@ export default function MenuDigitalPage() {
           .delete()
           .eq('promocion_id', editingPromo.id)
 
-        await supabase
+        const { error: itemsError } = await supabase
           .from('promocion_items')
           .insert(promoForm.items_ids.map(id => ({
             promocion_id: editingPromo.id,
             menu_item_id: id
           })))
+
+        if (itemsError) throw itemsError
 
       } else {
         // Crear nueva
@@ -413,14 +431,7 @@ export default function MenuDigitalPage() {
           .from('promociones')
           .insert({
             restaurant_id: restaurant.id,
-            nombre: promoForm.nombre,
-            tipo_descuento: promoForm.tipo_descuento,
-            porcentaje_descuento: promoForm.porcentaje_descuento,
-            motivo: promoForm.motivo,
-            imagen_url: promoForm.imagen_url,
-            activa: promoForm.activa,
-            precio_original: precioOriginal,
-            precio_final: Math.round(precioFinal)
+            ...promoData
           })
           .select()
           .single()
@@ -428,12 +439,14 @@ export default function MenuDigitalPage() {
         if (promoError) throw promoError
 
         // Agregar items
-        await supabase
+        const { error: itemsError } = await supabase
           .from('promocion_items')
           .insert(promoForm.items_ids.map(id => ({
             promocion_id: newPromo.id,
             menu_item_id: id
           })))
+
+        if (itemsError) throw itemsError
       }
 
       toast.success(editingPromo ? 'Promoción actualizada' : 'Promoción creada')
@@ -442,7 +455,7 @@ export default function MenuDigitalPage() {
 
     } catch (err) {
       console.error('Error guardando promoción:', err)
-      toast.error('Error al guardar la promoción')
+      toast.error('Error al guardar la promoción: ' + (err.message || 'Error desconocido'))
     }
   }
 

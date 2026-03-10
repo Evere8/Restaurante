@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
-import { CreditCard, DollarSign, X, Tag, CheckCircle, FileText, Receipt, Coins, Trash2 } from 'lucide-react'
+import { CreditCard, DollarSign, X, Tag, CheckCircle, FileText, Receipt, Coins, Trash2, Download, Calendar } from 'lucide-react'
 import { toast } from 'sonner'
 
 export default function CobroPage() {
@@ -70,18 +70,101 @@ export default function CobroPage() {
 
     setOrdersACobrar(aCobrar || [])
 
-    const twoDaysAgo = new Date()
-    twoDaysAgo.setDate(twoDaysAgo.getDate() - 2)
+    // Cargar pedidos cobrados de los últimos 30 días
+    const thirtyDaysAgo = new Date()
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
 
     const { data: cobrados } = await supabase
       .from('orders')
       .select('*, order_items(*)')
       .eq('restaurant_id', restaurant.id)
       .eq('estado', 'PAGADO')
-      .gte('created_at', twoDaysAgo.toISOString())
+      .gte('created_at', thirtyDaysAgo.toISOString())
       .order('fecha_pago', { ascending: false })
 
     setOrdersCobrados(cobrados || [])
+  }
+
+  // Función para exportar ventas del día a Excel
+  const exportDailySalesToExcel = async () => {
+    try {
+      // Obtener fecha de hoy
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      const tomorrow = new Date(today)
+      tomorrow.setDate(tomorrow.getDate() + 1)
+
+      // Filtrar pedidos del día
+      const todaysOrders = ordersCobrados.filter(order => {
+        const orderDate = new Date(order.fecha_pago)
+        return orderDate >= today && orderDate < tomorrow
+      })
+
+      if (todaysOrders.length === 0) {
+        toast.error('No hay ventas del día para exportar')
+        return
+      }
+
+      // Calcular totales
+      const totalVentas = todaysOrders.reduce((sum, o) => sum + parseFloat(o.total || 0), 0)
+      const totalPedidos = todaysOrders.length
+
+      // Crear contenido CSV (compatible con Excel)
+      let csvContent = '\ufeff' // BOM para UTF-8
+      csvContent += 'REPORTE DE VENTAS DEL DÍA\n'
+      csvContent += `Fecha: ${today.toLocaleDateString('es-PY')}\n`
+      csvContent += `Restaurante: ${restaurant?.nombre || 'N/A'}\n\n`
+      csvContent += `Total Pedidos: ${totalPedidos}\n`
+      csvContent += `Total Ventas: ${formatCurrency(totalVentas)}\n\n`
+      csvContent += 'DETALLE DE VENTAS\n'
+      csvContent += 'Pedido ID,Hora,Tipo,Mesa,Método Pago,Productos,Cantidad,Total\n'
+
+      todaysOrders.forEach(order => {
+        const hora = new Date(order.fecha_pago).toLocaleTimeString('es-PY', { hour: '2-digit', minute: '2-digit' })
+        const productos = order.order_items?.map(i => `${i.cantidad}x ${i.nombre_item_snapshot?.replace(/,/g, ' ')}`).join(' | ') || 'N/A'
+        const cantidadItems = order.order_items?.reduce((sum, i) => sum + i.cantidad, 0) || 0
+        
+        csvContent += `${order.id.slice(0, 8)},${hora},${order.tipo},${order.mesa || 'N/A'},${order.metodo_pago},${productos},${cantidadItems},${order.total}\n`
+      })
+
+      csvContent += '\n\nDETALLE POR PRODUCTO\n'
+      csvContent += 'Producto,Cantidad Vendida,Ingresos\n'
+
+      // Agrupar por producto
+      const productosTotales = {}
+      todaysOrders.forEach(order => {
+        order.order_items?.forEach(item => {
+          const nombre = item.nombre_item_snapshot?.replace('🆕 ', '') || 'Producto'
+          if (!productosTotales[nombre]) {
+            productosTotales[nombre] = { cantidad: 0, total: 0 }
+          }
+          productosTotales[nombre].cantidad += item.cantidad
+          productosTotales[nombre].total += (item.precio_unitario * item.cantidad)
+        })
+      })
+
+      Object.entries(productosTotales)
+        .sort((a, b) => b[1].total - a[1].total)
+        .forEach(([nombre, data]) => {
+          csvContent += `${nombre.replace(/,/g, ' ')},${data.cantidad},${data.total}\n`
+        })
+
+      // Descargar archivo
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `ventas_${today.toISOString().split('T')[0]}.csv`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+
+      toast.success('Reporte de ventas exportado exitosamente')
+    } catch (error) {
+      console.error('Error exportando ventas:', error)
+      toast.error('Error al exportar ventas')
+    }
   }
 
   // Función para eliminar pedido
@@ -1008,10 +1091,26 @@ export default function CobroPage() {
           </TabsContent>
 
           <TabsContent value="cobrados">
+            {/* Header con botón de exportar */}
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-2">
+                <Calendar className="h-5 w-5 text-gray-500" />
+                <span className="text-gray-600">Últimos 30 días</span>
+                <Badge variant="outline">{ordersCobrados.length} pedidos</Badge>
+              </div>
+              <Button 
+                onClick={exportDailySalesToExcel}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Exportar Ventas del Día (Excel)
+              </Button>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {ordersCobrados.map(order => (
-                <Card key={order.id} className="opacity-75">
-                  <CardHeader className="bg-gray-50">
+                <Card key={order.id} className="border border-gray-200 hover:shadow-md transition-shadow">
+                  <CardHeader className="bg-gradient-to-r from-gray-50 to-green-50 pb-2">
                     <div className="flex items-start justify-between">
                       <div>
                         <CardTitle className="text-lg">Pedido #{order.id.slice(0, 8)}</CardTitle>
@@ -1019,10 +1118,10 @@ export default function CobroPage() {
                           Pagado: {new Date(order.fecha_pago).toLocaleString('es-ES')}
                         </p>
                       </div>
-                      <Badge className="bg-gray-500">PAGADO</Badge>
+                      <Badge className="bg-green-500">PAGADO</Badge>
                     </div>
                   </CardHeader>
-                  <CardContent className="pt-4 space-y-2">
+                  <CardContent className="pt-4 space-y-3">
                     <div className="space-y-1 text-sm">
                       <div className="flex justify-between">
                         <span className="text-gray-600">Tipo:</span>
@@ -1040,9 +1139,28 @@ export default function CobroPage() {
                       )}
                     </div>
 
+                    {/* Productos vendidos */}
+                    <div className="border-t pt-2">
+                      <p className="text-xs font-semibold text-gray-700 mb-2 flex items-center">
+                        <FileText className="h-3 w-3 mr-1" />
+                        Productos vendidos:
+                      </p>
+                      <div className="space-y-1 max-h-32 overflow-y-auto bg-gray-50 p-2 rounded">
+                        {order.order_items?.map(item => (
+                          <div key={item.id} className="flex justify-between text-xs">
+                            <span className="text-gray-700">{item.cantidad}x {item.nombre_item_snapshot?.replace('🆕 ', '')}</span>
+                            <span className="font-medium">{formatCurrency(item.precio_unitario * item.cantidad)}</span>
+                          </div>
+                        ))}
+                        {(!order.order_items || order.order_items.length === 0) && (
+                          <p className="text-xs text-gray-400 italic">Sin detalles</p>
+                        )}
+                      </div>
+                    </div>
+
                     <div className="border-t pt-2 flex justify-between items-center">
                       <span className="font-bold">Total:</span>
-                      <span className="text-xl font-bold text-gray-700">{formatCurrency(order.total)}</span>
+                      <span className="text-xl font-bold text-green-600">{formatCurrency(order.total)}</span>
                     </div>
                   </CardContent>
                 </Card>
@@ -1053,7 +1171,7 @@ export default function CobroPage() {
               <Card>
                 <CardContent className="py-12 text-center">
                   <CheckCircle className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                  <p className="text-gray-600">No hay pedidos cobrados en los últimos 2 días</p>
+                  <p className="text-gray-600">No hay pedidos cobrados en los últimos 30 días</p>
                 </CardContent>
               </Card>
             )}

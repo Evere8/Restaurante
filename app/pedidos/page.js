@@ -480,10 +480,11 @@ export default function PedidosPage() {
         .delete()
         .eq('order_id', editingOrder.id)
 
-      // Insertar items nuevos
+      // Insertar items nuevos - Filtrar items sin menu_item_id válido (productos eliminados o ad-hoc)
+      // Para items sin ID válido, usamos null que la BD acepta
       const orderItems = cart.map(item => ({
         order_id: editingOrder.id,
-        menu_item_id: item.id,
+        menu_item_id: item.id && typeof item.id === 'string' && item.id.length > 10 ? item.id : null,
         cantidad: item.cantidad,
         precio_unitario: parseFloat(item.precio_base),
         nombre_item_snapshot: item.nombre

@@ -30,6 +30,7 @@ export default function ReportesPage() {
   const [productosRentables, setProductosRentables] = useState([])
   const [consumoInsumos, setConsumoInsumos] = useState([])
   const [productosVencidos, setProductosVencidos] = useState([])
+  const [productosVendidos, setProductosVendidos] = useState([])
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -59,7 +60,8 @@ export default function ReportesPage() {
         generateEvolucionCostos(),
         generateProductosRentables(),
         generateConsumoInsumos(),
-        generateProductosVencidos()
+        generateProductosVencidos(),
+        generateProductosVendidos()
       ])
       toast.success('Reportes generados exitosamente')
     } catch (error) {
@@ -265,6 +267,112 @@ export default function ReportesPage() {
     }
   }
 
+  // Nuevo reporte: Productos vendidos con fechas y cantidades
+  const generateProductosVendidos = async () => {
+    try {
+      const from = new Date(dateFrom)
+      from.setHours(0, 0, 0, 0)
+      const to = new Date(dateTo)
+      to.setHours(23, 59, 59, 999)
+
+      // Obtener todos los pedidos pagados en el rango
+      const { data: orders, error } = await supabase
+        .from('orders')
+        .select('fecha_pago, order_items(nombre_item_snapshot, cantidad, precio_unitario)')
+        .eq('restaurant_id', restaurant.id)
+        .eq('estado', 'PAGADO')
+        .gte('fecha_pago', from.toISOString())
+        .lte('fecha_pago', to.toISOString())
+        .order('fecha_pago', { ascending: false })
+
+      if (error) throw error
+
+      // Agrupar por producto y fecha
+      const productoPorFecha = {}
+      const productoTotal = {}
+
+      orders?.forEach(order => {
+        const fecha = new Date(order.fecha_pago).toLocaleDateString('es-ES')
+        
+        order.order_items?.forEach(item => {
+          const nombre = (item.nombre_item_snapshot || 'Producto').replace('🆕 ', '')
+          
+          // Totales por producto
+          if (!productoTotal[nombre]) {
+            productoTotal[nombre] = { cantidad: 0, ingresos: 0 }
+          }
+          productoTotal[nombre].cantidad += item.cantidad
+          productoTotal[nombre].ingresos += (item.precio_unitario * item.cantidad)
+
+          // Desglose por fecha
+          const key = `${nombre}|${fecha}`
+          if (!productoPorFecha[key]) {
+            productoPorFecha[key] = { nombre, fecha, cantidad: 0, ingresos: 0 }
+          }
+          productoPorFecha[key].cantidad += item.cantidad
+          productoPorFecha[key].ingresos += (item.precio_unitario * item.cantidad)
+        })
+      })
+
+      // Convertir a array y ordenar
+      const detalleVentas = Object.values(productoPorFecha)
+        .sort((a, b) => {
+          // Primero por nombre, luego por fecha descendente
+          if (a.nombre !== b.nombre) return a.nombre.localeCompare(b.nombre)
+          return new Date(b.fecha.split('/').reverse().join('-')) - new Date(a.fecha.split('/').reverse().join('-'))
+        })
+
+      const resumenProductos = Object.entries(productoTotal)
+        .map(([nombre, data]) => ({ nombre, ...data }))
+        .sort((a, b) => b.cantidad - a.cantidad)
+
+      setProductosVendidos({
+        detalle: detalleVentas,
+        resumen: resumenProductos,
+        totalItems: resumenProductos.reduce((sum, p) => sum + p.cantidad, 0),
+        totalIngresos: resumenProductos.reduce((sum, p) => sum + p.ingresos, 0)
+      })
+    } catch (error) {
+      console.error('Error en productos vendidos:', error)
+    }
+  }
+
+  // Función para exportar productos vendidos a CSV
+  const exportProductosVendidosCSV = () => {
+    if (!productosVendidos?.detalle?.length) {
+      toast.error('No hay datos para exportar')
+      return
+    }
+
+    let csvContent = '\ufeff'
+    csvContent += 'REPORTE DE PRODUCTOS VENDIDOS\n'
+    csvContent += `Período: ${dateFrom} al ${dateTo}\n\n`
+    
+    csvContent += 'RESUMEN POR PRODUCTO\n'
+    csvContent += 'Producto,Cantidad Total,Ingresos Totales\n'
+    productosVendidos.resumen.forEach(p => {
+      csvContent += `${p.nombre.replace(/,/g, ' ')},${p.cantidad},${p.ingresos}\n`
+    })
+
+    csvContent += '\n\nDETALLE POR FECHA\n'
+    csvContent += 'Producto,Fecha,Cantidad,Ingresos\n'
+    productosVendidos.detalle.forEach(p => {
+      csvContent += `${p.nombre.replace(/,/g, ' ')},${p.fecha},${p.cantidad},${p.ingresos}\n`
+    })
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `productos_vendidos_${dateFrom}_${dateTo}.csv`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+
+    toast.success('Reporte exportado')
+  }
+
   if (authLoading || !user) {
     return <div className="flex items-center justify-center min-h-screen">Cargando...</div>
   }
@@ -310,8 +418,9 @@ export default function ReportesPage() {
           </Card>
 
           <Tabs defaultValue="ventas" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList className="grid w-full grid-cols-6">
               <TabsTrigger value="ventas">Ventas</TabsTrigger>
+              <TabsTrigger value="productos">Productos Vendidos</TabsTrigger>
               <TabsTrigger value="costos">Costos</TabsTrigger>
               <TabsTrigger value="rentabilidad">Rentabilidad</TabsTrigger>
               <TabsTrigger value="consumo">Consumo</TabsTrigger>
@@ -374,6 +483,94 @@ export default function ReportesPage() {
                   </CardContent>
                 </Card>
               )}
+            </TabsContent>
+
+            {/* TAB PRODUCTOS VENDIDOS */}
+            <TabsContent value="productos">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <CardTitle>Reporte de Productos Vendidos</CardTitle>
+                  {productosVendidos?.detalle?.length > 0 && (
+                    <Button onClick={exportProductosVendidosCSV} variant="outline" size="sm">
+                      <Download className="h-4 w-4 mr-2" />
+                      Exportar CSV
+                    </Button>
+                  )}
+                </CardHeader>
+                <CardContent>
+                  {productosVendidos?.resumen?.length > 0 ? (
+                    <div className="space-y-6">
+                      {/* Resumen General */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-blue-50 p-4 rounded-lg">
+                          <p className="text-sm text-blue-600">Total Items Vendidos</p>
+                          <p className="text-3xl font-bold text-blue-700">{productosVendidos.totalItems}</p>
+                        </div>
+                        <div className="bg-green-50 p-4 rounded-lg">
+                          <p className="text-sm text-green-600">Ingresos Totales</p>
+                          <p className="text-3xl font-bold text-green-700">{formatCurrency(productosVendidos.totalIngresos)}</p>
+                        </div>
+                      </div>
+
+                      {/* Tabla Resumen por Producto */}
+                      <div>
+                        <h3 className="font-semibold mb-3">Resumen por Producto</h3>
+                        <div className="overflow-x-auto">
+                          <table className="w-full">
+                            <thead>
+                              <tr className="border-b bg-gray-50">
+                                <th className="text-left p-2">Producto</th>
+                                <th className="text-right p-2">Cantidad</th>
+                                <th className="text-right p-2">Ingresos</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {productosVendidos.resumen.map((item, index) => (
+                                <tr key={index} className="border-b hover:bg-gray-50">
+                                  <td className="p-2 font-medium">{item.nombre}</td>
+                                  <td className="p-2 text-right">{item.cantidad}</td>
+                                  <td className="p-2 text-right font-semibold text-green-600">{formatCurrency(item.ingresos)}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+
+                      {/* Detalle por Fecha */}
+                      <div>
+                        <h3 className="font-semibold mb-3">Detalle por Fecha</h3>
+                        <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+                          <table className="w-full">
+                            <thead className="sticky top-0 bg-white">
+                              <tr className="border-b bg-gray-50">
+                                <th className="text-left p-2">Producto</th>
+                                <th className="text-left p-2">Fecha</th>
+                                <th className="text-right p-2">Cantidad</th>
+                                <th className="text-right p-2">Ingresos</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {productosVendidos.detalle.map((item, index) => (
+                                <tr key={index} className="border-b hover:bg-gray-50">
+                                  <td className="p-2">{item.nombre}</td>
+                                  <td className="p-2">
+                                    <Badge variant="outline">{item.fecha}</Badge>
+                                  </td>
+                                  <td className="p-2 text-right">{item.cantidad}</td>
+                                  <td className="p-2 text-right">{formatCurrency(item.ingresos)}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-center py-8 text-gray-500">Genera los reportes para ver productos vendidos</p>
+                  )}
+                </CardContent>
+              </Card>
             </TabsContent>
 
             {/* TAB COSTOS */}
