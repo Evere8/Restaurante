@@ -509,7 +509,6 @@ export default function PedidosPage() {
       precio_base: item.precio_unitario,
       cantidad: item.cantidad
     }))
-    console.log('Cargando items para edición:', cartItems)
     setCart(cartItems)
     setOrderForm({
       tipo: order.tipo,
@@ -522,8 +521,6 @@ export default function PedidosPage() {
   }
 
   const handleUpdateOrder = async () => {
-    console.log('Actualizando pedido, items en carrito:', cart)
-    
     if (cart.length === 0) {
       toast.error('El carrito está vacío')
       return
@@ -590,8 +587,6 @@ export default function PedidosPage() {
           nombre_item_snapshot: item.nombre
         }
       })
-
-      console.log('Insertando nuevos items:', orderItems)
 
       const { error: itemsError } = await supabase
         .from('order_items')
