@@ -31,6 +31,7 @@ export default function PedidosPage() {
   const [cart, setCart] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
   const [customers, setCustomers] = useState([])
+  const [promotions, setPromotions] = useState([]) // Estado para promociones
   const [orders, setOrders] = useState({
     preparacion: [],
     paraEntregar: [],
@@ -82,6 +83,7 @@ export default function PedidosPage() {
       loadProducts()
       loadCustomers()
       loadOrders()
+      loadPromotions() // Cargar promociones
       
       // Auto-refresh cada 15 segundos para detectar nuevos pedidos
       const interval = setInterval(loadOrders, 15000)
@@ -152,6 +154,52 @@ export default function PedidosPage() {
       .eq('restaurant_id', restaurant.id)
       .eq('disponible', true)
     setProducts(data || [])
+  }
+
+  // Cargar promociones activas
+  const loadPromotions = async () => {
+    const { data } = await supabase
+      .from('promociones')
+      .select('*, promocion_items(*, menu_items(id, nombre, precio_base))')
+      .eq('restaurant_id', restaurant.id)
+      .eq('activa', true)
+    setPromotions(data || [])
+  }
+
+  // Obtener promoción activa para un producto
+  const getProductPromotion = (productId) => {
+    for (const promo of promotions) {
+      const hasProduct = promo.promocion_items?.some(pi => pi.menu_item_id === productId)
+      if (hasProduct && promo.activa) {
+        return promo
+      }
+    }
+    return null
+  }
+
+  // Calcular precio con descuento
+  const getDiscountedPrice = (product) => {
+    const promo = getProductPromotion(product.id)
+    if (!promo) return null
+    
+    if (promo.tipo_descuento === 'porcentaje') {
+      return {
+        precioOriginal: parseFloat(product.precio_base),
+        precioFinal: Math.round(parseFloat(product.precio_base) * (1 - promo.porcentaje_descuento / 100)),
+        tipo: 'porcentaje',
+        descuento: promo.porcentaje_descuento,
+        nombrePromo: promo.nombre
+      }
+    } else if (promo.tipo_descuento === '2x1') {
+      return {
+        precioOriginal: parseFloat(product.precio_base),
+        precioFinal: parseFloat(product.precio_base), // Precio unitario igual, pero llevas 2
+        tipo: '2x1',
+        descuento: 50,
+        nombrePromo: promo.nombre
+      }
+    }
+    return null
   }
 
   const loadCustomers = async () => {
@@ -291,6 +339,18 @@ export default function PedidosPage() {
   }
 
   const addToCart = (product) => {
+    // Verificar si el producto tiene promoción
+    const promoInfo = getDiscountedPrice(product)
+    const productToAdd = {
+      ...product,
+      precio_original: parseFloat(product.precio_base),
+      precio_base: promoInfo ? promoInfo.precioFinal : parseFloat(product.precio_base),
+      tiene_promo: !!promoInfo,
+      promo_tipo: promoInfo?.tipo || null,
+      promo_descuento: promoInfo?.descuento || 0,
+      promo_nombre: promoInfo?.nombrePromo || null
+    }
+
     if (cuentasSeparadas && cuentas.length > 0) {
       // Modo cuentas separadas: agregar a la cuenta activa
       const nuevasCuentas = [...cuentas]
@@ -304,11 +364,12 @@ export default function PedidosPage() {
             : item
         )
       } else {
-        cuentaActual.productos.push({ ...product, cantidad: 1 })
+        cuentaActual.productos.push({ ...productToAdd, cantidad: 1 })
       }
       
       setCuentas(nuevasCuentas)
-      toast.success(`${product.nombre} agregado a cuenta de ${cuentaActual.nombre}`)
+      const promoMsg = promoInfo ? ` (${promoInfo.descuento}% OFF)` : ''
+      toast.success(`${product.nombre}${promoMsg} agregado a cuenta de ${cuentaActual.nombre}`)
     } else {
       // Modo normal
       const existingItem = cart.find(item => item.id === product.id)
@@ -319,9 +380,10 @@ export default function PedidosPage() {
             : item
         ))
       } else {
-        setCart([...cart, { ...product, cantidad: 1 }])
+        setCart([...cart, { ...productToAdd, cantidad: 1 }])
       }
-      toast.success(`${product.nombre} agregado al carrito`)
+      const promoMsg = promoInfo ? ` (${promoInfo.descuento}% OFF)` : ''
+      toast.success(`${product.nombre}${promoMsg} agregado al carrito`)
     }
   }
 
@@ -433,8 +495,10 @@ export default function PedidosPage() {
 
   const openEditOrder = (order) => {
     setEditingOrder(order)
-    setCart(order.order_items.map(item => ({
-      id: item.menu_item_id,
+    // Generar IDs únicos temporales para items sin menu_item_id válido
+    setCart(order.order_items.map((item, index) => ({
+      id: item.menu_item_id || `temp_${order.id}_${index}_${Date.now()}`,
+      originalMenuItemId: item.menu_item_id, // Guardar el ID original para la BD
       nombre: item.nombre_item_snapshot,
       precio_base: item.precio_unitario,
       cantidad: item.cantidad
@@ -480,15 +544,28 @@ export default function PedidosPage() {
         .delete()
         .eq('order_id', editingOrder.id)
 
-      // Insertar items nuevos - Filtrar items sin menu_item_id válido (productos eliminados o ad-hoc)
-      // Para items sin ID válido, usamos null que la BD acepta
-      const orderItems = cart.map(item => ({
-        order_id: editingOrder.id,
-        menu_item_id: item.id && typeof item.id === 'string' && item.id.length > 10 ? item.id : null,
-        cantidad: item.cantidad,
-        precio_unitario: parseFloat(item.precio_base),
-        nombre_item_snapshot: item.nombre
-      }))
+      // Insertar items nuevos
+      // Usar originalMenuItemId si existe, sino verificar si el ID es un UUID válido de la BD
+      const orderItems = cart.map(item => {
+        let menuItemId = null
+        
+        // Si tiene originalMenuItemId guardado, usarlo
+        if (item.originalMenuItemId) {
+          menuItemId = item.originalMenuItemId
+        } 
+        // Si el id no es temporal y parece un UUID válido (36 caracteres con guiones)
+        else if (item.id && typeof item.id === 'string' && !item.id.startsWith('temp_') && item.id.length >= 32) {
+          menuItemId = item.id
+        }
+
+        return {
+          order_id: editingOrder.id,
+          menu_item_id: menuItemId,
+          cantidad: item.cantidad,
+          precio_unitario: parseFloat(item.precio_base),
+          nombre_item_snapshot: item.nombre
+        }
+      })
 
       const { error: itemsError } = await supabase
         .from('order_items')
@@ -568,7 +645,7 @@ export default function PedidosPage() {
           const orderItems = cuenta.productos.map(item => ({
             order_id: newOrder.id,
             menu_item_id: item.id,
-            nombre_item_snapshot: item.nombre,
+            nombre_item_snapshot: item.tiene_promo ? `${item.nombre} (${item.promo_descuento}% OFF)` : item.nombre,
             precio_unitario: parseFloat(item.precio_base),
             cantidad: item.cantidad,
             total_item: parseFloat(item.precio_base) * item.cantidad
@@ -615,7 +692,7 @@ export default function PedidosPage() {
         const orderItems = cart.map(item => ({
           order_id: newOrder.id,
           menu_item_id: item.id,
-          nombre_item_snapshot: item.nombre,
+          nombre_item_snapshot: item.tiene_promo ? `${item.nombre} (${item.promo_descuento}% OFF)` : item.nombre,
           precio_unitario: parseFloat(item.precio_base),
           cantidad: item.cantidad,
           total_item: parseFloat(item.precio_base) * item.cantidad
@@ -1219,7 +1296,14 @@ export default function PedidosPage() {
                   {getCurrentCartItems().map(item => (
                     <div key={item.id} className="bg-gray-50 p-2 rounded-lg">
                       <div className="flex items-start justify-between mb-2">
-                        <span className="text-sm font-medium">{item.nombre}</span>
+                        <div>
+                          <span className="text-sm font-medium">{item.nombre}</span>
+                          {item.tiene_promo && (
+                            <span className="ml-2 text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded">
+                              -{item.promo_descuento}%
+                            </span>
+                          )}
+                        </div>
                         <button onClick={() => removeFromCart(item.id)} className="text-red-500">
                           <Trash2 className="h-4 w-4" />
                         </button>
@@ -1234,7 +1318,16 @@ export default function PedidosPage() {
                             <Plus className="h-3 w-3" />
                           </Button>
                         </div>
-                        <span className="font-bold" style={{ color: themeColors.secondary }}>{formatCurrency(parseFloat(item.precio_base) * item.cantidad)}</span>
+                        <div className="text-right">
+                          {item.tiene_promo && item.precio_original && (
+                            <span className="text-xs text-gray-400 line-through mr-2">
+                              {formatCurrency(parseFloat(item.precio_original) * item.cantidad)}
+                            </span>
+                          )}
+                          <span className="font-bold" style={{ color: item.tiene_promo ? '#16a34a' : themeColors.secondary }}>
+                            {formatCurrency(parseFloat(item.precio_base) * item.cantidad)}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   ))}
