@@ -7,7 +7,7 @@ const nextConfig = {
     // Remove if not using Server Components
     serverComponentsExternalPackages: ['mongodb'],
   },
-  webpack(config, { dev }) {
+  webpack(config, { dev, isServer }) {
     if (dev) {
       // Reduce CPU/memory from file watching
       config.watchOptions = {
@@ -16,6 +16,19 @@ const nextConfig = {
         ignored: ['**/node_modules'],
       };
     }
+    
+    // Prevent pdfjs-dist from being bundled on the server side
+    if (isServer) {
+      config.externals = config.externals || [];
+      config.externals.push({
+        'pdfjs-dist': 'pdfjs-dist',
+        'pdfjs-dist/legacy/build/pdf.mjs': 'pdfjs-dist/legacy/build/pdf.mjs',
+      });
+    }
+    
+    // Add rule for canvas (required by pdfjs-dist)
+    config.resolve.alias.canvas = false;
+    
     return config;
   },
   onDemandEntries: {

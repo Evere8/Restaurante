@@ -14,9 +14,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { QrCode, Link2, Copy, Download, Palette, Image, Eye, Save, ExternalLink, Settings, Smartphone, Gift, Plus, Trash2, Percent } from 'lucide-react'
+import { Progress } from '@/components/ui/progress'
+import { QrCode, Link2, Copy, Download, Palette, Image, Eye, Save, ExternalLink, Settings, Smartphone, Gift, Plus, Trash2, Percent, Loader2, CheckCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import QRCode from 'qrcode'
+
+// Helper para formatear tamaño de archivo
+function formatFileSize(bytes) {
+  if (bytes === 0) return '0 Bytes'
+  const k = 1024
+  const sizes = ['Bytes', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+}
 
 export default function MenuDigitalPage() {
   const { user, restaurant, loading: authLoading } = useAuth()
@@ -44,6 +54,8 @@ export default function MenuDigitalPage() {
   const [saving, setSaving] = useState(false)
   const [uploadingImage, setUploadingImage] = useState(false)
   const [uploadingPdf, setUploadingPdf] = useState(false)
+  const [pdfProgress, setPdfProgress] = useState(0)
+  const [compressionInfo, setCompressionInfo] = useState(null)
   
   // Promociones
   const [promotions, setPromotions] = useState([])
@@ -103,7 +115,7 @@ export default function MenuDigitalPage() {
     }
   }
 
-  // Función para subir PDF del menú
+  // Función para subir PDF del menú con compresión automática
   const handleUploadPdf = async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -113,47 +125,78 @@ export default function MenuDigitalPage() {
       return
     }
 
-    if (file.size > 10 * 1024 * 1024) { // 10MB max
-      toast.error('El archivo es muy grande (máximo 10MB)')
+    // Límite máximo de 100MB para el archivo original (soporta PDFs grandes)
+    if (file.size > 100 * 1024 * 1024) {
+      toast.error('El archivo es demasiado grande (máximo 100MB)')
       return
     }
 
     setUploadingPdf(true)
+    setPdfProgress(0)
+    setCompressionInfo(null)
+
     try {
-      const fileExt = 'pdf'
-      const fileName = `menu_${restaurant.id}_${Date.now()}.${fileExt}`
-      const filePath = `menus/${fileName}`
+      let fileToUpload = file
+      let wasCompressed = false
 
-      const { error: uploadError } = await supabase.storage
-        .from('restaurant-assets')
-        .upload(filePath, file)
-
-      if (uploadError) {
-        // Si el bucket no existe, usar una URL temporal o guardar en base64
-        console.error('Error subiendo archivo:', uploadError)
+      // Si el archivo es mayor a 9MB, comprimir usando import dinámico
+      if (file.size > 9 * 1024 * 1024) {
+        toast.info('Comprimiendo PDF, esto puede tardar varios minutos para archivos grandes...')
         
-        // Alternativa: convertir a base64 y guardar en localStorage temporalmente
-        const reader = new FileReader()
-        reader.onload = async (event) => {
-          const base64 = event.target.result
-          // Guardar referencia al archivo
-          setConfig(prev => ({ ...prev, menu_pdf_url: base64 }))
-          toast.success('PDF del menú cargado (almacenamiento local)')
-        }
-        reader.readAsDataURL(file)
-      } else {
-        const { data: publicUrlData } = supabase.storage
-          .from('restaurant-assets')
-          .getPublicUrl(filePath)
+        // Import dinámico para evitar problemas de SSR
+        const { compressPDF } = await import('@/lib/pdfCompressor')
+        
+        const result = await compressPDF(file, {
+          quality: 0.5,  // Calidad más baja para archivos muy grandes
+          scale: 0.7,    // Escala reducida para mejor compresión
+          maxSizeMB: 9,
+          onProgress: (progress) => {
+            setPdfProgress(progress)
+          }
+        })
 
-        setConfig(prev => ({ ...prev, menu_pdf_url: publicUrlData.publicUrl }))
-        toast.success('PDF del menú subido exitosamente')
+        fileToUpload = result.blob
+        wasCompressed = result.wasCompressed
+
+        if (wasCompressed) {
+          setCompressionInfo({
+            original: formatFileSize(result.originalSize),
+            compressed: formatFileSize(result.compressedSize),
+            reduction: result.reduction
+          })
+          toast.success(`PDF comprimido: ${result.reduction}% de reducción`)
+        }
       }
+
+      // Verificar tamaño final
+      if (fileToUpload.size > 10 * 1024 * 1024) {
+        toast.error('El PDF sigue siendo muy grande después de la compresión. Intenta con un PDF con menos imágenes de alta resolución.')
+        setUploadingPdf(false)
+        return
+      }
+
+      setPdfProgress(95)
+
+      // Convertir a base64 para guardar
+      const reader = new FileReader()
+      reader.onload = async (event) => {
+        const base64 = event.target.result
+        setConfig(prev => ({ ...prev, menu_pdf_url: base64 }))
+        setPdfProgress(100)
+        toast.success(wasCompressed ? 'PDF comprimido y cargado exitosamente' : 'PDF cargado exitosamente')
+        setUploadingPdf(false)
+      }
+      reader.onerror = () => {
+        toast.error('Error al leer el archivo')
+        setUploadingPdf(false)
+      }
+      reader.readAsDataURL(fileToUpload)
+
     } catch (error) {
       console.error('Error:', error)
-      toast.error('Error al subir el PDF')
+      toast.error('Error al procesar el PDF: ' + error.message)
+      setUploadingPdf(false)
     }
-    setUploadingPdf(false)
   }
 
   const loadPromotions = async () => {
@@ -1041,18 +1084,51 @@ export default function MenuDigitalPage() {
                         </div>
                       ) : (
                         <div className="border-2 border-dashed border-blue-300 rounded-lg p-6 text-center bg-white">
-                          <div className="text-4xl mb-2">📄</div>
-                          <p className="text-sm text-gray-600 mb-3">Arrastra tu PDF aquí o haz clic para seleccionar</p>
-                          <Input 
-                            type="file" 
-                            accept=".pdf,application/pdf" 
-                            onChange={handleUploadPdf}
-                            disabled={uploadingPdf}
-                            className="max-w-xs mx-auto"
-                          />
-                          {uploadingPdf && (
-                            <p className="text-sm text-blue-600 mt-2">Subiendo...</p>
+                          {uploadingPdf ? (
+                            <div className="space-y-4">
+                              <Loader2 className="h-10 w-10 animate-spin mx-auto text-blue-500" />
+                              <div>
+                                <p className="text-sm font-medium text-blue-700">
+                                  {pdfProgress < 90 ? 'Comprimiendo PDF...' : 'Finalizando...'}
+                                </p>
+                                <p className="text-xs text-gray-500 mt-1">
+                                  {pdfProgress < 20 && 'Leyendo archivo...'}
+                                  {pdfProgress >= 20 && pdfProgress < 90 && 'Procesando páginas...'}
+                                  {pdfProgress >= 90 && 'Guardando...'}
+                                </p>
+                              </div>
+                              <Progress value={pdfProgress} className="w-full max-w-xs mx-auto" />
+                              <p className="text-xs text-gray-400">{pdfProgress}%</p>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="text-4xl mb-2">📄</div>
+                              <p className="text-sm text-gray-600 mb-1">Arrastra tu PDF aquí o haz clic para seleccionar</p>
+                              <p className="text-xs text-gray-400 mb-3">Máximo 100MB - Se comprimirá automáticamente a menos de 10MB</p>
+                              <Input 
+                                type="file" 
+                                accept=".pdf,application/pdf" 
+                                onChange={handleUploadPdf}
+                                disabled={uploadingPdf}
+                                className="max-w-xs mx-auto"
+                              />
+                            </>
                           )}
+                        </div>
+                      )}
+                      
+                      {/* Mostrar info de compresión */}
+                      {compressionInfo && (
+                        <div className="mt-3 p-3 bg-green-50 rounded-lg border border-green-200">
+                          <div className="flex items-center space-x-2">
+                            <CheckCircle className="h-5 w-5 text-green-500" />
+                            <span className="text-sm font-medium text-green-700">PDF comprimido exitosamente</span>
+                          </div>
+                          <div className="mt-2 text-xs text-green-600 space-y-1">
+                            <p>Tamaño original: {compressionInfo.original}</p>
+                            <p>Tamaño comprimido: {compressionInfo.compressed}</p>
+                            <p className="font-semibold">Reducción: {compressionInfo.reduction}%</p>
+                          </div>
                         </div>
                       )}
                     </div>
