@@ -99,17 +99,27 @@ export default function MenuLandingPage() {
 
   const handleViewPdf = () => {
     if (config?.menu_pdf_url) {
-      // Si es un data URL (base64), abrir en nueva pestaña
+      // Si es un data URL (base64), crear un blob y abrirlo
       if (config.menu_pdf_url.startsWith('data:')) {
-        const win = window.open()
-        win.document.write(`
-          <html>
-            <head><title>Menú - ${restaurant?.nombre || 'Restaurante'}</title></head>
-            <body style="margin:0;padding:0;">
-              <embed src="${config.menu_pdf_url}" width="100%" height="100%" type="application/pdf">
-            </body>
-          </html>
-        `)
+        try {
+          // Convertir base64 a blob
+          const base64Data = config.menu_pdf_url.split(',')[1]
+          const byteCharacters = atob(base64Data)
+          const byteNumbers = new Array(byteCharacters.length)
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i)
+          }
+          const byteArray = new Uint8Array(byteNumbers)
+          const blob = new Blob([byteArray], { type: 'application/pdf' })
+          
+          // Crear URL del blob y abrir
+          const blobUrl = URL.createObjectURL(blob)
+          window.open(blobUrl, '_blank')
+        } catch (error) {
+          console.error('Error abriendo PDF:', error)
+          // Fallback: abrir directamente
+          window.open(config.menu_pdf_url, '_blank')
+        }
       } else {
         window.open(config.menu_pdf_url, '_blank')
       }
