@@ -122,16 +122,14 @@ export default function CobroPage() {
     }
   }
 
-  // Función para exportar ventas del día a Excel
+  // Función para exportar ventas del día a Excel (formato mejorado)
   const exportDailySalesToExcel = async () => {
     try {
-      // Obtener fecha de hoy
       const today = new Date()
       today.setHours(0, 0, 0, 0)
       const tomorrow = new Date(today)
       tomorrow.setDate(tomorrow.getDate() + 1)
 
-      // Filtrar pedidos del día
       const todaysOrders = ordersCobrados.filter(order => {
         const orderDate = new Date(order.fecha_pago)
         return orderDate >= today && orderDate < tomorrow
@@ -142,66 +140,195 @@ export default function CobroPage() {
         return
       }
 
-      // Calcular totales
-      const totalVentas = todaysOrders.reduce((sum, o) => sum + parseFloat(o.total || 0), 0)
-      const totalPedidos = todaysOrders.length
-
-      // Crear contenido CSV (compatible con Excel)
-      let csvContent = '\ufeff' // BOM para UTF-8
-      csvContent += 'REPORTE DE VENTAS DEL DÍA\n'
-      csvContent += `Fecha: ${today.toLocaleDateString('es-PY')}\n`
-      csvContent += `Restaurante: ${restaurant?.nombre || 'N/A'}\n\n`
-      csvContent += `Total Pedidos: ${totalPedidos}\n`
-      csvContent += `Total Ventas: ${formatCurrency(totalVentas)}\n\n`
-      csvContent += 'DETALLE DE VENTAS\n'
-      csvContent += 'Pedido ID,Hora,Tipo,Mesa,Método Pago,Productos,Cantidad,Total\n'
-
-      todaysOrders.forEach(order => {
-        const hora = new Date(order.fecha_pago).toLocaleTimeString('es-PY', { hour: '2-digit', minute: '2-digit' })
-        const productos = order.order_items?.map(i => `${i.cantidad}x ${i.nombre_item_snapshot?.replace(/,/g, ' ')}`).join(' | ') || 'N/A'
-        const cantidadItems = order.order_items?.reduce((sum, i) => sum + i.cantidad, 0) || 0
-        
-        csvContent += `${order.id.slice(0, 8)},${hora},${order.tipo},${order.mesa || 'N/A'},${order.metodo_pago},${productos},${cantidadItems},${order.total}\n`
-      })
-
-      csvContent += '\n\nDETALLE POR PRODUCTO\n'
-      csvContent += 'Producto,Cantidad Vendida,Ingresos\n'
-
-      // Agrupar por producto
-      const productosTotales = {}
-      todaysOrders.forEach(order => {
-        order.order_items?.forEach(item => {
-          const nombre = item.nombre_item_snapshot?.replace('🆕 ', '') || 'Producto'
-          if (!productosTotales[nombre]) {
-            productosTotales[nombre] = { cantidad: 0, total: 0 }
-          }
-          productosTotales[nombre].cantidad += item.cantidad
-          productosTotales[nombre].total += (item.precio_unitario * item.cantidad)
-        })
-      })
-
-      Object.entries(productosTotales)
-        .sort((a, b) => b[1].total - a[1].total)
-        .forEach(([nombre, data]) => {
-          csvContent += `${nombre.replace(/,/g, ' ')},${data.cantidad},${data.total}\n`
-        })
-
-      // Descargar archivo
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' })
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = `ventas_${today.toISOString().split('T')[0]}.csv`
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      URL.revokeObjectURL(url)
-
-      toast.success('Reporte de ventas exportado exitosamente')
+      const csvContent = generateExcelContent(todaysOrders, 'día', today)
+      downloadCSV(csvContent, `ventas_dia_${today.toISOString().split('T')[0]}.csv`)
+      toast.success('Reporte de ventas del día exportado')
     } catch (error) {
       console.error('Error exportando ventas:', error)
       toast.error('Error al exportar ventas')
     }
+  }
+
+  // Función para exportar ventas del mes a Excel
+  const exportMonthlySalesToExcel = async () => {
+    try {
+      const today = new Date()
+      const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
+      const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59)
+
+      const monthOrders = ordersCobrados.filter(order => {
+        const orderDate = new Date(order.fecha_pago)
+        return orderDate >= firstDayOfMonth && orderDate <= lastDayOfMonth
+      })
+
+      if (monthOrders.length === 0) {
+        toast.error('No hay ventas del mes para exportar')
+        return
+      }
+
+      const csvContent = generateExcelContent(monthOrders, 'mes', firstDayOfMonth)
+      const monthName = firstDayOfMonth.toLocaleDateString('es-PY', { month: 'long', year: 'numeric' })
+      downloadCSV(csvContent, `ventas_mes_${monthName.replace(' ', '_')}.csv`)
+      toast.success('Reporte de ventas del mes exportado')
+    } catch (error) {
+      console.error('Error exportando ventas:', error)
+      toast.error('Error al exportar ventas')
+    }
+  }
+
+  // Función para generar contenido del Excel bien organizado
+  const generateExcelContent = (orders, periodo, fecha) => {
+    const totalVentas = orders.reduce((sum, o) => sum + parseFloat(o.total || 0), 0)
+    const totalPedidos = orders.length
+    const ticketPromedio = totalPedidos > 0 ? (totalVentas / totalPedidos) : 0
+
+    // Agrupar por método de pago
+    const ventasPorMetodo = {}
+    orders.forEach(order => {
+      const metodo = order.metodo_pago || 'Sin especificar'
+      if (!ventasPorMetodo[metodo]) {
+        ventasPorMetodo[metodo] = { cantidad: 0, total: 0 }
+      }
+      ventasPorMetodo[metodo].cantidad++
+      ventasPorMetodo[metodo].total += parseFloat(order.total || 0)
+    })
+
+    // Agrupar por producto
+    const productosTotales = {}
+    orders.forEach(order => {
+      order.order_items?.forEach(item => {
+        const nombre = item.nombre_item_snapshot?.replace('🆕 ', '') || 'Producto'
+        if (!productosTotales[nombre]) {
+          productosTotales[nombre] = { cantidad: 0, total: 0, precioUnit: item.precio_unitario }
+        }
+        productosTotales[nombre].cantidad += item.cantidad
+        productosTotales[nombre].total += (item.precio_unitario * item.cantidad)
+      })
+    })
+
+    // Agrupar por día (para reporte mensual)
+    const ventasPorDia = {}
+    if (periodo === 'mes') {
+      orders.forEach(order => {
+        const dia = new Date(order.fecha_pago).toLocaleDateString('es-PY')
+        if (!ventasPorDia[dia]) {
+          ventasPorDia[dia] = { pedidos: 0, total: 0 }
+        }
+        ventasPorDia[dia].pedidos++
+        ventasPorDia[dia].total += parseFloat(order.total || 0)
+      })
+    }
+
+    let csv = '\ufeff' // BOM para UTF-8
+
+    // ═══════════════════════════════════════════════════════════════
+    // ENCABEZADO
+    // ═══════════════════════════════════════════════════════════════
+    csv += '═══════════════════════════════════════════════════════════════\n'
+    csv += `REPORTE DE VENTAS - ${periodo.toUpperCase()}\n`
+    csv += '═══════════════════════════════════════════════════════════════\n'
+    csv += `Restaurante:,${restaurant?.nombre || 'N/A'}\n`
+    if (periodo === 'día') {
+      csv += `Fecha:,${fecha.toLocaleDateString('es-PY', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}\n`
+    } else {
+      csv += `Período:,${fecha.toLocaleDateString('es-PY', { month: 'long', year: 'numeric' })}\n`
+    }
+    csv += `Generado:,${new Date().toLocaleString('es-PY')}\n`
+    csv += '\n'
+
+    // ═══════════════════════════════════════════════════════════════
+    // RESUMEN GENERAL
+    // ═══════════════════════════════════════════════════════════════
+    csv += '───────────────────────────────────────────────────────────────\n'
+    csv += 'RESUMEN GENERAL\n'
+    csv += '───────────────────────────────────────────────────────────────\n'
+    csv += `Total de Pedidos:,${totalPedidos}\n`
+    csv += `Total de Ventas:,${formatCurrency(totalVentas)}\n`
+    csv += `Ticket Promedio:,${formatCurrency(ticketPromedio)}\n`
+    csv += '\n'
+
+    // ═══════════════════════════════════════════════════════════════
+    // VENTAS POR MÉTODO DE PAGO
+    // ═══════════════════════════════════════════════════════════════
+    csv += '───────────────────────────────────────────────────────────────\n'
+    csv += 'VENTAS POR MÉTODO DE PAGO\n'
+    csv += '───────────────────────────────────────────────────────────────\n'
+    csv += 'Método de Pago,Cantidad de Pedidos,Total Ventas,% del Total\n'
+    Object.entries(ventasPorMetodo)
+      .sort((a, b) => b[1].total - a[1].total)
+      .forEach(([metodo, data]) => {
+        const porcentaje = ((data.total / totalVentas) * 100).toFixed(1)
+        csv += `${metodo},${data.cantidad},${formatCurrency(data.total)},${porcentaje}%\n`
+      })
+    csv += '\n'
+
+    // ═══════════════════════════════════════════════════════════════
+    // VENTAS POR DÍA (solo para reporte mensual)
+    // ═══════════════════════════════════════════════════════════════
+    if (periodo === 'mes' && Object.keys(ventasPorDia).length > 0) {
+      csv += '───────────────────────────────────────────────────────────────\n'
+      csv += 'VENTAS POR DÍA\n'
+      csv += '───────────────────────────────────────────────────────────────\n'
+      csv += 'Fecha,Cantidad de Pedidos,Total Ventas\n'
+      Object.entries(ventasPorDia)
+        .sort((a, b) => new Date(a[0].split('/').reverse().join('-')) - new Date(b[0].split('/').reverse().join('-')))
+        .forEach(([dia, data]) => {
+          csv += `${dia},${data.pedidos},${formatCurrency(data.total)}\n`
+        })
+      csv += '\n'
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // PRODUCTOS MÁS VENDIDOS
+    // ═══════════════════════════════════════════════════════════════
+    csv += '───────────────────────────────────────────────────────────────\n'
+    csv += 'PRODUCTOS VENDIDOS (Ordenado por cantidad)\n'
+    csv += '───────────────────────────────────────────────────────────────\n'
+    csv += 'Producto,Cantidad Vendida,Precio Unitario,Total Ingresos\n'
+    Object.entries(productosTotales)
+      .sort((a, b) => b[1].cantidad - a[1].cantidad)
+      .forEach(([nombre, data]) => {
+        csv += `${nombre.replace(/,/g, ' ')},${data.cantidad},${formatCurrency(data.precioUnit)},${formatCurrency(data.total)}\n`
+      })
+    csv += '\n'
+
+    // ═══════════════════════════════════════════════════════════════
+    // DETALLE DE PEDIDOS
+    // ═══════════════════════════════════════════════════════════════
+    csv += '───────────────────────────────────────────────────────────────\n'
+    csv += 'DETALLE DE TODOS LOS PEDIDOS\n'
+    csv += '───────────────────────────────────────────────────────────────\n'
+    csv += 'ID Pedido,Fecha,Hora,Cliente,Tipo,Mesa,Método Pago,Productos,Cantidad Items,Total\n'
+    orders.forEach(order => {
+      const fechaPago = new Date(order.fecha_pago)
+      const fecha = fechaPago.toLocaleDateString('es-PY')
+      const hora = fechaPago.toLocaleTimeString('es-PY', { hour: '2-digit', minute: '2-digit' })
+      const cliente = order.customers?.nombre || order.customer_nombre || 'Sin nombre'
+      const productos = order.order_items?.map(i => `${i.cantidad}x ${i.nombre_item_snapshot?.replace(/,/g, ' ').replace('🆕 ', '')}`).join(' | ') || 'N/A'
+      const cantidadItems = order.order_items?.reduce((sum, i) => sum + i.cantidad, 0) || 0
+      
+      csv += `${order.id.slice(0, 8)},${fecha},${hora},${cliente.replace(/,/g, ' ')},${order.tipo},${order.mesa || 'N/A'},${order.metodo_pago},${productos},${cantidadItems},${formatCurrency(order.total)}\n`
+    })
+
+    csv += '\n'
+    csv += '═══════════════════════════════════════════════════════════════\n'
+    csv += 'FIN DEL REPORTE\n'
+    csv += '═══════════════════════════════════════════════════════════════\n'
+
+    return csv
+  }
+
+  // Función auxiliar para descargar CSV
+  const downloadCSV = (content, filename) => {
+    const blob = new Blob([content], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
   }
 
   // Función para eliminar pedido
@@ -1146,13 +1273,22 @@ export default function CobroPage() {
                 </Select>
                 <Badge variant="outline">{getFilteredCobrados().length} pedidos</Badge>
               </div>
-              <Button 
-                onClick={exportDailySalesToExcel}
-                className="bg-green-600 hover:bg-green-700"
-              >
-                <Download className="mr-2 h-4 w-4" />
-                Exportar Ventas del Día (Excel)
-              </Button>
+              <div className="flex space-x-2">
+                <Button 
+                  onClick={exportDailySalesToExcel}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Exportar Día
+                </Button>
+                <Button 
+                  onClick={exportMonthlySalesToExcel}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Exportar Mes
+                </Button>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
