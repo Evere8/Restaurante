@@ -77,7 +77,7 @@ export default function CobroPage() {
 
     const { data: cobrados } = await supabase
       .from('orders')
-      .select('*, order_items(*), customers(nombre, telefono)')
+      .select('*, order_items(*), customers(nombre, telefono, ruc)')
       .eq('restaurant_id', restaurant.id)
       .eq('estado', 'PAGADO')
       .gte('created_at', thirtyDaysAgo.toISOString())
@@ -1326,6 +1326,13 @@ export default function CobroPage() {
                         <span className="text-gray-600">Cliente:</span>
                         <span className="font-medium">{order.customers?.nombre || order.customer_nombre || 'Sin nombre'}</span>
                       </div>
+                      {/* RUC del cliente */}
+                      {(order.customers?.ruc || order.customer_ruc) && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">RUC:</span>
+                          <span className="font-medium">{order.customers?.ruc || order.customer_ruc}</span>
+                        </div>
+                      )}
                     </div>
 
                     {/* Productos vendidos */}

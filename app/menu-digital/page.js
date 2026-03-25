@@ -35,13 +35,15 @@ export default function MenuDigitalPage() {
     horario_apertura: '',
     horario_cierre: '',
     mostrar_precios: true,
-    permitir_pedidos: true
+    permitir_pedidos: true,
+    menu_pdf_url: '' // URL del PDF del menú
   })
 
   const [slug, setSlug] = useState('')
   const [qrDataUrl, setQrDataUrl] = useState('')
   const [saving, setSaving] = useState(false)
   const [uploadingImage, setUploadingImage] = useState(false)
+  const [uploadingPdf, setUploadingPdf] = useState(false)
   
   // Promociones
   const [promotions, setPromotions] = useState([])
@@ -92,12 +94,66 @@ export default function MenuDigitalPage() {
           horario_apertura: data.horario_apertura || '',
           horario_cierre: data.horario_cierre || '',
           mostrar_precios: data.mostrar_precios ?? true,
-          permitir_pedidos: data.permitir_pedidos ?? true
+          permitir_pedidos: data.permitir_pedidos ?? true,
+          menu_pdf_url: data.menu_pdf_url || ''
         })
       }
     } catch (err) {
       console.log('No hay configuración previa o tabla no existe aún')
     }
+  }
+
+  // Función para subir PDF del menú
+  const handleUploadPdf = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (file.type !== 'application/pdf') {
+      toast.error('Solo se permiten archivos PDF')
+      return
+    }
+
+    if (file.size > 10 * 1024 * 1024) { // 10MB max
+      toast.error('El archivo es muy grande (máximo 10MB)')
+      return
+    }
+
+    setUploadingPdf(true)
+    try {
+      const fileExt = 'pdf'
+      const fileName = `menu_${restaurant.id}_${Date.now()}.${fileExt}`
+      const filePath = `menus/${fileName}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('restaurant-assets')
+        .upload(filePath, file)
+
+      if (uploadError) {
+        // Si el bucket no existe, usar una URL temporal o guardar en base64
+        console.error('Error subiendo archivo:', uploadError)
+        
+        // Alternativa: convertir a base64 y guardar en localStorage temporalmente
+        const reader = new FileReader()
+        reader.onload = async (event) => {
+          const base64 = event.target.result
+          // Guardar referencia al archivo
+          setConfig(prev => ({ ...prev, menu_pdf_url: base64 }))
+          toast.success('PDF del menú cargado (almacenamiento local)')
+        }
+        reader.readAsDataURL(file)
+      } else {
+        const { data: publicUrlData } = supabase.storage
+          .from('restaurant-assets')
+          .getPublicUrl(filePath)
+
+        setConfig(prev => ({ ...prev, menu_pdf_url: publicUrlData.publicUrl }))
+        toast.success('PDF del menú subido exitosamente')
+      }
+    } catch (error) {
+      console.error('Error:', error)
+      toast.error('Error al subir el PDF')
+    }
+    setUploadingPdf(false)
   }
 
   const loadPromotions = async () => {
@@ -150,7 +206,8 @@ export default function MenuDigitalPage() {
                     (typeof window !== 'undefined' ? window.location.origin : '')
     // Usar el ID del restaurante como slug si no hay slug personalizado
     const finalSlug = slugValue || restaurant?.id
-    return `${baseUrl}/delivery/${finalSlug}`
+    // Usar /menu/ que muestra la pantalla de selección (PDF o Interactivo)
+    return `${baseUrl}/menu/${finalSlug}`
   }
 
   const handleSaveConfig = async () => {
@@ -171,7 +228,8 @@ export default function MenuDigitalPage() {
         horario_apertura: config.horario_apertura || null,
         horario_cierre: config.horario_cierre || null,
         mostrar_precios: config.mostrar_precios,
-        permitir_pedidos: config.permitir_pedidos
+        permitir_pedidos: config.permitir_pedidos,
+        menu_pdf_url: config.menu_pdf_url || null
       }
 
       // Guardar o actualizar configuración
@@ -944,6 +1002,65 @@ export default function MenuDigitalPage() {
                       </div>
                       <input type="checkbox" checked={config.permitir_pedidos} onChange={(e) => setConfig({ ...config, permitir_pedidos: e.target.checked })} className="w-5 h-5" />
                     </div>
+                  </div>
+
+                  {/* Sección PDF del Menú */}
+                  <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <div className="flex items-center justify-between mb-3">
+                      <div>
+                        <Label className="text-blue-800 font-semibold">📄 Menú en PDF</Label>
+                        <p className="text-sm text-blue-600">Sube tu menú en PDF para que los clientes puedan verlo</p>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      {config.menu_pdf_url ? (
+                        <div className="flex items-center space-x-3 p-3 bg-white rounded-lg border">
+                          <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
+                            <span className="text-2xl">📕</span>
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-medium text-green-600">PDF cargado ✓</p>
+                            <p className="text-xs text-gray-500">El menú PDF está listo para mostrarse</p>
+                          </div>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => window.open(config.menu_pdf_url, '_blank')}
+                          >
+                            <Eye className="h-4 w-4 mr-1" />
+                            Ver
+                          </Button>
+                          <Button 
+                            variant="destructive" 
+                            size="sm"
+                            onClick={() => setConfig({ ...config, menu_pdf_url: '' })}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="border-2 border-dashed border-blue-300 rounded-lg p-6 text-center bg-white">
+                          <div className="text-4xl mb-2">📄</div>
+                          <p className="text-sm text-gray-600 mb-3">Arrastra tu PDF aquí o haz clic para seleccionar</p>
+                          <Input 
+                            type="file" 
+                            accept=".pdf,application/pdf" 
+                            onChange={handleUploadPdf}
+                            disabled={uploadingPdf}
+                            className="max-w-xs mx-auto"
+                          />
+                          {uploadingPdf && (
+                            <p className="text-sm text-blue-600 mt-2">Subiendo...</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    
+                    <p className="text-xs text-blue-700 mt-3">
+                      💡 <strong>Nota:</strong> Si subes un PDF, los clientes verán primero una pantalla con 2 opciones: 
+                      "Ver Menú" (PDF) y "Menú Interactivo" (para hacer pedidos).
+                    </p>
                   </div>
                 </CardContent>
               </Card>

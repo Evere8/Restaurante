@@ -27,19 +27,20 @@ Sistema CRM completo para gestión de restaurantes con menú digital, pedidos, c
 - Stock avanzado con recetas
 - Gestión de disponibilidad
 
-### 4. Menú Digital (/menu-digital)
+### 4. Menú Digital (/menu-digital) - ACTUALIZADO
 - Configuración de menú público
 - Generador de QR
 - Personalización de colores
 - Sistema de promociones (2x1, porcentaje, precio fijo)
+- **NUEVO: Subir PDF del menú**
+- **NUEVO: Landing page con 2 opciones (Ver Menú PDF / Hacer Pedido)**
 
-### 5. Pedidos (/pedidos) - ACTUALIZADO
-- **Simplificado a 2 pestañas**: "En Proceso" y "Entregados"
-- Botón "Iniciar Preparación" → "Marcar Entregado" para pasar a Entregados
-- **Productos no se despliegan automáticamente** - Solo al seleccionar categoría
+### 5. Pedidos (/pedidos)
+- Simplificado a 2 pestañas: "En Proceso" y "Entregados"
+- Botón "Iniciar Preparación" → "Marcar Entregado"
+- Productos no se despliegan automáticamente
 - Promociones visibles con precio tachado y badge de descuento
 - Cuentas separadas por mesa
-- Edición de pedidos
 
 ### 6. KDS/Cocina (/kds)
 - Pantalla de cocina
@@ -51,19 +52,18 @@ Sistema CRM completo para gestión de restaurantes con menú digital, pedidos, c
 - Métodos de pago múltiples
 - Cupones de descuento
 - Generación de facturas y recibos PDF
-- **Pestaña "Cobrados" con selector de semana (1-5)**
-- **Nombre del cliente visible en cada tarjeta**
-- Exportación a Excel de ventas diarias
+- Pestaña "Cobrados" con selector de semana (1-5)
+- **Nombre y RUC del cliente visible en cada tarjeta**
+- **Exportar ventas del DÍA y del MES** (formato Excel mejorado)
 
 ### 8. Stock (/stock)
 - Control de inventario
 - Alertas de stock bajo
 - Alertas de vencimiento
-- Movimientos de stock (ingresos/egresos)
-- Historial de costos
+- Movimientos de stock
 
 ### 9. Clientes (/clientes)
-- Base de datos de clientes
+- Base de datos de clientes con RUC
 - Marketing por WhatsApp (opt-in)
 - Historial de compras
 
@@ -72,13 +72,11 @@ Sistema CRM completo para gestión de restaurantes con menú digital, pedidos, c
 - Límites de uso
 - Fechas de vencimiento
 
-### 11. Reportes (/reportes) - ACTUALIZADO
-- Ventas generales - **Filtro de fechas corregido**
+### 11. Reportes (/reportes)
+- Ventas generales - Filtro de fechas corregido
 - Productos vendidos con fechas y cantidades
 - Evolución de costos
 - Rentabilidad por producto
-- Consumo de insumos
-- Productos vencidos/desperdicio
 - Exportación a CSV
 
 ### 12. Configuración (/configuracion)
@@ -86,34 +84,34 @@ Sistema CRM completo para gestión de restaurantes con menú digital, pedidos, c
 - Personalización de colores
 - Logo
 
-### 13. Facturación (/configuracion-factura) - ACTUALIZADO
+### 13. Facturación (/configuracion-factura)
 - Configuración de factura paraguaya
-- Datos fiscales
-- **Guardado en Supabase (requiere crear tabla)**
+- Guardado en Supabase
 
-## Cambios Realizados (Marzo 2026)
+## Landing Page del Menú (/menu/[slug]) - NUEVO
+Cuando el cliente escanea el QR, ve una pantalla con 2 opciones:
+1. **Ver Menú** - Muestra el PDF del menú
+2. **Hacer Pedido** - Lleva al menú interactivo para crear pedidos
 
-### Corrección 1: Cobros - Selector de Semana y Nombre Cliente
-- Agregado selector de semana (1-5) en pestaña Cobrados
-- Nombre del cliente visible en cada tarjeta de pedido cobrado
-- Mantiene exportación a Excel
+## Cambios Recientes (Marzo 2026)
 
-### Corrección 2: Pedidos - Simplificado a 2 Pestañas
-- Eliminada pestaña "Para Entregar"
-- Solo quedan: "En Proceso" y "Entregados"
-- Flujo: Iniciar Preparación → Marcar Entregado → Pasa a Entregados
+### Cobros - RUC del Cliente
+- Agregado RUC del cliente en las tarjetas de pedidos cobrados
+- Query actualizada para traer el campo `ruc` de la tabla `customers`
 
-### Corrección 3: Pedidos - Productos no se Despliegan
-- Los productos no se muestran hasta seleccionar una categoría
-- Evita scroll innecesario
+### Menú Digital - PDF del Menú
+- Nueva sección en Configuración para subir PDF del menú
+- Nueva página de landing `/menu/[slug]` con diseño minimalista
+- 2 opciones: "Ver Menú" (PDF) y "Hacer Pedido" (interactivo)
+- El link del QR ahora apunta a `/menu/[slug]`
 
-### Corrección 4: Reportes - Filtro de Fechas Corregido
-- Las fechas ahora se manejan sin conversión de zona horaria
-- El filtro de "ayer" ahora muestra los datos correctos
+## Script SQL Pendiente
+Ver archivo: `/app/scripts/supabase_setup.sql`
 
-### Corrección 5: Configuración Factura - Guardar en Supabase
-- Código actualizado para guardar en Supabase
-- **PENDIENTE**: Ejecutar script SQL para crear tabla
+Incluye:
+- Columna `menu_pdf_url` en `menu_digital_config`
+- Columna `ruc` en `customers` (si no existe)
+- Tabla `factura_config` para guardar configuración de facturas
 
 ## Credenciales de Prueba
 - Email: jose@gmail.com
