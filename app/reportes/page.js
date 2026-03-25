@@ -73,18 +73,18 @@ export default function ReportesPage() {
 
   const generateVentasReport = async () => {
     try {
-      const from = new Date(dateFrom)
-      from.setHours(0, 0, 0, 0)
-      const to = new Date(dateTo)
-      to.setHours(23, 59, 59, 999)
+      // Crear fechas sin conversión de zona horaria
+      // Agregar T00:00:00 para evitar problemas de timezone
+      const fromDate = `${dateFrom}T00:00:00`
+      const toDate = `${dateTo}T23:59:59`
 
       const { data: orders, error } = await supabase
         .from('orders')
         .select('*, order_items(*)')
         .eq('restaurant_id', restaurant.id)
         .eq('estado', 'PAGADO')
-        .gte('fecha_pago', from.toISOString())
-        .lte('fecha_pago', to.toISOString())
+        .gte('fecha_pago', fromDate)
+        .lte('fecha_pago', toDate)
 
       if (error) throw error
 
@@ -150,10 +150,9 @@ export default function ReportesPage() {
 
   const generateProductosRentables = async () => {
     try {
-      const from = new Date(dateFrom)
-      from.setHours(0, 0, 0, 0)
-      const to = new Date(dateTo)
-      to.setHours(23, 59, 59, 999)
+      // Usar formato de fecha sin conversión de zona horaria
+      const fromDate = `${dateFrom}T00:00:00`
+      const toDate = `${dateTo}T23:59:59`
 
       // Obtener productos del menú con costos
       const { data: menuItems, error: menuError } = await supabase
@@ -170,8 +169,8 @@ export default function ReportesPage() {
         .select('order_items(menu_item_id, cantidad)')
         .eq('restaurant_id', restaurant.id)
         .eq('estado', 'PAGADO')
-        .gte('fecha_pago', from.toISOString())
-        .lte('fecha_pago', to.toISOString())
+        .gte('fecha_pago', fromDate)
+        .lte('fecha_pago', toDate)
 
       if (ordersError) throw ordersError
 
@@ -270,10 +269,9 @@ export default function ReportesPage() {
   // Nuevo reporte: Productos vendidos con fechas y cantidades
   const generateProductosVendidos = async () => {
     try {
-      const from = new Date(dateFrom)
-      from.setHours(0, 0, 0, 0)
-      const to = new Date(dateTo)
-      to.setHours(23, 59, 59, 999)
+      // Usar formato de fecha sin conversión de zona horaria
+      const fromDate = `${dateFrom}T00:00:00`
+      const toDate = `${dateTo}T23:59:59`
 
       // Obtener todos los pedidos pagados en el rango
       const { data: orders, error } = await supabase
@@ -281,8 +279,8 @@ export default function ReportesPage() {
         .select('fecha_pago, order_items(nombre_item_snapshot, cantidad, precio_unitario)')
         .eq('restaurant_id', restaurant.id)
         .eq('estado', 'PAGADO')
-        .gte('fecha_pago', from.toISOString())
-        .lte('fecha_pago', to.toISOString())
+        .gte('fecha_pago', fromDate)
+        .lte('fecha_pago', toDate)
         .order('fecha_pago', { ascending: false })
 
       if (error) throw error

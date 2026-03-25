@@ -33,8 +33,7 @@ export default function PedidosPage() {
   const [customers, setCustomers] = useState([])
   const [promotions, setPromotions] = useState([]) // Estado para promociones
   const [orders, setOrders] = useState({
-    preparacion: [],
-    paraEntregar: [],
+    enProceso: [],     // Pedidos nuevos y en preparación
     entregados: []
   })
   const [editingOrder, setEditingOrder] = useState(null)
@@ -226,20 +225,17 @@ export default function PedidosPage() {
       .gte('created_at', twoDaysAgo.toISOString())
       .order('created_at', { ascending: false })
 
-    // Categorizar pedidos por estado
+    // Categorizar pedidos: En Proceso (todos menos ENTREGADO/PAGADO) y Entregados
     const categorized = {
-      preparacion: [],
-      paraEntregar: [],
+      enProceso: [],
       entregados: []
     }
 
     if (data) {
       data.forEach(order => {
-        // PENDIENTE, NUEVO y PREPARANDO van a preparación
-        if (order.estado === 'PENDIENTE' || order.estado === 'NUEVO' || order.estado === 'PREPARANDO') {
-          categorized.preparacion.push(order)
-        } else if (order.estado === 'LISTO') {
-          categorized.paraEntregar.push(order)
+        // PENDIENTE, NUEVO, PREPARANDO y LISTO van a enProceso
+        if (order.estado === 'PENDIENTE' || order.estado === 'NUEVO' || order.estado === 'PREPARANDO' || order.estado === 'LISTO') {
+          categorized.enProceso.push(order)
         } else if (order.estado === 'ENTREGADO') {
           categorized.entregados.push(order)
         }
@@ -247,7 +243,7 @@ export default function PedidosPage() {
     }
 
     // Detectar si hay nuevos pedidos
-    const currentPrepCount = categorized.preparacion.length
+    const currentPrepCount = categorized.enProceso.length
     if (previousOrderCount > 0 && currentPrepCount > previousOrderCount) {
       playNotificationSound()
       toast.info('🔔 ¡Nuevo pedido recibido!')
@@ -276,13 +272,14 @@ export default function PedidosPage() {
 
   const handleMarcarListo = async (orderId) => {
     try {
+      // Marcar como ENTREGADO directamente (salta LISTO)
       const { error } = await supabase
         .from('orders')
-        .update({ estado: 'LISTO' })
+        .update({ estado: 'ENTREGADO' })
         .eq('id', orderId)
 
       if (error) throw error
-      toast.success('Pedido marcado como listo')
+      toast.success('Pedido marcado como entregado')
       loadOrders()
     } catch (error) {
       console.error('Error:', error)
@@ -834,9 +831,13 @@ export default function PedidosPage() {
   }
 
   const filteredProducts = products.filter(p => {
-    const matchesCategory = !selectedCategory || p.category_id === selectedCategory
-    const matchesSearch = !searchTerm || p.nombre.toLowerCase().includes(searchTerm.toLowerCase())
-    return matchesCategory && matchesSearch
+    // Si hay búsqueda, mostrar resultados sin importar categoría
+    if (searchTerm) {
+      return p.nombre.toLowerCase().includes(searchTerm.toLowerCase())
+    }
+    // Si no hay categoría seleccionada, no mostrar productos (excepto si busca)
+    if (!selectedCategory) return false
+    return p.category_id === selectedCategory
   })
 
   const estadoColors = {
@@ -880,18 +881,12 @@ export default function PedidosPage() {
           </div>
         </div>
 
-        <Tabs defaultValue="preparacion" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="preparacion">
-              🔥 En Preparación
-              {orders.preparacion.length > 0 && (
-                <Badge className="ml-2" style={{ backgroundColor: themeColors.secondary }}>{orders.preparacion.length}</Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="paraEntregar">
-              📦 Para Entregar
-              {orders.paraEntregar.length > 0 && (
-                <Badge className="ml-2 bg-blue-500">{orders.paraEntregar.length}</Badge>
+        <Tabs defaultValue="enProceso" className="space-y-4">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="enProceso">
+              🔥 En Proceso
+              {orders.enProceso.length > 0 && (
+                <Badge className="ml-2" style={{ backgroundColor: themeColors.secondary }}>{orders.enProceso.length}</Badge>
               )}
             </TabsTrigger>
             <TabsTrigger value="entregados">
@@ -902,11 +897,11 @@ export default function PedidosPage() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="preparacion">
+          <TabsContent value="enProceso">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {orders.preparacion.map(order => (
-                <Card key={order.id} className={`${order.estado === 'NUEVO' ? 'border-2 border-blue-400' : 'border-2 border-yellow-400'} ${order.origen === 'DIGITAL' ? 'ring-2 ring-purple-400' : ''}`}>
-                  <CardHeader className={order.estado === 'NUEVO' ? 'bg-blue-50' : 'bg-yellow-50'}>
+              {orders.enProceso.map(order => (
+                <Card key={order.id} className={`${order.estado === 'NUEVO' ? 'border-2 border-blue-400' : order.estado === 'LISTO' ? 'border-2 border-green-400' : 'border-2 border-yellow-400'} ${order.origen === 'DIGITAL' ? 'ring-2 ring-purple-400' : ''}`}>
+                  <CardHeader className={order.estado === 'NUEVO' ? 'bg-blue-50' : order.estado === 'LISTO' ? 'bg-green-50' : 'bg-yellow-50'}>
                     <div className="flex items-start justify-between">
                       <div>
                         <CardTitle className="text-lg flex items-center">
@@ -977,7 +972,7 @@ export default function PedidosPage() {
                           </Button>
                         </div>
                         
-                        {order.estado === 'NUEVO' && (
+                        {(order.estado === 'NUEVO' || order.estado === 'PENDIENTE') && (
                           <Button 
                             size="sm" 
                             className="w-full bg-yellow-500 hover:bg-yellow-600 text-white"
@@ -987,23 +982,13 @@ export default function PedidosPage() {
                           </Button>
                         )}
                         
-                        {order.estado === 'PENDIENTE' && (
-                          <Button 
-                            size="sm" 
-                            className="w-full bg-yellow-500 hover:bg-yellow-600 text-white"
-                            onClick={() => handleIniciarPreparacion(order.id)}
-                          >
-                            <Play className="h-4 w-4 mr-1" /> Iniciar Preparación
-                          </Button>
-                        )}
-                        
-                        {order.estado === 'PREPARANDO' && (
+                        {(order.estado === 'PREPARANDO' || order.estado === 'LISTO') && (
                           <Button 
                             size="sm" 
                             className="w-full bg-green-500 hover:bg-green-600 text-white"
                             onClick={() => handleMarcarListo(order.id)}
                           >
-                            <CheckCircle className="h-4 w-4 mr-1" /> Marcar Listo
+                            <CheckCircle className="h-4 w-4 mr-1" /> Marcar Entregado
                           </Button>
                         )}
                       </div>
@@ -1011,95 +996,9 @@ export default function PedidosPage() {
                   </CardContent>
                 </Card>
               ))}
-              {orders.preparacion.length === 0 && (
+              {orders.enProceso.length === 0 && (
                 <div className="col-span-full text-center py-12 text-gray-500">
-                  No hay pedidos en preparación
-                </div>
-              )}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="paraEntregar">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {orders.paraEntregar.map(order => (
-                <Card key={order.id} className={order.origen === 'DIGITAL' ? 'ring-2 ring-purple-400' : ''}>
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <CardTitle className="text-lg flex items-center">
-                          Pedido #{order.id.slice(0, 8)}
-                          {order.origen === 'DIGITAL' && (
-                            <Badge className="ml-2 bg-purple-500 text-xs">📱 Cliente</Badge>
-                          )}
-                        </CardTitle>
-                        <p className="text-sm text-gray-600 mt-1">
-                          {new Date(order.created_at).toLocaleString('es-ES')}
-                        </p>
-                      </div>
-                      <Badge className="bg-blue-500">LISTO</Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Tipo:</span>
-                        <span className="font-medium">{order.tipo}</span>
-                      </div>
-                      {order.mesa && (
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Mesa:</span>
-                          <span className="font-medium">{order.mesa}</span>
-                        </div>
-                      )}
-                      {order.nota_cliente && (
-                        <div className="bg-gray-100 p-2 rounded text-xs">
-                          <span className="font-semibold">Nota:</span> {order.nota_cliente}
-                        </div>
-                      )}
-                      {order.nota_cocina && (
-                        <div className="bg-orange-100 p-2 rounded text-xs border border-orange-300">
-                          <span className="font-semibold text-orange-700">🔔 Cocina:</span> 
-                          <span className="text-orange-800">{order.nota_cocina}</span>
-                        </div>
-                      )}
-                      <div className="border-t pt-2 mt-2">
-                        <p className="font-semibold mb-1">Items:</p>
-                        {order.order_items?.map(item => {
-                          const esNuevo = item.nombre_item_snapshot?.startsWith('🆕') || item.es_adicional
-                          return (
-                            <div key={item.id} className={`flex justify-between text-xs py-1 ${esNuevo ? 'bg-green-100 px-2 rounded border-l-4 border-green-500 my-1' : ''}`}>
-                              <span className={esNuevo ? 'font-bold text-green-700' : ''}>
-                                {item.cantidad}x {item.nombre_item_snapshot}
-                              </span>
-                              <span className={esNuevo ? 'font-bold text-green-700' : ''}>
-                                {formatCurrency(item.precio_unitario * item.cantidad)}
-                              </span>
-                            </div>
-                          )
-                        })}
-                      </div>
-                      <div className="border-t pt-2 mt-2 flex justify-between font-bold text-lg">
-                        <span>Total:</span>
-                        <span className="text-orange-600">{formatCurrency(order.total)}</span>
-                      </div>
-                      <div className="flex space-x-2 mt-3">
-                        <Button size="sm" variant="outline" className="flex-1" onClick={() => openEditOrder(order)}>
-                          <Edit className="h-4 w-4 mr-1" /> Editar
-                        </Button>
-                        <Button size="sm" className="flex-1 bg-green-500 hover:bg-green-600" onClick={() => handleMarcarEntregado(order.id)}>
-                          ✅ Entregado
-                        </Button>
-                        <Button size="sm" variant="destructive" onClick={() => handleEliminarPedido(order.id)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-              {orders.paraEntregar.length === 0 && (
-                <div className="col-span-full text-center py-12 text-gray-500">
-                  No hay pedidos listos para entregar
+                  No hay pedidos en proceso
                 </div>
               )}
             </div>

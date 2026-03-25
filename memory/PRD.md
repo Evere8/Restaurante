@@ -33,27 +33,27 @@ Sistema CRM completo para gestión de restaurantes con menú digital, pedidos, c
 - Personalización de colores
 - Sistema de promociones (2x1, porcentaje, precio fijo)
 
-### 5. Pedidos (/pedidos)
-- Creación de pedidos con descuentos promocionales visibles
-- Estados: NUEVO → PREPARANDO → LISTO → ENTREGADO
+### 5. Pedidos (/pedidos) - ACTUALIZADO
+- **Simplificado a 2 pestañas**: "En Proceso" y "Entregados"
+- Botón "Iniciar Preparación" → "Marcar Entregado" para pasar a Entregados
+- **Productos no se despliegan automáticamente** - Solo al seleccionar categoría
+- Promociones visibles con precio tachado y badge de descuento
 - Cuentas separadas por mesa
-- Agregar productos a pedidos entregados
-- Edición de pedidos en cualquier estado
-- **Promociones visibles**: Productos con promoción muestran precio tachado, descuento en verde y badge de porcentaje
+- Edición de pedidos
 
 ### 6. KDS/Cocina (/kds)
 - Pantalla de cocina
 - Resaltado de items nuevos
 - Flujo de preparación
 
-### 7. Cobro (/cobro)
+### 7. Cobro (/cobro) - ACTUALIZADO
 - Sistema de cobro completo
 - Métodos de pago múltiples
 - Cupones de descuento
 - Generación de facturas y recibos PDF
-- Pestaña "Cobrados" con productos vendidos (30 días)
+- **Pestaña "Cobrados" con selector de semana (1-5)**
+- **Nombre del cliente visible en cada tarjeta**
 - Exportación a Excel de ventas diarias
-- Cobro rápido
 
 ### 8. Stock (/stock)
 - Control de inventario
@@ -72,9 +72,9 @@ Sistema CRM completo para gestión de restaurantes con menú digital, pedidos, c
 - Límites de uso
 - Fechas de vencimiento
 
-### 11. Reportes (/reportes)
-- Ventas generales
-- Productos vendidos (nuevo)
+### 11. Reportes (/reportes) - ACTUALIZADO
+- Ventas generales - **Filtro de fechas corregido**
+- Productos vendidos con fechas y cantidades
 - Evolución de costos
 - Rentabilidad por producto
 - Consumo de insumos
@@ -86,39 +86,34 @@ Sistema CRM completo para gestión de restaurantes con menú digital, pedidos, c
 - Personalización de colores
 - Logo
 
-### 13. Facturación (/configuracion-factura)
+### 13. Facturación (/configuracion-factura) - ACTUALIZADO
 - Configuración de factura paraguaya
 - Datos fiscales
+- **Guardado en Supabase (requiere crear tabla)**
 
-## Cambios Recientes (Marzo 2026)
+## Cambios Realizados (Marzo 2026)
 
-### Bugs Corregidos
-1. **Error al actualizar pedido**: Corregido manejo de items con `menu_item_id` nulo en `/app/app/pedidos/page.js` usando IDs temporales únicos
-2. **Error al guardar promoción**: Corregida validación de `porcentaje_descuento` en `/app/app/menu-digital/page.js`
+### Corrección 1: Cobros - Selector de Semana y Nombre Cliente
+- Agregado selector de semana (1-5) en pestaña Cobrados
+- Nombre del cliente visible en cada tarjeta de pedido cobrado
+- Mantiene exportación a Excel
 
-### Funcionalidades Añadidas
-3. **Promociones visibles en admin Pedidos**:
-   - Los productos con promoción muestran precio original tachado
-   - Precio con descuento en verde
-   - Badge con porcentaje de descuento (-X%)
-   - Toast de confirmación indica el descuento aplicado
-   - El total del carrito refleja precios con descuento
+### Corrección 2: Pedidos - Simplificado a 2 Pestañas
+- Eliminada pestaña "Para Entregar"
+- Solo quedan: "En Proceso" y "Entregados"
+- Flujo: Iniciar Preparación → Marcar Entregado → Pasa a Entregados
 
-4. **Pestaña Cobrados mejorada**: 
-   - Muestra productos vendidos en cada tarjeta
-   - Persistencia de 30 días
-   - Botón exportar ventas del día a Excel/CSV
+### Corrección 3: Pedidos - Productos no se Despliegan
+- Los productos no se muestran hasta seleccionar una categoría
+- Evita scroll innecesario
 
-5. **Reporte de Productos Vendidos**:
-   - Nueva pestaña en /reportes
-   - Tabla de productos con cantidades y fechas
-   - Resumen por producto
-   - Exportación a CSV
+### Corrección 4: Reportes - Filtro de Fechas Corregido
+- Las fechas ahora se manejan sin conversión de zona horaria
+- El filtro de "ayer" ahora muestra los datos correctos
 
-## Próximas Tareas (Backlog)
-- P2: Verificar flujo completo de edición de pedidos entregados
-- P3: Dashboard de analytics avanzado
-- P3: Integración con delivery (terceros)
+### Corrección 5: Configuración Factura - Guardar en Supabase
+- Código actualizado para guardar en Supabase
+- **PENDIENTE**: Ejecutar script SQL para crear tabla
 
 ## Credenciales de Prueba
 - Email: jose@gmail.com

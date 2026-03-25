@@ -28,6 +28,7 @@ export default function CobroPage() {
   const [ordersCobrados, setOrdersCobrados] = useState([])
   const [selectedOrder, setSelectedOrder] = useState(null)
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false)
+  const [selectedWeek, setSelectedWeek] = useState('1') // Semana seleccionada para filtrar cobrados
 
   const [paymentForm, setPaymentForm] = useState({
     customer_nombre: '',
@@ -70,19 +71,55 @@ export default function CobroPage() {
 
     setOrdersACobrar(aCobrar || [])
 
-    // Cargar pedidos cobrados de los últimos 30 días
+    // Cargar pedidos cobrados de los últimos 30 días con datos de cliente
     const thirtyDaysAgo = new Date()
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
 
     const { data: cobrados } = await supabase
       .from('orders')
-      .select('*, order_items(*)')
+      .select('*, order_items(*), customers(nombre, telefono)')
       .eq('restaurant_id', restaurant.id)
       .eq('estado', 'PAGADO')
       .gte('created_at', thirtyDaysAgo.toISOString())
       .order('fecha_pago', { ascending: false })
 
     setOrdersCobrados(cobrados || [])
+  }
+
+  // Filtrar cobrados por semana
+  const getFilteredCobrados = () => {
+    const now = new Date()
+    const weekNum = parseInt(selectedWeek)
+    
+    // Calcular inicio y fin de la semana seleccionada
+    const startOfWeek = new Date(now)
+    startOfWeek.setDate(now.getDate() - (weekNum * 7) + (7 - now.getDay()))
+    startOfWeek.setHours(0, 0, 0, 0)
+    
+    const endOfWeek = new Date(startOfWeek)
+    endOfWeek.setDate(startOfWeek.getDate() + 7)
+    
+    // Filtrar por semana
+    if (weekNum === 1) {
+      // Semana actual (últimos 7 días)
+      const sevenDaysAgo = new Date(now)
+      sevenDaysAgo.setDate(now.getDate() - 7)
+      return ordersCobrados.filter(order => {
+        const orderDate = new Date(order.fecha_pago)
+        return orderDate >= sevenDaysAgo
+      })
+    } else {
+      // Semanas anteriores
+      const weekStart = new Date(now)
+      weekStart.setDate(now.getDate() - (weekNum * 7))
+      const weekEnd = new Date(now)
+      weekEnd.setDate(now.getDate() - ((weekNum - 1) * 7))
+      
+      return ordersCobrados.filter(order => {
+        const orderDate = new Date(order.fecha_pago)
+        return orderDate >= weekStart && orderDate < weekEnd
+      })
+    }
   }
 
   // Función para exportar ventas del día a Excel
@@ -1091,12 +1128,23 @@ export default function CobroPage() {
           </TabsContent>
 
           <TabsContent value="cobrados">
-            {/* Header con botón de exportar */}
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center space-x-2">
+            {/* Header con selector de semana y botón de exportar */}
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+              <div className="flex items-center space-x-3">
                 <Calendar className="h-5 w-5 text-gray-500" />
-                <span className="text-gray-600">Últimos 30 días</span>
-                <Badge variant="outline">{ordersCobrados.length} pedidos</Badge>
+                <Select value={selectedWeek} onValueChange={setSelectedWeek}>
+                  <SelectTrigger className="w-[160px]">
+                    <SelectValue placeholder="Seleccionar semana" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">Semana 1 (Actual)</SelectItem>
+                    <SelectItem value="2">Semana 2</SelectItem>
+                    <SelectItem value="3">Semana 3</SelectItem>
+                    <SelectItem value="4">Semana 4</SelectItem>
+                    <SelectItem value="5">Semana 5</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Badge variant="outline">{getFilteredCobrados().length} pedidos</Badge>
               </div>
               <Button 
                 onClick={exportDailySalesToExcel}
@@ -1108,7 +1156,7 @@ export default function CobroPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {ordersCobrados.map(order => (
+              {getFilteredCobrados().map(order => (
                 <Card key={order.id} className="border border-gray-200 hover:shadow-md transition-shadow">
                   <CardHeader className="bg-gradient-to-r from-gray-50 to-green-50 pb-2">
                     <div className="flex items-start justify-between">
@@ -1137,6 +1185,11 @@ export default function CobroPage() {
                           <span className="font-medium">{order.mesa}</span>
                         </div>
                       )}
+                      {/* Nombre del cliente */}
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Cliente:</span>
+                        <span className="font-medium">{order.customers?.nombre || order.customer_nombre || 'Sin nombre'}</span>
+                      </div>
                     </div>
 
                     {/* Productos vendidos */}
@@ -1167,11 +1220,11 @@ export default function CobroPage() {
               ))}
             </div>
 
-            {ordersCobrados.length === 0 && (
+            {getFilteredCobrados().length === 0 && (
               <Card>
                 <CardContent className="py-12 text-center">
                   <CheckCircle className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                  <p className="text-gray-600">No hay pedidos cobrados en los últimos 30 días</p>
+                  <p className="text-gray-600">No hay pedidos cobrados en la semana {selectedWeek}</p>
                 </CardContent>
               </Card>
             )}
