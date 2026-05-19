@@ -260,10 +260,10 @@ export default function ConfiguracionFacturaPage() {
       
       const config = reciboConfig
       const doc = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: [config.pageWidth, config.pageHeight]
-      })
+  orientation: 'landscape',
+  unit: 'mm',
+  format: [config.pageWidth, config.pageHeight]
+})
 
       doc.setFont('helvetica', 'normal')
       
