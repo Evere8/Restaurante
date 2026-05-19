@@ -16,8 +16,8 @@ import { supabase } from '@/lib/supabase'
 
 // Configuración por defecto del recibo
 const DEFAULT_RECIBO_CONFIG = {
-  pageWidth: 80,
-  pageHeight: 200,
+  pageWidth: 210,
+  pageHeight: 148,
   marginLeft: 5,
   marginTop: 5,
   restaurante: {
