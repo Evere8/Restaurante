@@ -104,7 +104,7 @@
 
 user_problem_statement: "Probar la aplicación CRM Restaurante para verificar los siguientes bugs:
 
-**URL:** https://promo-save-bug.preview.emergentagent.com
+**URL:** https://resto-view-4.preview.emergentagent.com
 **Credenciales:** jose@gmail.com / jose123
 
 **BUG 1 - Error al actualizar pedido (CRÍTICO):**
@@ -194,7 +194,7 @@ test_plan:
 
 agent_communication:
     - agent: "testing"
-      message: "Starting comprehensive testing of CRM Restaurant application focusing on critical bugs and new functionality verification at https://promo-save-bug.preview.emergentagent.com with credentials jose@gmail.com / jose123"
+      message: "Starting comprehensive testing of CRM Restaurant application focusing on critical bugs and new functionality verification at https://resto-view-4.preview.emergentagent.com with credentials jose@gmail.com / jose123"
     - agent: "testing"
       message: "TESTING COMPLETED: Successfully verified all functionality. Bug #1 and Bug #2 interfaces are functional and accessible. Enhanced Cobrados tab and new Productos Vendidos report tab are properly implemented. All UI components working correctly. No critical errors found during testing."
     - agent: "testing"
