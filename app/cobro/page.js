@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
-import { CreditCard, DollarSign, X, Tag, CheckCircle, FileText, Receipt, Coins, Trash2, Download, Calendar } from 'lucide-react'
+import { CreditCard, DollarSign, X, Tag, CheckCircle, FileText, Receipt, Coins, Trash2, Download, Calendar, Printer } from 'lucide-react'
 import { toast } from 'sonner'
 import CustomerSearchInput from '@/components/CustomerSearchInput'
 import * as XLSX from 'xlsx-js-style'
@@ -159,6 +159,98 @@ export default function CobroPage() {
         const orderDate = new Date(order.fecha_pago)
         return orderDate >= weekStart && orderDate < weekEnd
       })
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Regenerar e imprimir factura PDF desde un pedido ya cobrado
+  // ─────────────────────────────────────────────────────────────────────
+  const handleDownloadFacturaCobrada = async (order) => {
+    try {
+      if (!order) return
+
+      // Cargar order_items si no vienen embebidos
+      let items = order.order_items
+      if (!items || items.length === 0) {
+        const { data: fetched } = await supabase
+          .from('order_items')
+          .select('*')
+          .eq('order_id', order.id)
+        items = fetched || []
+      }
+
+      if (!items || items.length === 0) {
+        toast.error('Este pedido no tiene productos asociados')
+        return
+      }
+
+      // Cargar config de factura del localStorage si existe
+      const { generarFacturaPDF, calcularTotalesFactura, DEFAULT_CONFIG } = await import('@/lib/facturaGenerator')
+      let facturaConfig = DEFAULT_CONFIG
+      try {
+        const savedConfig = localStorage.getItem('facturaConfig')
+        if (savedConfig) {
+          facturaConfig = JSON.parse(savedConfig)
+        }
+      } catch (_) { /* usar default */ }
+
+      // Mapear items al formato del generador
+      const itemsFactura = items.map((item, index) => ({
+        codigo: String(index + 1).padStart(3, '0'),
+        cantidad: item.cantidad,
+        descripcion: item.nombre_item_snapshot || 'Producto',
+        precioUnitario: Math.round(item.precio_unitario || 0),
+        tipoIva: 'IVA_10',
+        valorVenta: Math.round((item.precio_unitario || 0) * (item.cantidad || 0))
+      }))
+
+      const totales = calcularTotalesFactura(itemsFactura)
+
+      // Resolver nombre y RUC con prioridad: factura > customers > customer_*
+      const nombreCliente =
+        order.factura_nombre ||
+        order.customers?.nombre ||
+        order.customer_nombre ||
+        'CONSUMIDOR FINAL'
+
+      const rucCliente =
+        order.factura_ruc ||
+        order.customers?.ruc ||
+        order.customer_ruc ||
+        order.customers?.telefono ||
+        order.customer_telefono ||
+        'X'
+
+      const facturaData = {
+        cliente: {
+          nombre: nombreCliente,
+          ruc: rucCliente,
+          telefono: order.customers?.telefono || order.customer_telefono || ''
+        },
+        fecha: order.fecha_pago || order.created_at || new Date().toISOString(),
+        condicionVenta: order.factura_condicion || 'CONTADO',
+        items: itemsFactura,
+        ...totales
+      }
+
+      const pdfBlob = generarFacturaPDF(facturaData, facturaConfig)
+      const url = URL.createObjectURL(pdfBlob)
+      const link = document.createElement('a')
+      link.href = url
+      const safeName = (nombreCliente || 'cliente')
+        .toString()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '_')
+        .slice(0, 24)
+      link.download = `factura_${safeName}_${order.id.slice(0, 8)}.pdf`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+      toast.success('Factura descargada')
+    } catch (err) {
+      console.error('Error generando factura:', err)
+      toast.error('Error al generar la factura: ' + (err.message || ''))
     }
   }
 
@@ -1688,6 +1780,16 @@ export default function CobroPage() {
                       <span className="font-bold">Total:</span>
                       <span className="text-xl font-bold text-green-600">{formatCurrency(order.total)}</span>
                     </div>
+
+                    {/* Botón para regenerar e imprimir factura */}
+                    <Button
+                      onClick={() => handleDownloadFacturaCobrada(order)}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                      size="sm"
+                    >
+                      <Printer className="mr-2 h-4 w-4" />
+                      Descargar Factura
+                    </Button>
                   </CardContent>
                 </Card>
               ))}
