@@ -13,7 +13,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Plus, Edit, Trash2, Users, Phone, Mail, Download } from 'lucide-react'
+import { Plus, Edit, Trash2, Users, Phone, Mail, Download, Search, X } from 'lucide-react'
 import { toast } from 'sonner'
 
 export default function ClientesPage() {
@@ -22,6 +22,7 @@ export default function ClientesPage() {
   const [customers, setCustomers] = useState([])
   const [editingCustomer, setEditingCustomer] = useState(null)
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
 
   const [customerForm, setCustomerForm] = useState({
     nombre: '',
@@ -155,6 +156,18 @@ export default function ClientesPage() {
     return <div className="flex items-center justify-center min-h-screen">Cargando...</div>
   }
 
+  // Filtrar clientes según searchTerm (nombre, ruc o teléfono)
+  const filteredCustomers = customers.filter((c) => {
+    if (!searchTerm.trim()) return true
+    const term = searchTerm.toLowerCase()
+    return (
+      (c.nombre || '').toLowerCase().includes(term) ||
+      (c.ruc || '').toLowerCase().includes(term) ||
+      (c.telefono || '').toLowerCase().includes(term) ||
+      (c.email || '').toLowerCase().includes(term)
+    )
+  })
+
   return (
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar />
@@ -220,6 +233,32 @@ export default function ClientesPage() {
 
           <Card>
             <CardContent className="p-0">
+              {/* Buscador */}
+              <div className="p-4 border-b bg-white">
+                <div className="relative max-w-md">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Buscar por nombre, RUC, teléfono o email..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-8 pr-8"
+                  />
+                  {searchTerm && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchTerm('')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+                {searchTerm && (
+                  <p className="text-xs text-gray-500 mt-2">
+                    {filteredCustomers.length} cliente(s) encontrado(s) de {customers.length}
+                  </p>
+                )}
+              </div>
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead className="bg-gray-50 border-b">
@@ -233,7 +272,7 @@ export default function ClientesPage() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {customers.map((customer) => (
+                    {filteredCustomers.map((customer) => (
                       <tr key={customer.id}>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-gray-900">{customer.nombre}</div>
@@ -275,6 +314,12 @@ export default function ClientesPage() {
                 <div className="py-12 text-center">
                   <Users className="h-12 w-12 text-gray-400 mx-auto mb-3" />
                   <p className="text-gray-600">No hay clientes aún. Crea tu primer cliente.</p>
+                </div>
+              )}
+              {customers.length > 0 && filteredCustomers.length === 0 && (
+                <div className="py-12 text-center">
+                  <Search className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                  <p className="text-gray-600">No se encontraron clientes con "{searchTerm}"</p>
                 </div>
               )}
             </CardContent>

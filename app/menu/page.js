@@ -17,8 +17,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Plus, Edit, Trash2, Package, AlertTriangle, X, ChevronRight, FolderTree, Layers } from 'lucide-react'
+import { Plus, Edit, Trash2, Package, AlertTriangle, X, ChevronRight, FolderTree, Layers, Upload } from 'lucide-react'
 import { toast } from 'sonner'
+import { compressAndUploadImage } from '@/lib/imageUpload'
 
 export default function MenuPage() {
   const { user, restaurant, loading: authLoading } = useAuth()
@@ -57,6 +58,30 @@ export default function MenuPage() {
   })
 
   const [recetaItems, setRecetaItems] = useState([])
+  const [uploadingImage, setUploadingImage] = useState(false)
+
+  const handleProductImageUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('La imagen es muy grande. Máximo 10MB')
+      e.target.value = ''
+      return
+    }
+    setUploadingImage(true)
+    try {
+      const { url, error } = await compressAndUploadImage(file, 'productos', restaurant?.id || 'r')
+      if (error || !url) {
+        toast.error(error || 'Error al subir imagen')
+      } else {
+        setProductForm((prev) => ({ ...prev, img_url: url }))
+        toast.success('Imagen comprimida y subida correctamente')
+      }
+    } finally {
+      setUploadingImage(false)
+      e.target.value = ''
+    }
+  }
 
   const [categoryForm, setCategoryForm] = useState({
     nombre: '',
@@ -709,19 +734,60 @@ export default function MenuPage() {
                     )}
 
                     <div className="col-span-2 space-y-2">
-                      <Label>URL Imagen</Label>
-                      <Input 
-                        value={productForm.img_url} 
-                        onChange={(e) => setProductForm({...productForm, img_url: e.target.value})} 
-                        onBlur={(e) => {
-                          const cleanUrl = extractImageUrl(e.target.value)
-                          if (cleanUrl !== e.target.value) {
-                            setProductForm({...productForm, img_url: cleanUrl})
-                            toast.success('URL de imagen extraída correctamente')
-                          }
-                        }}
-                        placeholder="Pega cualquier URL de Google Imágenes o URL directa" 
-                      />
+                      <Label>Imagen del Producto</Label>
+                      <div className="flex flex-col gap-2">
+                        {/* Botón de subir desde PC/galería */}
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="file"
+                            id="product-image-upload"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={handleProductImageUpload}
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            disabled={uploadingImage}
+                            onClick={() => document.getElementById('product-image-upload')?.click()}
+                            className="flex items-center"
+                          >
+                            <Upload className="h-4 w-4 mr-2" />
+                            {uploadingImage ? 'Subiendo...' : 'Subir desde PC/Galería'}
+                          </Button>
+                          {productForm.img_url && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setProductForm({ ...productForm, img_url: '' })}
+                              className="text-red-600"
+                            >
+                              <X className="h-4 w-4 mr-1" /> Quitar
+                            </Button>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-500">
+                          La imagen se comprimirá automáticamente (~400KB máx, 1200px) para optimizar tu hosting sin perder calidad notable.
+                        </p>
+
+                        {/* Campo URL opcional */}
+                        <div>
+                          <Label className="text-xs text-gray-600">O pega una URL de imagen:</Label>
+                          <Input 
+                            value={productForm.img_url} 
+                            onChange={(e) => setProductForm({...productForm, img_url: e.target.value})} 
+                            onBlur={(e) => {
+                              const cleanUrl = extractImageUrl(e.target.value)
+                              if (cleanUrl !== e.target.value) {
+                                setProductForm({...productForm, img_url: cleanUrl})
+                                toast.success('URL de imagen extraída correctamente')
+                              }
+                            }}
+                            placeholder="https://... o URL de Google Imágenes" 
+                          />
+                        </div>
+                      </div>
                       {productForm.img_url && (
                         <div className="mt-2">
                           <p className="text-xs text-gray-500 mb-1">Vista previa:</p>

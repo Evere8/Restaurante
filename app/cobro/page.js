@@ -18,6 +18,8 @@ import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { CreditCard, DollarSign, X, Tag, CheckCircle, FileText, Receipt, Coins, Trash2, Download, Calendar } from 'lucide-react'
 import { toast } from 'sonner'
+import CustomerSearchInput from '@/components/CustomerSearchInput'
+import * as XLSX from 'xlsx-js-style'
 
 export default function CobroPage() {
   const { user, restaurant, loading: authLoading } = useAuth()
@@ -29,6 +31,10 @@ export default function CobroPage() {
   const [selectedOrder, setSelectedOrder] = useState(null)
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false)
   const [selectedWeek, setSelectedWeek] = useState('1') // Semana seleccionada para filtrar cobrados
+  // Filtros avanzados para pestaña Cobrados
+  const [filtroTipo, setFiltroTipo] = useState('semana') // 'dia' | 'semana' | 'mes' | 'rango'
+  const [filtroFechaDesde, setFiltroFechaDesde] = useState('')
+  const [filtroFechaHasta, setFiltroFechaHasta] = useState('')
 
   const [paymentForm, setPaymentForm] = useState({
     customer_nombre: '',
@@ -64,7 +70,7 @@ export default function CobroPage() {
   const loadOrders = async () => {
     const { data: aCobrar } = await supabase
       .from('orders')
-      .select('*, order_items(*), customers(nombre, telefono)')
+      .select('*, order_items(*), customers(nombre, telefono, ruc)')
       .eq('restaurant_id', restaurant.id)
       .eq('estado', 'ENTREGADO')
       .order('created_at', { ascending: false })
@@ -86,9 +92,43 @@ export default function CobroPage() {
     setOrdersCobrados(cobrados || [])
   }
 
-  // Filtrar cobrados por semana
+  // Filtrar cobrados según el modo de filtro elegido
   const getFilteredCobrados = () => {
     const now = new Date()
+
+    // Modo: rango personalizado (desde/hasta)
+    if (filtroTipo === 'rango' && filtroFechaDesde && filtroFechaHasta) {
+      const desde = new Date(filtroFechaDesde + 'T00:00:00')
+      const hasta = new Date(filtroFechaHasta + 'T23:59:59')
+      return ordersCobrados.filter(order => {
+        const od = new Date(order.fecha_pago)
+        return od >= desde && od <= hasta
+      })
+    }
+
+    // Modo: día (hoy o fecha desde si está)
+    if (filtroTipo === 'dia') {
+      const dia = filtroFechaDesde ? new Date(filtroFechaDesde + 'T00:00:00') : new Date(now.toDateString())
+      const finDia = new Date(dia)
+      finDia.setDate(finDia.getDate() + 1)
+      return ordersCobrados.filter(order => {
+        const od = new Date(order.fecha_pago)
+        return od >= dia && od < finDia
+      })
+    }
+
+    // Modo: mes (mes del filtroFechaDesde o mes actual)
+    if (filtroTipo === 'mes') {
+      const ref = filtroFechaDesde ? new Date(filtroFechaDesde + 'T00:00:00') : now
+      const inicioMes = new Date(ref.getFullYear(), ref.getMonth(), 1)
+      const finMes = new Date(ref.getFullYear(), ref.getMonth() + 1, 1)
+      return ordersCobrados.filter(order => {
+        const od = new Date(order.fecha_pago)
+        return od >= inicioMes && od < finMes
+      })
+    }
+
+    // Modo por defecto: semana (compatibilidad con código original)
     const weekNum = parseInt(selectedWeek)
     
     // Calcular inicio y fin de la semana seleccionada
@@ -119,6 +159,203 @@ export default function CobroPage() {
         const orderDate = new Date(order.fecha_pago)
         return orderDate >= weekStart && orderDate < weekEnd
       })
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Exportar a Excel REAL (.xlsx) con bordes y celdas (formato detallado)
+  // ─────────────────────────────────────────────────────────────────────
+  const exportFilteredToExcel = () => {
+    try {
+      const orders = getFilteredCobrados()
+      if (orders.length === 0) {
+        toast.error('No hay pedidos para exportar con el filtro seleccionado')
+        return
+      }
+
+      // Etiqueta del rango
+      let rangoTitulo = ''
+      let rangoFilename = ''
+      if (filtroTipo === 'dia') {
+        const ref = filtroFechaDesde
+          ? new Date(filtroFechaDesde + 'T00:00:00')
+          : new Date()
+        rangoTitulo = `Día: ${ref.toLocaleDateString('es-PY', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`
+        rangoFilename = `dia_${ref.toISOString().split('T')[0]}`
+      } else if (filtroTipo === 'mes') {
+        const ref = filtroFechaDesde
+          ? new Date(filtroFechaDesde + 'T00:00:00')
+          : new Date()
+        rangoTitulo = `Mes: ${ref.toLocaleDateString('es-PY', { month: 'long', year: 'numeric' })}`
+        rangoFilename = `mes_${ref.getFullYear()}_${String(ref.getMonth() + 1).padStart(2, '0')}`
+      } else if (filtroTipo === 'rango' && filtroFechaDesde && filtroFechaHasta) {
+        rangoTitulo = `Rango: ${filtroFechaDesde} a ${filtroFechaHasta}`
+        rangoFilename = `rango_${filtroFechaDesde}_a_${filtroFechaHasta}`
+      } else {
+        rangoTitulo = `Semana ${selectedWeek}`
+        rangoFilename = `semana_${selectedWeek}`
+      }
+
+      // Estilo: bordes
+      const borderAll = {
+        top: { style: 'thin', color: { rgb: '000000' } },
+        bottom: { style: 'thin', color: { rgb: '000000' } },
+        left: { style: 'thin', color: { rgb: '000000' } },
+        right: { style: 'thin', color: { rgb: '000000' } }
+      }
+      const borderThick = {
+        top: { style: 'medium', color: { rgb: '000000' } },
+        bottom: { style: 'medium', color: { rgb: '000000' } },
+        left: { style: 'medium', color: { rgb: '000000' } },
+        right: { style: 'medium', color: { rgb: '000000' } }
+      }
+
+      // Construir array de filas (AOA)
+      const aoa = []
+
+      // Fila 0: separador grueso
+      aoa.push([{ v: '', s: { border: borderThick } }])
+
+      // Título
+      aoa.push([{
+        v: 'DETALLE DE TODOS LOS PEDIDOS',
+        s: {
+          font: { bold: true, sz: 14 },
+          alignment: { horizontal: 'center', vertical: 'center' },
+          fill: { fgColor: { rgb: 'FFF3E0' } },
+          border: borderAll
+        }
+      }])
+
+      // Subtítulo con datos del reporte
+      aoa.push([{
+        v: `${restaurant?.nombre || 'Restaurante'}  |  ${rangoTitulo}  |  Generado: ${new Date().toLocaleString('es-PY')}`,
+        s: {
+          font: { italic: true, sz: 10 },
+          alignment: { horizontal: 'center' },
+          border: borderAll
+        }
+      }])
+
+      // Fila separadora
+      aoa.push([{ v: '', s: { border: borderThick } }])
+
+      // Encabezados de la tabla
+      const headers = ['ID Pedido', 'Fecha', 'Hora', 'Cliente', 'RUC/CI', 'Tipo', 'Mesa', 'Método Pago', 'Productos', 'Total']
+      aoa.push(headers.map(h => ({
+        v: h,
+        s: {
+          font: { bold: true, color: { rgb: 'FFFFFF' } },
+          fill: { fgColor: { rgb: '1E3A5F' } },
+          alignment: { horizontal: 'center', vertical: 'center' },
+          border: borderAll
+        }
+      })))
+
+      // Filas de datos
+      let totalGeneral = 0
+      orders.forEach(order => {
+        const fechaPago = new Date(order.fecha_pago)
+        const fecha = fechaPago.toLocaleDateString('es-PY')
+        const hora = fechaPago.toLocaleTimeString('es-PY', { hour: '2-digit', minute: '2-digit' })
+        const cliente = order.customers?.nombre || order.customer_nombre || 'Sin nombre'
+        const ruc = order.customers?.ruc || order.customer_ruc || '-'
+        const productos = order.order_items
+          ?.map(i => `${i.cantidad}x ${i.nombre_item_snapshot?.replace('🆕 ', '') || 'Producto'}`)
+          .join(' | ') || 'N/A'
+        const total = parseFloat(order.total || 0)
+        totalGeneral += total
+
+        const row = [
+          order.id.slice(0, 8),
+          fecha,
+          hora,
+          cliente,
+          ruc,
+          order.tipo || '-',
+          order.mesa || 'N/A',
+          order.metodo_pago || '-',
+          productos,
+          formatCurrency(total)
+        ]
+        aoa.push(row.map((cellVal, idx) => ({
+          v: cellVal,
+          s: {
+            border: borderAll,
+            alignment: { vertical: 'top', wrapText: idx === 8 },
+            font: { sz: 10 }
+          }
+        })))
+      })
+
+      // Fila resumen TOTAL
+      aoa.push([
+        { v: '', s: { border: borderAll } },
+        { v: '', s: { border: borderAll } },
+        { v: '', s: { border: borderAll } },
+        { v: '', s: { border: borderAll } },
+        { v: '', s: { border: borderAll } },
+        { v: '', s: { border: borderAll } },
+        { v: '', s: { border: borderAll } },
+        { v: '', s: { border: borderAll } },
+        { v: 'TOTAL:', s: { font: { bold: true }, alignment: { horizontal: 'right' }, fill: { fgColor: { rgb: 'F5F5F5' } }, border: borderAll } },
+        { v: formatCurrency(totalGeneral), s: { font: { bold: true, color: { rgb: '1B5E20' } }, fill: { fgColor: { rgb: 'F5F5F5' } }, border: borderAll } }
+      ])
+
+      // Fila separadora
+      aoa.push([{ v: '', s: { border: borderThick } }])
+
+      // Footer
+      aoa.push([{
+        v: 'FIN DEL REPORTE',
+        s: {
+          font: { bold: true, sz: 12 },
+          alignment: { horizontal: 'center' },
+          fill: { fgColor: { rgb: 'FFF3E0' } },
+          border: borderAll
+        }
+      }])
+
+      aoa.push([{ v: '', s: { border: borderThick } }])
+
+      // Crear worksheet
+      const ws = XLSX.utils.aoa_to_sheet(aoa)
+
+      // Merges: títulos y separadores ocupan todo el ancho (10 columnas)
+      const ncols = headers.length
+      ws['!merges'] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: ncols - 1 } }, // separador
+        { s: { r: 1, c: 0 }, e: { r: 1, c: ncols - 1 } }, // título
+        { s: { r: 2, c: 0 }, e: { r: 2, c: ncols - 1 } }, // subtítulo
+        { s: { r: 3, c: 0 }, e: { r: 3, c: ncols - 1 } }, // separador
+        { s: { r: aoa.length - 4, c: 0 }, e: { r: aoa.length - 4, c: ncols - 1 } }, // separador antes de footer
+        { s: { r: aoa.length - 3, c: 0 }, e: { r: aoa.length - 3, c: ncols - 1 } }, // FIN DEL REPORTE
+        { s: { r: aoa.length - 1, c: 0 }, e: { r: aoa.length - 1, c: ncols - 1 } }  // separador final
+      ]
+
+      // Anchos de columna
+      ws['!cols'] = [
+        { wch: 12 }, // ID
+        { wch: 12 }, // Fecha
+        { wch: 8 },  // Hora
+        { wch: 22 }, // Cliente
+        { wch: 14 }, // RUC
+        { wch: 12 }, // Tipo
+        { wch: 8 },  // Mesa
+        { wch: 16 }, // Método
+        { wch: 60 }, // Productos
+        { wch: 14 }  // Total
+      ]
+
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, 'Pedidos')
+
+      const filename = `pedidos_${rangoFilename}.xlsx`
+      XLSX.writeFile(wb, filename)
+      toast.success('Reporte Excel exportado correctamente')
+    } catch (err) {
+      console.error('Error exportando Excel:', err)
+      toast.error('Error al exportar Excel')
     }
   }
 
@@ -1178,10 +1415,18 @@ export default function CobroPage() {
                         </div>
                       )}
                       {order.customers && (
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Cliente:</span>
-                          <span className="font-medium">{order.customers.nombre}</span>
-                        </div>
+                        <>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Cliente:</span>
+                            <span className="font-medium">{order.customers.nombre}</span>
+                          </div>
+                          {order.customers.ruc && (
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">RUC:</span>
+                              <span className="font-medium">{order.customers.ruc}</span>
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
 
@@ -1255,39 +1500,124 @@ export default function CobroPage() {
           </TabsContent>
 
           <TabsContent value="cobrados">
-            {/* Header con selector de semana y botón de exportar */}
-            <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-              <div className="flex items-center space-x-3">
-                <Calendar className="h-5 w-5 text-gray-500" />
-                <Select value={selectedWeek} onValueChange={setSelectedWeek}>
-                  <SelectTrigger className="w-[160px]">
-                    <SelectValue placeholder="Seleccionar semana" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1">Semana 1 (Actual)</SelectItem>
-                    <SelectItem value="2">Semana 2</SelectItem>
-                    <SelectItem value="3">Semana 3</SelectItem>
-                    <SelectItem value="4">Semana 4</SelectItem>
-                    <SelectItem value="5">Semana 5</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Badge variant="outline">{getFilteredCobrados().length} pedidos</Badge>
+            {/* Header con filtros de fecha y botones de exportar */}
+            <div className="mb-4 flex flex-col gap-3 p-4 bg-white border rounded-lg">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Calendar className="h-5 w-5 text-gray-500" />
+                  <span className="text-sm font-semibold text-gray-700">Filtrar por:</span>
+                  <Select value={filtroTipo} onValueChange={(v) => {
+                    setFiltroTipo(v)
+                    // Defaults útiles al cambiar
+                    const today = new Date().toISOString().split('T')[0]
+                    if ((v === 'dia' || v === 'mes' || v === 'rango') && !filtroFechaDesde) {
+                      setFiltroFechaDesde(today)
+                    }
+                    if (v === 'rango' && !filtroFechaHasta) {
+                      setFiltroFechaHasta(today)
+                    }
+                  }}>
+                    <SelectTrigger className="w-[160px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="dia">📅 Día</SelectItem>
+                      <SelectItem value="semana">🗓️ Semana</SelectItem>
+                      <SelectItem value="mes">📆 Mes</SelectItem>
+                      <SelectItem value="rango">📊 Rango personalizado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Badge variant="outline" className="ml-1">{getFilteredCobrados().length} pedidos</Badge>
+                </div>
+                <div className="flex space-x-2">
+                  <Button 
+                    onClick={exportFilteredToExcel}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Exportar Excel (formato)
+                  </Button>
+                  <Button 
+                    onClick={exportDailySalesToExcel}
+                    className="bg-green-600 hover:bg-green-700"
+                    variant="outline"
+                    title="CSV con resumen general del día actual"
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Resumen Día
+                  </Button>
+                  <Button 
+                    onClick={exportMonthlySalesToExcel}
+                    className="bg-blue-600 hover:bg-blue-700"
+                    variant="outline"
+                    title="CSV con resumen general del mes actual"
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Resumen Mes
+                  </Button>
+                </div>
               </div>
-              <div className="flex space-x-2">
-                <Button 
-                  onClick={exportDailySalesToExcel}
-                  className="bg-green-600 hover:bg-green-700"
-                >
-                  <Download className="mr-2 h-4 w-4" />
-                  Exportar Día
-                </Button>
-                <Button 
-                  onClick={exportMonthlySalesToExcel}
-                  className="bg-blue-600 hover:bg-blue-700"
-                >
-                  <Download className="mr-2 h-4 w-4" />
-                  Exportar Mes
-                </Button>
+
+              {/* Controles de fecha según el tipo */}
+              <div className="flex items-center gap-2 flex-wrap">
+                {filtroTipo === 'semana' && (
+                  <Select value={selectedWeek} onValueChange={setSelectedWeek}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Seleccionar semana" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">Semana 1 (Actual)</SelectItem>
+                      <SelectItem value="2">Semana 2</SelectItem>
+                      <SelectItem value="3">Semana 3</SelectItem>
+                      <SelectItem value="4">Semana 4</SelectItem>
+                      <SelectItem value="5">Semana 5</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+                {filtroTipo === 'dia' && (
+                  <div className="flex items-center gap-2">
+                    <Label className="text-sm">Fecha:</Label>
+                    <Input
+                      type="date"
+                      value={filtroFechaDesde}
+                      onChange={(e) => setFiltroFechaDesde(e.target.value)}
+                      className="w-44"
+                    />
+                  </div>
+                )}
+                {filtroTipo === 'mes' && (
+                  <div className="flex items-center gap-2">
+                    <Label className="text-sm">Mes:</Label>
+                    <Input
+                      type="month"
+                      value={filtroFechaDesde ? filtroFechaDesde.slice(0, 7) : ''}
+                      onChange={(e) => setFiltroFechaDesde(e.target.value + '-01')}
+                      className="w-44"
+                    />
+                  </div>
+                )}
+                {filtroTipo === 'rango' && (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <Label className="text-sm">Desde:</Label>
+                      <Input
+                        type="date"
+                        value={filtroFechaDesde}
+                        onChange={(e) => setFiltroFechaDesde(e.target.value)}
+                        className="w-44"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Label className="text-sm">Hasta:</Label>
+                      <Input
+                        type="date"
+                        value={filtroFechaHasta}
+                        onChange={(e) => setFiltroFechaHasta(e.target.value)}
+                        className="w-44"
+                      />
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
@@ -1367,7 +1697,7 @@ export default function CobroPage() {
               <Card>
                 <CardContent className="py-12 text-center">
                   <CheckCircle className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                  <p className="text-gray-600">No hay pedidos cobrados en la semana {selectedWeek}</p>
+                  <p className="text-gray-600">No hay pedidos cobrados para el filtro seleccionado</p>
                 </CardContent>
               </Card>
             )}
@@ -1409,10 +1739,17 @@ export default function CobroPage() {
                   <>
                     <div className="space-y-2">
                       <Label>Nombre del Cliente (opcional)</Label>
-                      <Input 
+                      <CustomerSearchInput
+                        restaurantId={restaurant?.id}
                         value={paymentForm.customer_nombre}
-                        onChange={(e) => setPaymentForm({...paymentForm, customer_nombre: e.target.value})}
-                        placeholder="Juan Pérez"
+                        onChange={(val) => setPaymentForm({...paymentForm, customer_nombre: val})}
+                        onSelect={(c) => setPaymentForm({
+                          ...paymentForm,
+                          customer_nombre: c.nombre || '',
+                          customer_telefono: c.telefono || paymentForm.customer_telefono
+                        })}
+                        searchBy="nombre"
+                        placeholder="Juan Pérez (escribe para buscar)"
                       />
                     </div>
 
@@ -1477,22 +1814,39 @@ export default function CobroPage() {
                     
                     <div className="space-y-2">
                       <Label>RUC / C.I. N° *</Label>
-                      <Input 
+                      <CustomerSearchInput
+                        restaurantId={restaurant?.id}
                         value={paymentForm.factura_ruc}
-                        onChange={(e) => setPaymentForm({...paymentForm, factura_ruc: e.target.value})}
-                        onBlur={(e) => buscarClientePorRUC(e.target.value)}
-                        placeholder="12345678-9"
-                        className="bg-white"
+                        onChange={(val) => setPaymentForm({...paymentForm, factura_ruc: val})}
+                        onSelect={(c) => setPaymentForm({
+                          ...paymentForm,
+                          factura_ruc: c.ruc || c.telefono || '',
+                          factura_nombre: c.nombre || '',
+                          customer_nombre: c.nombre || '',
+                          customer_telefono: c.telefono || ''
+                        })}
+                        searchBy="ruc"
+                        placeholder="12345678-9 (escribe para buscar)"
+                        inputClassName="bg-white"
                       />
                     </div>
 
                     <div className="space-y-2">
                       <Label>Nombre / Razón Social *</Label>
-                      <Input 
+                      <CustomerSearchInput
+                        restaurantId={restaurant?.id}
                         value={paymentForm.factura_nombre}
-                        onChange={(e) => setPaymentForm({...paymentForm, factura_nombre: e.target.value})}
-                        placeholder="JUAN PÉREZ"
-                        className="bg-white"
+                        onChange={(val) => setPaymentForm({...paymentForm, factura_nombre: val})}
+                        onSelect={(c) => setPaymentForm({
+                          ...paymentForm,
+                          factura_ruc: c.ruc || c.telefono || paymentForm.factura_ruc,
+                          factura_nombre: c.nombre || '',
+                          customer_nombre: c.nombre || '',
+                          customer_telefono: c.telefono || ''
+                        })}
+                        searchBy="nombre"
+                        placeholder="JUAN PÉREZ (escribe para buscar)"
+                        inputClassName="bg-white"
                       />
                     </div>
 

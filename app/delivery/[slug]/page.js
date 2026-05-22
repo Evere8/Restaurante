@@ -1315,9 +1315,9 @@ export default function MenuPublicoPage() {
               >
                 <div className="relative">
                   {promo.imagen_url ? (
-                    <img src={promo.imagen_url} alt={promo.nombre} className="w-full h-20 object-cover" />
+                    <img src={promo.imagen_url} alt={promo.nombre} className="w-full aspect-square object-contain bg-white" />
                   ) : (
-                    <div className="w-full h-20 bg-gradient-to-br from-red-400 to-orange-400 flex items-center justify-center">
+                    <div className="w-full aspect-square bg-gradient-to-br from-red-400 to-orange-400 flex items-center justify-center">
                       <Gift className="h-8 w-8 text-white" />
                     </div>
                   )}
@@ -1350,9 +1350,9 @@ export default function MenuPublicoPage() {
                 onClick={() => openProductModal(product)}
               >
                 {product.img_url ? (
-                  <img src={product.img_url} alt={product.nombre} className="w-full h-20 object-cover" />
+                  <img src={product.img_url} alt={product.nombre} className="w-full aspect-square object-contain bg-white" />
                 ) : (
-                  <div className="w-full h-20 bg-gray-100 flex items-center justify-center">
+                  <div className="w-full aspect-square bg-gray-100 flex items-center justify-center">
                     <span className="text-2xl">🍽️</span>
                   </div>
                 )}
@@ -1435,9 +1435,9 @@ export default function MenuPublicoPage() {
                 >
                   <div className="relative">
                     {product.img_url ? (
-                      <img src={product.img_url} alt={product.nombre} className="w-full h-20 object-cover" />
+                      <img src={product.img_url} alt={product.nombre} className="w-full aspect-square object-contain bg-white" />
                     ) : (
-                      <div className="w-full h-20 bg-gray-50 flex items-center justify-center">
+                      <div className="w-full aspect-square bg-gray-50 flex items-center justify-center">
                         <span className="text-2xl">🍽️</span>
                       </div>
                     )}
@@ -1517,7 +1517,7 @@ export default function MenuPublicoPage() {
                       ? selectedProduct.promoData.imagen_url 
                       : selectedProduct.img_url}
                     alt={selectedProduct.nombre}
-                    className="w-full h-40 object-cover rounded-lg -mt-6 -mx-6 mb-4"
+                    className="w-full h-56 object-contain bg-gray-50 rounded-lg -mt-6 -mx-6 mb-4"
                     style={{ width: 'calc(100% + 48px)', maxWidth: 'none' }}
                   />
                   {/* Badge de promoción en el modal */}

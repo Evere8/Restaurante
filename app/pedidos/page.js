@@ -220,7 +220,7 @@ export default function PedidosPage() {
 
     const { data } = await supabase
       .from('orders')
-      .select('*, order_items(*)')
+      .select('*, order_items(*), customers(nombre, ruc, telefono)')
       .eq('restaurant_id', restaurant.id)
       .gte('created_at', twoDaysAgo.toISOString())
       .order('created_at', { ascending: false })
@@ -905,11 +905,12 @@ export default function PedidosPage() {
                     <div className="flex items-start justify-between">
                       <div>
                         <CardTitle className="text-lg flex items-center">
-                          Pedido #{order.id.slice(0, 8)}
+                          {order.customers?.nombre || order.customer_nombre || 'Cliente sin nombre'}
                           {order.origen === 'DIGITAL' && (
                             <Badge className="ml-2 bg-purple-500 text-xs">📱 Cliente</Badge>
                           )}
                         </CardTitle>
+                        <p className="text-xs text-gray-400 mt-0.5">#{order.id.slice(0, 8)}</p>
                         <p className="text-sm text-gray-600 mt-1">
                           {new Date(order.created_at).toLocaleString('es-ES')}
                         </p>
@@ -1012,11 +1013,12 @@ export default function PedidosPage() {
                     <div className="flex items-start justify-between">
                       <div>
                         <CardTitle className="text-lg flex items-center">
-                          Pedido #{order.id.slice(0, 8)}
+                          {order.customers?.nombre || order.customer_nombre || 'Cliente sin nombre'}
                           {order.origen === 'DIGITAL' && (
                             <Badge className="ml-2 bg-purple-500 text-xs">📱 Cliente</Badge>
                           )}
                         </CardTitle>
+                        <p className="text-xs text-gray-400 mt-0.5">#{order.id.slice(0, 8)}</p>
                         <p className="text-sm text-gray-600 mt-1">
                           {new Date(order.created_at).toLocaleString('es-ES')}
                         </p>
