@@ -1,0 +1,123 @@
+<analysis>**original_problem_statement**: 
+The user is building a Next.js/Supabase restaurant CRM and reported issues with the Menú Digital PDF upload feature. Specifically:
+1. Uploading a large PDF (63MB) crashed the app due to a  SSR compatibility issue (Object.defineProperty called on non-object).
+2. After the initial fix, the compression was too aggressive, causing unacceptable quality loss. The user requested much higher quality.
+3. Clicking Ver Menú on the customer-facing landing page resulted in a blank screen.
+4. The user also required the compressed file to stay under the 10MB database limit, but with maximum possible visual quality.
+
+**PRODUCT REQUIREMENTS:**
+1. Fix Next.js SSR compatibility with .
+2. Allow up to 100MB PDF uploads, compressing them client-side.
+3. Optimize PDF compression settings for maximum quality (scale: 2.0).
+4. Correctly render the base64 PDF in the browser on the  page without resulting in a blank screen.
+
+**User's preferred language**: Spanish (You MUST automatically detect the user's primary language from their messages inside the <trajectory> tag and INSTRUCT next agent to respond in the user's preferred language only)
+
+**what currently exists?** 
+A Next.js 14 and Supabase full-stack restaurant POS and digital menu application. In this session, the client-side PDF compression utility () was completely rewritten to use a stable version of  (v3.11.174) to avoid Next.js build errors. The customer landing page () was updated to convert base64 strings into Blobs for proper PDF rendering.
+
+**Last working item**:
+- **Last item agent was working**: Restoring and verifying the PDF compression files (), the landing page (), and their dependencies (, , ). The agent discovered these files were missing from the environment during a final check, recreated them with the high-quality compression settings (scale 2.0), and confirmed the app compiles and runs.
+- **Status**: USER VERIFICATION PENDING
+- **Agent Testing Done**: Y
+- **Which testing method agent to use?**: screenshot tool (for frontend UI checks) and manual testing (for the actual 63MB PDF upload).
+- **User Testing Done**: N
+
+**All Pending/In progress Issue list**:
+- Issue 1: Need user execution of SQL scripts for new features to work (P0)
+   - Attempted fixes: Agent previously created .
+   - Next debug checklist: Remind the user to run the contents of  in their Supabase SQL Editor.
+   - Why fix this issue and what will be achieved with the fix?: Without these tables/columns, saving the invoice configuration and uploading the PDF menu will fail with a database error.
+   - Status: USER VERIFICATION PENDING
+   - Is recurring issue?: N
+   - Should Test frontend/backend/both after fix?: Backend
+   - Blocked on other issue: None
+
+**In progress Task List**:
+- Task 1: Verify PDF Compression quality vs. size limits (P1)
+   - Where to resume: Wait for the user to upload their 63MB PDF. Check if the high-quality setting () keeps the final base64 string under the 10MB Supabase column limit.
+   - What will be achieved with this?: Ensures the user gets a readable PDF menu without database rejection.
+   - Status: TESTING PENDING
+   - Should Test frontend/backend/both after fix?: Frontend
+   - Blocked on something: User's manual file upload test.
+
+**Upcoming and Future Tasks**:
+- **Future Task 1**: Implement direct Supabase Storage bucket uploads for the PDF Menu (P1). *Context: If the 63MB PDF at  exceeds 10MB, the database base64 insert will fail. The agent has already proposed this fallback to the user.* (Files: , )
+- **Future Task 2**: Refactor  (P2). *Context: The file is extremely large (~1800 lines) and manages too much state.*
+- **Future Task 3**: Implement Promotions in Admin Pedidos page (P2). *Context: Ensure parity with the customer-facing menu.*
+
+**Completed work in this session**
+- Downgraded  to v3.11.174 to resolve Next.js SSR Object.defineProperty compilation errors (DONE)
+- Implemented high-quality PDF compression tuning (scale: 2.0, JPEG quality: 0.85) in  (DONE)
+- Fixed blank screen issue in  by converting base64 data to a Blob URL instead of using  (DONE)
+- Recovered and re-installed missing PDF dependencies (, , ) (DONE)
+
+**Earlier issues found/mentioned but not fixed**
+- None.
+
+**Known issue recurrence from previous fork**
+- Issue recurrence in previous fork: Testing agent frequently fails or session expires quickly when trying to perform multi-step automated tests requiring authentication on the deployed preview URL. 
+- Recurrence count: 3
+- Status: BLOCKED
+
+**Code Architecture**
+
+
+**Key Technical Concepts**
+- Frontend: Next.js 14, React, Tailwind CSS
+- Backend/Database: Supabase (PostgreSQL, Auth)
+- Utilities: ,  (STRICTLY v3.11.174 for Next.js compatibility),  for client-side PDF manipulation.
+
+**key DB schema**
+- : {id, restaurant_id, tipo, config, created_at, updated_at} -> *Needs to be created by user*
+- : {..., menu_pdf_url} -> *Needs to be updated by user*
+
+**changes in tech stack**
+- Forced  version to  as version 5.x crashes Next.js SSR. Added  and .
+
+**All files of reference**
+-  (Created/Restored): Holds the logic to downscale and compress PDFs in the browser before DB upload.
+-  (Created/Restored): Customer-facing routing page that displays the base64 PDF using a Blob Object URL.
+- : Admin dashboard where the compression limit UI was updated to show 100MB max.
+- : Database schema updates.
+
+**Areas that need refactoring**: 
+-  is extremely large (~1800 lines).
+
+**key api endpoints**
+- Supabase direct client calls.
+
+**Critical Info for New Agent**
+- **IMPORTANT**: The user demands **high visual quality** for their PDF menu. The compression scale in  is currently set to . 
+- **POTENTIAL BLOCKER**: A 63MB PDF compressed at  might result in a base64 string larger than 10MB. If the user reports that Supabase rejects the file due to size, **you must pivot to using Supabase Storage buckets** instead of saving the base64 string directly in the database row.
+- **REMINDER**: The user must execute  in their Supabase dashboard for the recent database features to work.
+- Do NOT upgrade  to version 4 or 5. It will break the Next.js build. Stick to .
+
+**documents and test reports created in this job**
+- None new in this specific session.
+
+**Last 10 User Messages and any pending HUMAN messages**
+- User reported a crash () when visiting the Digital Menu page. -> *Agent downgraded  to v3.11.174.*
+- User uploaded a 63MB PDF and stated the compression ruined the quality, asking to improve it. -> *Agent increased scale to 2.0 and JPEG quality to 0.85.*
+- User reported that clicking Ver Menú resulted in a blank screen. -> *Agent fixed the viewer by using a Blob conversion.*
+- User asked to verify if this is the final/latest version of the CRM. -> *Agent found files were missing, re-installed everything, recreated the files, and provided a final confirmation checklist.* (USER VERIFICATION PENDING)
+
+**Project Health Check:**
+- Broken: No (Assuming SQL script is run and base64 string fits in DB).
+- Mocked: None.
+
+**3rd Party Integrations**
+- Supabase (Database, Auth, Storage) — requires User's Supabase instance.
+
+**Testing status**
+- Testing agent used after significant changes: NO (Feature requires manual file upload testing).
+- Troubleshoot agent used after agent stuck in loop: NO
+- Test files created: None
+- Known regressions: None
+
+**Credentials to test flow:**
+- Username: 
+- Password: 
+
+**What agent forgot to execute**
+- The agent addressed all user concerns. The ball is in the user's court to test the 63MB PDF upload with the new high-quality settings.</analysis>

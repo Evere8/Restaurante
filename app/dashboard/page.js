@@ -1,0 +1,448 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { useAuth } from '@/contexts/AuthContext'
+import { useCurrency } from '@/contexts/CurrencyContext'
+import { useRouter } from 'next/navigation'
+import { supabase } from '@/lib/supabase'
+import Sidebar from '@/components/Sidebar'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { DollarSign, ShoppingCart, TrendingUp, Users, Clock, Package } from 'lucide-react'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { toast } from 'sonner'
+
+export default function DashboardPage() {
+  const { user, restaurant, loading: authLoading } = useAuth()
+  const { formatCurrency } = useCurrency()
+  const router = useRouter()
+  const [kpis, setKpis] = useState({
+    ventasHoy: 0,
+    pedidosHoy: 0,
+    ticketPromedio: 0,
+    clientesNuevos: 0,
+    pedidosActivos: 0,
+    productosStock: 0
+  })
+  const [salesData, setSalesData] = useState([])
+  const [topProducts, setTopProducts] = useState([])
+  const [expiringProducts, setExpiringProducts] = useState([])
+  const [expiredProducts, setExpiredProducts] = useState([])
+  const [recentOrders, setRecentOrders] = useState([])
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/login')
+    }
+  }, [user, authLoading, router])
+
+  useEffect(() => {
+    if (user && restaurant) {
+      loadDashboardData()
+      const interval = setInterval(loadDashboardData, 30000) // Auto-refresh cada 30s
+      return () => clearInterval(interval)
+    }
+  }, [user, restaurant])
+
+  const loadDashboardData = async () => {
+    try {
+      await Promise.all([
+        loadKPIs(),
+        loadSalesChart(),
+        loadTopProducts(),
+        loadExpiringProducts(),
+        loadRecentOrders()
+      ])
+    } catch (error) {
+      console.error('Error cargando dashboard:', error)
+    }
+  }
+
+  const loadKPIs = async () => {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    // Ventas y pedidos de hoy
+    const { data: ordersToday } = await supabase
+      .from('orders')
+      .select('total, created_at')
+      .eq('restaurant_id', restaurant.id)
+      .gte('created_at', today.toISOString())
+      .eq('estado', 'PAGADO')
+
+    const ventasHoy = ordersToday?.reduce((sum, o) => sum + parseFloat(o.total || 0), 0) || 0
+    const pedidosHoy = ordersToday?.length || 0
+    const ticketPromedio = pedidosHoy > 0 ? ventasHoy / pedidosHoy : 0
+
+    // Clientes nuevos hoy
+    const { count: clientesNuevos } = await supabase
+      .from('customers')
+      .select('*', { count: 'exact', head: true })
+      .eq('restaurant_id', restaurant.id)
+      .gte('created_at', today.toISOString())
+
+    // Pedidos activos
+    const { count: pedidosActivos } = await supabase
+      .from('orders')
+      .select('*', { count: 'exact', head: true })
+      .eq('restaurant_id', restaurant.id)
+      .in('estado', ['NUEVO', 'PREPARANDO', 'LISTO', 'ENTREGADO'])
+
+    // Productos con stock bajo (disponibles)
+    const { count: productosStock } = await supabase
+      .from('menu_items')
+      .select('*', { count: 'exact', head: true })
+      .eq('restaurant_id', restaurant.id)
+      .eq('disponible', true)
+
+    setKpis({
+      ventasHoy,
+      pedidosHoy,
+      ticketPromedio,
+      clientesNuevos: clientesNuevos || 0,
+      pedidosActivos: pedidosActivos || 0,
+      productosStock: productosStock || 0
+    })
+  }
+
+  const loadSalesChart = async () => {
+    const days = []
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date()
+      date.setDate(date.getDate() - i)
+      date.setHours(0, 0, 0, 0)
+      days.push(date)
+    }
+
+    const chartData = await Promise.all(
+      days.map(async (date) => {
+        const nextDay = new Date(date)
+        nextDay.setDate(nextDay.getDate() + 1)
+
+        const { data: orders } = await supabase
+          .from('orders')
+          .select('total')
+          .eq('restaurant_id', restaurant.id)
+          .eq('estado', 'PAGADO')
+          .gte('created_at', date.toISOString())
+          .lt('created_at', nextDay.toISOString())
+
+        const total = orders?.reduce((sum, o) => sum + parseFloat(o.total || 0), 0) || 0
+        
+        return {
+          fecha: date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }),
+          ventas: Math.round(total * 100) / 100
+        }
+      })
+    )
+
+    setSalesData(chartData)
+  }
+
+  const loadTopProducts = async () => {
+    const { data: items } = await supabase
+      .from('order_items')
+      .select(`
+        nombre_item_snapshot,
+        cantidad,
+        orders!inner(restaurant_id, estado)
+      `)
+      .eq('orders.restaurant_id', restaurant.id)
+      .eq('orders.estado', 'PAGADO')
+
+    if (items) {
+      const grouped = items.reduce((acc, item) => {
+        const name = item.nombre_item_snapshot
+        if (!acc[name]) {
+          acc[name] = { nombre: name, cantidad: 0 }
+        }
+        acc[name].cantidad += item.cantidad
+        return acc
+      }, {})
+
+      const sorted = Object.values(grouped)
+        .sort((a, b) => b.cantidad - a.cantidad)
+        .slice(0, 5)
+
+      setTopProducts(sorted)
+    }
+  }
+
+  const loadExpiringProducts = async () => {
+    try {
+      // Usar la función stock_alertas de Supabase
+      const { data: alertas, error } = await supabase
+        .rpc('stock_alertas', { rest_id: restaurant.id })
+
+      if (error) {
+        console.error('Error cargando alertas de stock:', error)
+        return
+      }
+
+      // Mapear productos próximos a vencer
+      const expiring = (alertas.proximos_vencer || []).map(item => ({
+        id: item.id,
+        nombre: item.nombre,
+        fechaVencimiento: new Date(item.vencimiento),
+        diasRestantes: item.dias_restantes
+      }))
+
+      // Mapear productos vencidos
+      const expired = (alertas.vencidos || []).map(item => ({
+        id: item.id,
+        nombre: item.nombre,
+        fechaVencimiento: new Date(item.vencimiento),
+        diasRestantes: -item.dias_vencido
+      }))
+
+      setExpiringProducts(expiring)
+      setExpiredProducts(expired)
+    } catch (error) {
+      console.error('Error en loadExpiringProducts:', error)
+    }
+  }
+
+  const loadRecentOrders = async () => {
+    const { data: orders } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('restaurant_id', restaurant.id)
+      .order('created_at', { ascending: false })
+      .limit(5)
+
+    setRecentOrders(orders || [])
+  }
+
+  if (authLoading || !user) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Cargando...</p>
+        </div>
+      </div>
+    )
+  }
+
+  const estadoColors = {
+    NUEVO: 'bg-blue-500',
+    PREPARANDO: 'bg-yellow-500',
+    LISTO: 'bg-green-500',
+    ENTREGADO: 'bg-purple-500',
+    PAGADO: 'bg-gray-500'
+  }
+
+  return (
+    <div className="flex min-h-screen bg-gray-50">
+      <Sidebar />
+      <div className="flex-1 overflow-auto">
+        <div className="container mx-auto px-4 py-6">
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-gray-800">Dashboard</h1>
+          <p className="text-gray-600">Resumen general del restaurante</p>
+        </div>
+
+        {/* KPIs */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">Ventas Hoy</CardTitle>
+              <DollarSign className="h-4 w-4 text-green-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{formatCurrency(kpis.ventasHoy)}</div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">Pedidos Hoy</CardTitle>
+              <ShoppingCart className="h-4 w-4 text-blue-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{kpis.pedidosHoy}</div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">Ticket Promedio</CardTitle>
+              <TrendingUp className="h-4 w-4 text-orange-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{formatCurrency(kpis.ticketPromedio)}</div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">Clientes Nuevos</CardTitle>
+              <Users className="h-4 w-4 text-purple-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{kpis.clientesNuevos}</div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">Pedidos Activos</CardTitle>
+              <Clock className="h-4 w-4 text-yellow-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{kpis.pedidosActivos}</div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">Productos Stock</CardTitle>
+              <Package className="h-4 w-4 text-teal-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{kpis.productosStock}</div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          {/* Gráfico de Ventas */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Ventas Últimos 7 Días</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={salesData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="fecha" />
+                  <YAxis />
+                  <Tooltip />
+                  <Line type="monotone" dataKey="ventas" stroke="#f97316" strokeWidth={2} />
+                </LineChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          {/* Top 5 Productos */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Top 5 Productos Más Vendidos</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {topProducts.length > 0 ? (
+                <div className="space-y-3">
+                  {topProducts.map((product, idx) => (
+                    <div key={idx} className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center font-bold text-orange-600">
+                          {idx + 1}
+                        </div>
+                        <span className="font-medium">{product.nombre}</span>
+                      </div>
+                      <Badge variant="secondary">{product.cantidad} vendidos</Badge>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-500 text-center py-8">No hay datos de ventas aún</p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Productos VENCIDOS */}
+          {expiredProducts.length > 0 && (
+            <Card className="border-red-500 border-2">
+              <CardHeader className="bg-red-50">
+                <CardTitle className="flex items-center space-x-2 text-red-700">
+                  <Package className="h-5 w-5" />
+                  <span>🔴 Productos VENCIDOS</span>
+                  <Badge className="bg-red-600">{expiredProducts.length}</Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-4">
+                <div className="space-y-2">
+                  {expiredProducts.map((product) => (
+                    <div key={product.id} className="flex items-center justify-between p-3 bg-red-50 rounded-lg border border-red-200">
+                      <div>
+                        <p className="font-medium text-red-900">{product.nombre}</p>
+                        <p className="text-sm text-red-600">
+                          Venció: {product.fechaVencimiento.toLocaleDateString('es-ES')}
+                        </p>
+                      </div>
+                      <Badge className="bg-red-600">Hace {Math.abs(product.diasRestantes)} días</Badge>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Productos PRÓXIMOS A VENCER */}
+          <Card className={expiringProducts.length > 0 ? "border-yellow-500 border-2" : ""}>
+            <CardHeader className={expiringProducts.length > 0 ? "bg-yellow-50" : ""}>
+              <CardTitle className="flex items-center space-x-2">
+                <Package className="h-5 w-5 text-yellow-600" />
+                <span className={expiringProducts.length > 0 ? "text-yellow-700" : ""}>
+                  🟡 Productos Próximos a Vencer
+                </span>
+                {expiringProducts.length > 0 && (
+                  <Badge className="bg-yellow-500">{expiringProducts.length}</Badge>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-4">
+              {expiringProducts.length > 0 ? (
+                <div className="space-y-2">
+                  {expiringProducts.map((product) => (
+                    <div key={product.id} className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                      <div>
+                        <p className="font-medium">{product.nombre}</p>
+                        <p className="text-sm text-gray-600">
+                          Vence: {product.fechaVencimiento.toLocaleDateString('es-ES')}
+                        </p>
+                      </div>
+                      <Badge className="bg-yellow-500">{product.diasRestantes} días</Badge>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-500 text-center py-8">No hay productos próximos a vencer</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Pedidos Recientes */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Pedidos Recientes</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {recentOrders.length > 0 ? (
+                <div className="space-y-2">
+                  {recentOrders.map((order) => (
+                    <div key={order.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div>
+                        <p className="font-medium">#{order.id.slice(0, 8)}</p>
+                        <p className="text-sm text-gray-600">{order.tipo} - Mesa {order.mesa || 'N/A'}</p>
+                      </div>
+                      <div className="text-right">
+                        <Badge className={estadoColors[order.estado]}>{order.estado}</Badge>
+                        <p className="text-sm font-bold mt-1">{formatCurrency(order.total)}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-500 text-center py-8">No hay pedidos recientes</p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+        </div>
+      </div>
+    </div>
+  )
+}
