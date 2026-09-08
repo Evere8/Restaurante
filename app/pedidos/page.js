@@ -225,7 +225,8 @@ export default function PedidosPage() {
       .gte('created_at', twoDaysAgo.toISOString())
       .order('created_at', { ascending: false })
 
-    // Categorizar pedidos: En Proceso (todos menos ENTREGADO/PAGADO) y Entregados
+    // Los pedidos PENDIENTE son exclusivamente para Cobros → Pendientes.
+    // En Pedidos solo se muestran los que aún se preparan y los entregados.
     const categorized = {
       enProceso: [],
       entregados: []
@@ -233,8 +234,7 @@ export default function PedidosPage() {
 
     if (data) {
       data.forEach(order => {
-        // PENDIENTE, NUEVO, PREPARANDO y LISTO van a enProceso
-        if (order.estado === 'PENDIENTE' || order.estado === 'NUEVO' || order.estado === 'PREPARANDO' || order.estado === 'LISTO') {
+        if (order.estado === 'NUEVO' || order.estado === 'PREPARANDO' || order.estado === 'LISTO') {
           categorized.enProceso.push(order)
         } else if (order.estado === 'ENTREGADO') {
           categorized.entregados.push(order)
@@ -797,11 +797,11 @@ export default function PedidosPage() {
       const currentTotal = parseFloat(addingToOrder.total) || 0
       const newTotal = currentTotal + newItemsTotal
 
-      // Actualizar el pedido: cambiar estado a PENDIENTE y actualizar total
+      // Al agregar productos, el pedido vuelve a preparación; PENDIENTE es solo para Cobros.
       const { error: updateError } = await supabase
         .from('orders')
         .update({
-          estado: 'PENDIENTE',
+          estado: 'NUEVO',
           total: newTotal,
           subtotal: newTotal
         })
@@ -973,7 +973,7 @@ export default function PedidosPage() {
                           </Button>
                         </div>
 
-                        {(order.estado === 'NUEVO' || order.estado === 'PENDIENTE') && (
+                        {order.estado === 'NUEVO' && (
                           <Button
                             size="sm"
                             className="w-full bg-yellow-500 hover:bg-yellow-600 text-white"
@@ -1647,7 +1647,7 @@ export default function PedidosPage() {
 
                   <div className="bg-yellow-50 p-2 rounded-lg border border-yellow-200">
                     <p className="text-xs text-yellow-800">
-                      ⚠️ Al agregar items, el pedido volverá a estado &quot;PENDIENTE&quot; para preparación
+                      ⚠️ Al agregar productos, el pedido volverá a preparación.
                     </p>
                   </div>
 

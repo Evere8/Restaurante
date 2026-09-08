@@ -17,7 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Plus, Edit, Trash2, Package, AlertTriangle, X, ChevronRight, FolderTree, Layers, Upload } from 'lucide-react'
+import { Plus, Edit, Trash2, Package, AlertTriangle, X, ChevronRight, FolderTree, Layers, Upload, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import { compressAndUploadImage } from '@/lib/imageUpload'
 
@@ -29,6 +29,7 @@ export default function MenuPage() {
   const [products, setProducts] = useState([])
   const [stockItems, setStockItems] = useState([])
   const [selectedCategory, setSelectedCategory] = useState(null)
+  const [productSearch, setProductSearch] = useState('')
   const [editingProduct, setEditingProduct] = useState(null)
   const [editingCategory, setEditingCategory] = useState(null)
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -539,9 +540,13 @@ export default function MenuPage() {
     return <div className="flex items-center justify-center min-h-screen">Cargando...</div>
   }
 
-  const filteredProducts = selectedCategory
-    ? products.filter(p => p.category_id === selectedCategory)
-    : products
+  const filteredProducts = products.filter(product => {
+    const matchesCategory = !selectedCategory || product.category_id === selectedCategory
+    const matchesSearch = !productSearch.trim() ||
+      (product.nombre || '').toLowerCase().includes(productSearch.trim().toLowerCase())
+
+    return matchesCategory && matchesSearch
+  })
 
   const showManualWarning = !productForm.usar_stock_avanzado && (productForm.coste || productForm.dias_para_vencer)
 
@@ -898,6 +903,26 @@ export default function MenuPage() {
               </Dialog>
             </div>
 
+            <div className="relative mb-4 max-w-md">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <Input
+                value={productSearch}
+                onChange={(e) => setProductSearch(e.target.value)}
+                placeholder="Buscar producto por nombre..."
+                className="pl-9 pr-9"
+              />
+              {productSearch && (
+                <button
+                  type="button"
+                  onClick={() => setProductSearch('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700"
+                  aria-label="Limpiar búsqueda"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {filteredProducts.map(product => (
                 <Card key={product.id} className="overflow-hidden">
@@ -968,7 +993,9 @@ export default function MenuPage() {
               <Card>
                 <CardContent className="py-12 text-center">
                   <Package className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                  <p className="text-gray-600">No hay productos. Crea tu primer producto.</p>
+                  <p className="text-gray-600">
+                    {productSearch ? 'No se encontraron productos con ese nombre.' : 'No hay productos. Crea tu primer producto.'}
+                  </p>
                 </CardContent>
               </Card>
             )}
