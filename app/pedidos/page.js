@@ -881,17 +881,11 @@ export default function PedidosPage() {
         </div>
 
         <Tabs defaultValue="preparacion" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="preparacion">
-              🔥 En Preparación
+              🔥 En Proceso
               {orders.preparacion.length > 0 && (
                 <Badge className="ml-2" style={{ backgroundColor: themeColors.secondary }}>{orders.preparacion.length}</Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="paraEntregar">
-              📦 Para Entregar
-              {orders.paraEntregar.length > 0 && (
-                <Badge className="ml-2 bg-blue-500">{orders.paraEntregar.length}</Badge>
               )}
             </TabsTrigger>
             <TabsTrigger value="entregados">
@@ -1017,10 +1011,9 @@ export default function PedidosPage() {
                 </div>
               )}
             </div>
-          </TabsContent>
-
-          <TabsContent value="paraEntregar">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="mt-8">
+              <h3 className="mb-3 text-lg font-semibold text-gray-700">Listos para entregar</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {orders.paraEntregar.map(order => (
                 <Card key={order.id} className={order.origen === 'DIGITAL' ? 'ring-2 ring-purple-400' : ''}>
                   <CardHeader>
@@ -1102,6 +1095,7 @@ export default function PedidosPage() {
                   No hay pedidos listos para entregar
                 </div>
               )}
+              </div>
             </div>
           </TabsContent>
 

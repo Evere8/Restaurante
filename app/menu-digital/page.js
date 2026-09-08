@@ -150,7 +150,7 @@ export default function MenuDigitalPage() {
                     (typeof window !== 'undefined' ? window.location.origin : '')
     // Usar el ID del restaurante como slug si no hay slug personalizado
     const finalSlug = slugValue || restaurant?.id
-    return `${baseUrl}/delivery/${finalSlug}`
+    return `${baseUrl}/menu/${finalSlug}`
   }
 
   const handleSaveConfig = async () => {

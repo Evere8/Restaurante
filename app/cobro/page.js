@@ -90,7 +90,7 @@ export default function CobroPage() {
 
     const { data: cobrados } = await supabase
       .from('orders')
-      .select('*, order_items(*)')
+      .select('*, order_items(*), customers(nombre, telefono, ruc)')
       .eq('restaurant_id', restaurant.id)
       .eq('estado', 'PAGADO')
       .gte('created_at', thirtyDaysAgo.toISOString())
@@ -1356,6 +1356,9 @@ export default function CobroPage() {
                         <CardTitle className="text-lg">Pedido #{order.id.slice(0, 8)}</CardTitle>
                         <p className="text-sm text-gray-600 mt-1">
                           Pagado: {new Date(order.fecha_pago).toLocaleString('es-ES')}
+                        </p>
+                        <p className="text-sm font-medium text-gray-700 mt-1">
+                          Cliente: {order.customers?.nombre || order.factura_nombre || order.customer_nombre || 'Consumidor final'}
                         </p>
                       </div>
                       <Badge className="bg-green-500">PAGADO</Badge>

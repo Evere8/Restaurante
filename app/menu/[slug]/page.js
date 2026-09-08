@@ -78,15 +78,8 @@ export default function MenuLandingPage() {
         }
         setConfig(configData)
 
-        // Si no hay PDF, redirigir directamente al menú interactivo
-        if (!configData.menu_pdf_url) {
-          router.replace(`/delivery/${slug}`)
-          return
-        }
       } else {
-        // Si no hay configuración, redirigir al menú interactivo
-        router.replace(`/delivery/${slug}`)
-        return
+        setConfig({ colores: defaultColors })
       }
 
       setLoading(false)
@@ -123,7 +116,10 @@ export default function MenuLandingPage() {
       } else {
         window.open(config.menu_pdf_url, '_blank')
       }
+      return
     }
+
+    router.push(`/delivery/${slug}`)
   }
 
   const handleInteractiveMenu = () => {
@@ -201,7 +197,7 @@ export default function MenuLandingPage() {
               <FileText className="h-8 w-8" style={{ color: colors.secondary }} />
             </div>
             <div className="flex-1 text-left">
-              <h3 className="text-lg font-bold text-gray-800">Ver Menú</h3>
+              <h3 className="text-lg font-bold text-gray-800">Ver Carta</h3>
               <p className="text-sm text-gray-500">Consulta nuestra carta completa</p>
             </div>
             <ArrowRight className="h-6 w-6 text-gray-400 group-hover:text-gray-600 transition-colors" />
@@ -219,7 +215,7 @@ export default function MenuLandingPage() {
               <ShoppingCart className="h-8 w-8 text-white" />
             </div>
             <div className="flex-1 text-left">
-              <h3 className="text-lg font-bold text-white">Hacer Pedido</h3>
+              <h3 className="text-lg font-bold text-white">Pedido Online</h3>
               <p className="text-sm text-white/80">Crea tu pedido y envíalo al mostrador</p>
             </div>
             <ArrowRight className="h-6 w-6 text-white/60 group-hover:text-white transition-colors" />
