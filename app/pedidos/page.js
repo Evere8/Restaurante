@@ -33,8 +33,7 @@ export default function PedidosPage() {
   const [customers, setCustomers] = useState([])
   const [promotions, setPromotions] = useState([]) // Estado para promociones
   const [orders, setOrders] = useState({
-    preparacion: [],
-    paraEntregar: [],
+    enProceso: [],     // Pedidos nuevos y en preparación
     entregados: []
   })
   const [editingOrder, setEditingOrder] = useState(null)
@@ -84,7 +83,7 @@ export default function PedidosPage() {
       loadCustomers()
       loadOrders()
       loadPromotions() // Cargar promociones
-      
+
       // Auto-refresh cada 15 segundos para detectar nuevos pedidos
       const interval = setInterval(loadOrders, 15000)
       return () => clearInterval(interval)
@@ -94,29 +93,29 @@ export default function PedidosPage() {
   // Reproducir sonido cuando hay nuevo pedido - SONIDO MÁS LARGO
   const playNotificationSound = () => {
     if (!soundEnabled) return
-    
+
     try {
       // Crear un sonido más largo de notificación usando Web Audio API
       const audioContext = new (window.AudioContext || window.webkitAudioContext)()
-      
+
       // Secuencia de tonos para sonido más largo y notorio
       const playTone = (frequency, startTime, duration) => {
         const oscillator = audioContext.createOscillator()
         const gainNode = audioContext.createGain()
-        
+
         oscillator.connect(gainNode)
         gainNode.connect(audioContext.destination)
-        
+
         oscillator.frequency.value = frequency
         oscillator.type = 'sine'
-        
+
         gainNode.gain.setValueAtTime(0.4, audioContext.currentTime + startTime)
         gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + startTime + duration)
-        
+
         oscillator.start(audioContext.currentTime + startTime)
         oscillator.stop(audioContext.currentTime + startTime + duration)
       }
-      
+
       // Secuencia de 6 tonos para hacer el sonido más largo (~3 segundos)
       playTone(800, 0, 0.3)
       playTone(1000, 0.35, 0.3)
@@ -124,7 +123,7 @@ export default function PedidosPage() {
       playTone(800, 1.05, 0.3)
       playTone(1000, 1.4, 0.3)
       playTone(1200, 1.75, 0.5)
-      
+
     } catch (error) {
       console.log('Audio not supported:', error)
     }
@@ -163,7 +162,7 @@ export default function PedidosPage() {
       .select('*, promocion_items(*, menu_items(id, nombre, precio_base))')
       .eq('restaurant_id', restaurant.id)
       .eq('activa', true)
-    
+
     if (error) {
       console.error('Error cargando promociones:', error)
     }
@@ -185,7 +184,7 @@ export default function PedidosPage() {
   const getDiscountedPrice = (product) => {
     const promo = getProductPromotion(product.id)
     if (!promo) return null
-    
+
     if (promo.tipo_descuento === 'porcentaje') {
       return {
         precioOriginal: parseFloat(product.precio_base),
@@ -221,25 +220,22 @@ export default function PedidosPage() {
 
     const { data } = await supabase
       .from('orders')
-      .select('*, order_items(*)')
+      .select('*, order_items(*), customers(nombre, ruc, telefono)')
       .eq('restaurant_id', restaurant.id)
       .gte('created_at', twoDaysAgo.toISOString())
       .order('created_at', { ascending: false })
 
-    // Categorizar pedidos por estado
+    // Categorizar pedidos: En Proceso (todos menos ENTREGADO/PAGADO) y Entregados
     const categorized = {
-      preparacion: [],
-      paraEntregar: [],
+      enProceso: [],
       entregados: []
     }
 
     if (data) {
       data.forEach(order => {
-        // PENDIENTE, NUEVO y PREPARANDO van a preparación
-        if (order.estado === 'PENDIENTE' || order.estado === 'NUEVO' || order.estado === 'PREPARANDO') {
-          categorized.preparacion.push(order)
-        } else if (order.estado === 'LISTO') {
-          categorized.paraEntregar.push(order)
+        // PENDIENTE, NUEVO, PREPARANDO y LISTO van a enProceso
+        if (order.estado === 'PENDIENTE' || order.estado === 'NUEVO' || order.estado === 'PREPARANDO' || order.estado === 'LISTO') {
+          categorized.enProceso.push(order)
         } else if (order.estado === 'ENTREGADO') {
           categorized.entregados.push(order)
         }
@@ -247,7 +243,7 @@ export default function PedidosPage() {
     }
 
     // Detectar si hay nuevos pedidos
-    const currentPrepCount = categorized.preparacion.length
+    const currentPrepCount = categorized.enProceso.length
     if (previousOrderCount > 0 && currentPrepCount > previousOrderCount) {
       playNotificationSound()
       toast.info('🔔 ¡Nuevo pedido recibido!')
@@ -276,13 +272,14 @@ export default function PedidosPage() {
 
   const handleMarcarListo = async (orderId) => {
     try {
+      // Marcar como ENTREGADO directamente (salta LISTO)
       const { error } = await supabase
         .from('orders')
-        .update({ estado: 'LISTO' })
+        .update({ estado: 'ENTREGADO' })
         .eq('id', orderId)
 
       if (error) throw error
-      toast.success('Pedido marcado como listo')
+      toast.success('Pedido marcado como entregado')
       loadOrders()
     } catch (error) {
       console.error('Error:', error)
@@ -307,12 +304,12 @@ export default function PedidosPage() {
       toast.error('Ingresa un nombre para la cuenta')
       return
     }
-    
+
     const nuevaCuenta = {
       nombre: nuevoNombreCuenta.trim(),
       productos: []
     }
-    
+
     setCuentas([...cuentas, nuevaCuenta])
     setCuentaActiva(cuentas.length) // Activar la nueva cuenta
     setNombreCuentaDialog(false)
@@ -325,10 +322,10 @@ export default function PedidosPage() {
       toast.error('Debe haber al menos una cuenta')
       return
     }
-    
+
     const nuevasCuentas = cuentas.filter((_, i) => i !== index)
     setCuentas(nuevasCuentas)
-    
+
     if (cuentaActiva >= nuevasCuentas.length) {
       setCuentaActiva(nuevasCuentas.length - 1)
     }
@@ -360,7 +357,7 @@ export default function PedidosPage() {
       const nuevasCuentas = [...cuentas]
       const cuentaActual = nuevasCuentas[cuentaActiva]
       const existingItem = cuentaActual.productos.find(item => item.id === product.id)
-      
+
       if (existingItem) {
         cuentaActual.productos = cuentaActual.productos.map(item =>
           item.id === product.id
@@ -370,7 +367,7 @@ export default function PedidosPage() {
       } else {
         cuentaActual.productos.push({ ...productToAdd, cantidad: 1 })
       }
-      
+
       setCuentas(nuevasCuentas)
       const promoMsg = promoInfo ? ` (${promoInfo.descuento}% OFF)` : ''
       toast.success(`${product.nombre}${promoMsg} agregado a cuenta de ${cuentaActual.nombre}`)
@@ -378,8 +375,8 @@ export default function PedidosPage() {
       // Modo normal
       const existingItem = cart.find(item => item.id === product.id)
       if (existingItem) {
-        setCart(cart.map(item => 
-          item.id === product.id 
+        setCart(cart.map(item =>
+          item.id === product.id
             ? { ...item, cantidad: item.cantidad + 1 }
             : item
         ))
@@ -428,20 +425,20 @@ export default function PedidosPage() {
 
   const calculateTotal = () => {
     if (cuentasSeparadas && cuentas.length > 0) {
-      return cuentas[cuentaActiva]?.productos?.reduce((sum, item) => 
+      return cuentas[cuentaActiva]?.productos?.reduce((sum, item) =>
         sum + (parseFloat(item.precio_base) * item.cantidad), 0) || 0
     }
     return cart.reduce((sum, item) => sum + (parseFloat(item.precio_base) * item.cantidad), 0)
   }
 
   const calculateTotalCuenta = (cuenta) => {
-    return cuenta.productos.reduce((sum, item) => 
+    return cuenta.productos.reduce((sum, item) =>
       sum + (parseFloat(item.precio_base) * item.cantidad), 0)
   }
 
   const calculateTotalGeneral = () => {
     if (cuentasSeparadas && cuentas.length > 0) {
-      return cuentas.reduce((total, cuenta) => 
+      return cuentas.reduce((total, cuenta) =>
         total + calculateTotalCuenta(cuenta), 0)
     }
     return calculateTotal()
@@ -539,7 +536,7 @@ export default function PedidosPage() {
         nota_cocina: orderForm.nota_cocina,
         total: total
       }
-      
+
       // Si el pedido estaba entregado, volver a NUEVO
       if (editingOrder.estado === 'ENTREGADO') {
         updateData.estado = 'NUEVO'
@@ -569,11 +566,11 @@ export default function PedidosPage() {
       // Insertar items nuevos
       const orderItems = cart.map(item => {
         let menuItemId = null
-        
+
         // Si tiene originalMenuItemId guardado, usarlo
         if (item.originalMenuItemId) {
           menuItemId = item.originalMenuItemId
-        } 
+        }
         // Si el id no es temporal y parece un UUID válido
         else if (item.id && typeof item.id === 'string' && !item.id.startsWith('temp_') && item.id.length >= 32) {
           menuItemId = item.id
@@ -637,10 +634,10 @@ export default function PedidosPage() {
       if (cuentasSeparadas && cuentas.length > 0) {
         // MODO CUENTAS SEPARADAS: Crear un pedido por cada cuenta
         const pedidosCreados = []
-        
+
         for (const cuenta of cuentas) {
           if (cuenta.productos.length === 0) continue
-          
+
           const subtotal = calculateTotalCuenta(cuenta)
           const total = subtotal
 
@@ -680,14 +677,14 @@ export default function PedidosPage() {
             .insert(orderItems)
 
           if (itemsError) throw itemsError
-          
+
           pedidosCreados.push({ nombre: cuenta.nombre, total })
         }
 
         // Mostrar resumen de pedidos creados
         const resumen = pedidosCreados.map(p => `${p.nombre}: ${formatCurrency(p.total)}`).join(', ')
         toast.success(`Creados ${pedidosCreados.length} pedidos separados: ${resumen}`)
-        
+
       } else {
         // MODO NORMAL: Un solo pedido
         const subtotal = calculateTotal()
@@ -730,7 +727,7 @@ export default function PedidosPage() {
 
         toast.success('Pedido creado exitosamente')
       }
-      
+
       setCreateDialogOpen(false)
       resetForm()
       loadOrders()
@@ -803,7 +800,7 @@ export default function PedidosPage() {
       // Actualizar el pedido: cambiar estado a PENDIENTE y actualizar total
       const { error: updateError } = await supabase
         .from('orders')
-        .update({ 
+        .update({
           estado: 'PENDIENTE',
           total: newTotal,
           subtotal: newTotal
@@ -834,9 +831,13 @@ export default function PedidosPage() {
   }
 
   const filteredProducts = products.filter(p => {
-    const matchesCategory = !selectedCategory || p.category_id === selectedCategory
-    const matchesSearch = !searchTerm || p.nombre.toLowerCase().includes(searchTerm.toLowerCase())
-    return matchesCategory && matchesSearch
+    // Si hay búsqueda, mostrar resultados sin importar categoría
+    if (searchTerm) {
+      return p.nombre.toLowerCase().includes(searchTerm.toLowerCase())
+    }
+    // Si no hay categoría seleccionada, no mostrar productos (excepto si busca)
+    if (!selectedCategory) return false
+    return p.category_id === selectedCategory
   })
 
   const estadoColors = {
@@ -870,8 +871,8 @@ export default function PedidosPage() {
                 <span className="text-sm">{soundEnabled ? 'Sonido ON' : 'Sonido OFF'}</span>
               </button>
             </div>
-            <Button 
-              className="hover:opacity-90" 
+            <Button
+              className="hover:opacity-90"
               style={{ backgroundColor: themeColors.secondary }}
               onClick={openCreateDialog}
             >
@@ -880,12 +881,12 @@ export default function PedidosPage() {
           </div>
         </div>
 
-        <Tabs defaultValue="preparacion" className="space-y-4">
+        <Tabs defaultValue="enProceso" className="space-y-4">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="preparacion">
+            <TabsTrigger value="enProceso">
               🔥 En Proceso
-              {orders.preparacion.length > 0 && (
-                <Badge className="ml-2" style={{ backgroundColor: themeColors.secondary }}>{orders.preparacion.length}</Badge>
+              {orders.enProceso.length > 0 && (
+                <Badge className="ml-2" style={{ backgroundColor: themeColors.secondary }}>{orders.enProceso.length}</Badge>
               )}
             </TabsTrigger>
             <TabsTrigger value="entregados">
@@ -896,19 +897,20 @@ export default function PedidosPage() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="preparacion">
+          <TabsContent value="enProceso">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {orders.preparacion.map(order => (
-                <Card key={order.id} className={`${order.estado === 'NUEVO' ? 'border-2 border-blue-400' : 'border-2 border-yellow-400'} ${order.origen === 'DIGITAL' ? 'ring-2 ring-purple-400' : ''}`}>
-                  <CardHeader className={order.estado === 'NUEVO' ? 'bg-blue-50' : 'bg-yellow-50'}>
+              {orders.enProceso.map(order => (
+                <Card key={order.id} className={`${order.estado === 'NUEVO' ? 'border-2 border-blue-400' : order.estado === 'LISTO' ? 'border-2 border-green-400' : 'border-2 border-yellow-400'} ${order.origen === 'DIGITAL' ? 'ring-2 ring-purple-400' : ''}`}>
+                  <CardHeader className={order.estado === 'NUEVO' ? 'bg-blue-50' : order.estado === 'LISTO' ? 'bg-green-50' : 'bg-yellow-50'}>
                     <div className="flex items-start justify-between">
                       <div>
                         <CardTitle className="text-lg flex items-center">
-                          Pedido #{order.id.slice(0, 8)}
+                          {order.customers?.nombre || order.customer_nombre || 'Cliente sin nombre'}
                           {order.origen === 'DIGITAL' && (
                             <Badge className="ml-2 bg-purple-500 text-xs">📱 Cliente</Badge>
                           )}
                         </CardTitle>
+                        <p className="text-xs text-gray-400 mt-0.5">#{order.id.slice(0, 8)}</p>
                         <p className="text-sm text-gray-600 mt-1">
                           {new Date(order.created_at).toLocaleString('es-ES')}
                         </p>
@@ -935,7 +937,7 @@ export default function PedidosPage() {
                       )}
                       {order.nota_cocina && (
                         <div className="bg-orange-100 p-2 rounded text-xs border border-orange-300">
-                          <span className="font-semibold text-orange-700">🔔 Cocina:</span> 
+                          <span className="font-semibold text-orange-700">🔔 Cocina:</span>
                           <span className="text-orange-800">{order.nota_cocina}</span>
                         </div>
                       )}
@@ -959,7 +961,7 @@ export default function PedidosPage() {
                         <span>Total:</span>
                         <span className="text-orange-600">{formatCurrency(order.total)}</span>
                       </div>
-                      
+
                       {/* Botones de acción */}
                       <div className="flex flex-col space-y-2 mt-3">
                         <div className="flex space-x-2">
@@ -970,34 +972,24 @@ export default function PedidosPage() {
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
-                        
-                        {order.estado === 'NUEVO' && (
-                          <Button 
-                            size="sm" 
+
+                        {(order.estado === 'NUEVO' || order.estado === 'PENDIENTE') && (
+                          <Button
+                            size="sm"
                             className="w-full bg-yellow-500 hover:bg-yellow-600 text-white"
                             onClick={() => handleIniciarPreparacion(order.id)}
                           >
                             <Play className="h-4 w-4 mr-1" /> Iniciar Preparación
                           </Button>
                         )}
-                        
-                        {order.estado === 'PENDIENTE' && (
-                          <Button 
-                            size="sm" 
-                            className="w-full bg-yellow-500 hover:bg-yellow-600 text-white"
-                            onClick={() => handleIniciarPreparacion(order.id)}
-                          >
-                            <Play className="h-4 w-4 mr-1" /> Iniciar Preparación
-                          </Button>
-                        )}
-                        
-                        {order.estado === 'PREPARANDO' && (
-                          <Button 
-                            size="sm" 
+
+                        {(order.estado === 'PREPARANDO' || order.estado === 'LISTO') && (
+                          <Button
+                            size="sm"
                             className="w-full bg-green-500 hover:bg-green-600 text-white"
                             onClick={() => handleMarcarListo(order.id)}
                           >
-                            <CheckCircle className="h-4 w-4 mr-1" /> Marcar Listo
+                            <CheckCircle className="h-4 w-4 mr-1" /> Marcar Entregado
                           </Button>
                         )}
                       </div>
@@ -1005,97 +997,11 @@ export default function PedidosPage() {
                   </CardContent>
                 </Card>
               ))}
-              {orders.preparacion.length === 0 && (
+              {orders.enProceso.length === 0 && (
                 <div className="col-span-full text-center py-12 text-gray-500">
-                  No hay pedidos en preparación
+                  No hay pedidos en proceso
                 </div>
               )}
-            </div>
-            <div className="mt-8">
-              <h3 className="mb-3 text-lg font-semibold text-gray-700">Listos para entregar</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {orders.paraEntregar.map(order => (
-                <Card key={order.id} className={order.origen === 'DIGITAL' ? 'ring-2 ring-purple-400' : ''}>
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <CardTitle className="text-lg flex items-center">
-                          Pedido #{order.id.slice(0, 8)}
-                          {order.origen === 'DIGITAL' && (
-                            <Badge className="ml-2 bg-purple-500 text-xs">📱 Cliente</Badge>
-                          )}
-                        </CardTitle>
-                        <p className="text-sm text-gray-600 mt-1">
-                          {new Date(order.created_at).toLocaleString('es-ES')}
-                        </p>
-                      </div>
-                      <Badge className="bg-blue-500">LISTO</Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Tipo:</span>
-                        <span className="font-medium">{order.tipo}</span>
-                      </div>
-                      {order.mesa && (
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Mesa:</span>
-                          <span className="font-medium">{order.mesa}</span>
-                        </div>
-                      )}
-                      {order.nota_cliente && (
-                        <div className="bg-gray-100 p-2 rounded text-xs">
-                          <span className="font-semibold">Nota:</span> {order.nota_cliente}
-                        </div>
-                      )}
-                      {order.nota_cocina && (
-                        <div className="bg-orange-100 p-2 rounded text-xs border border-orange-300">
-                          <span className="font-semibold text-orange-700">🔔 Cocina:</span> 
-                          <span className="text-orange-800">{order.nota_cocina}</span>
-                        </div>
-                      )}
-                      <div className="border-t pt-2 mt-2">
-                        <p className="font-semibold mb-1">Items:</p>
-                        {order.order_items?.map(item => {
-                          const esNuevo = item.nombre_item_snapshot?.startsWith('🆕') || item.es_adicional
-                          return (
-                            <div key={item.id} className={`flex justify-between text-xs py-1 ${esNuevo ? 'bg-green-100 px-2 rounded border-l-4 border-green-500 my-1' : ''}`}>
-                              <span className={esNuevo ? 'font-bold text-green-700' : ''}>
-                                {item.cantidad}x {item.nombre_item_snapshot}
-                              </span>
-                              <span className={esNuevo ? 'font-bold text-green-700' : ''}>
-                                {formatCurrency(item.precio_unitario * item.cantidad)}
-                              </span>
-                            </div>
-                          )
-                        })}
-                      </div>
-                      <div className="border-t pt-2 mt-2 flex justify-between font-bold text-lg">
-                        <span>Total:</span>
-                        <span className="text-orange-600">{formatCurrency(order.total)}</span>
-                      </div>
-                      <div className="flex space-x-2 mt-3">
-                        <Button size="sm" variant="outline" className="flex-1" onClick={() => openEditOrder(order)}>
-                          <Edit className="h-4 w-4 mr-1" /> Editar
-                        </Button>
-                        <Button size="sm" className="flex-1 bg-green-500 hover:bg-green-600" onClick={() => handleMarcarEntregado(order.id)}>
-                          ✅ Entregado
-                        </Button>
-                        <Button size="sm" variant="destructive" onClick={() => handleEliminarPedido(order.id)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-              {orders.paraEntregar.length === 0 && (
-                <div className="col-span-full text-center py-12 text-gray-500">
-                  No hay pedidos listos para entregar
-                </div>
-              )}
-              </div>
             </div>
           </TabsContent>
 
@@ -1107,11 +1013,12 @@ export default function PedidosPage() {
                     <div className="flex items-start justify-between">
                       <div>
                         <CardTitle className="text-lg flex items-center">
-                          Pedido #{order.id.slice(0, 8)}
+                          {order.customers?.nombre || order.customer_nombre || 'Cliente sin nombre'}
                           {order.origen === 'DIGITAL' && (
                             <Badge className="ml-2 bg-purple-500 text-xs">📱 Cliente</Badge>
                           )}
                         </CardTitle>
+                        <p className="text-xs text-gray-400 mt-0.5">#{order.id.slice(0, 8)}</p>
                         <p className="text-sm text-gray-600 mt-1">
                           {new Date(order.created_at).toLocaleString('es-ES')}
                         </p>
@@ -1144,11 +1051,11 @@ export default function PedidosPage() {
                         <span>Total:</span>
                         <span className="text-orange-600">{formatCurrency(order.total)}</span>
                       </div>
-                      
+
                       {/* Botones de acción para pedidos entregados */}
                       <div className="flex flex-col space-y-2 mt-3">
-                        <Button 
-                          size="sm" 
+                        <Button
+                          size="sm"
                           className="w-full bg-purple-500 hover:bg-purple-600 text-white"
                           onClick={() => openAddItemsDialog(order)}
                         >
@@ -1194,7 +1101,7 @@ export default function PedidosPage() {
             <DialogHeader className="px-4 sm:px-6 pt-4 sm:pt-6 pb-3 border-b shrink-0">
               <DialogTitle>Nuevo Pedido</DialogTitle>
             </DialogHeader>
-            
+
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 overflow-y-scroll p-4 sm:p-6" style={{WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain'}}>
               {/* Productos */}
               <div className="lg:col-span-2 space-y-4">
@@ -1253,12 +1160,12 @@ export default function PedidosPage() {
                 {/* Header del carrito con botón de cuentas separadas */}
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="font-bold text-lg flex items-center">
-                    <ShoppingCart className="mr-2 h-5 w-5" /> 
+                    <ShoppingCart className="mr-2 h-5 w-5" />
                     {cuentasSeparadas ? 'Cuentas Separadas' : `Carrito (${cart.length})`}
                   </h3>
                   {!cuentasSeparadas ? (
-                    <Button 
-                      size="sm" 
+                    <Button
+                      size="sm"
                       variant="outline"
                       onClick={iniciarCuentasSeparadas}
                       className="text-xs"
@@ -1266,8 +1173,8 @@ export default function PedidosPage() {
                       <Users className="h-4 w-4 mr-1" /> Separar Cuentas
                     </Button>
                   ) : (
-                    <Button 
-                      size="sm" 
+                    <Button
+                      size="sm"
                       variant="outline"
                       onClick={cancelarCuentasSeparadas}
                       className="text-xs text-red-600 border-red-300"
@@ -1286,8 +1193,8 @@ export default function PedidosPage() {
                           key={index}
                           onClick={() => setCuentaActiva(index)}
                           className={`px-3 py-1 rounded-full text-xs font-medium transition-all flex items-center gap-1 ${
-                            cuentaActiva === index 
-                              ? 'text-white' 
+                            cuentaActiva === index
+                              ? 'text-white'
                               : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                           }`}
                           style={cuentaActiva === index ? { backgroundColor: themeColors.secondary } : {}}
@@ -1297,7 +1204,7 @@ export default function PedidosPage() {
                             {cuenta.productos.length}
                           </span>
                           {cuentas.length > 1 && (
-                            <span 
+                            <span
                               onClick={(e) => { e.stopPropagation(); eliminarCuenta(index) }}
                               className="ml-1 hover:bg-red-500 hover:text-white rounded-full p-0.5"
                             >
@@ -1436,13 +1343,13 @@ export default function PedidosPage() {
                     </div>
                   )}
 
-                  <Button 
-                    className="w-full hover:opacity-90" 
+                  <Button
+                    className="w-full hover:opacity-90"
                     style={{ backgroundColor: themeColors.secondary }}
-                    onClick={handleCreateOrder} 
+                    onClick={handleCreateOrder}
                     disabled={cuentasSeparadas ? !cuentas.some(c => c.productos.length > 0) : cart.length === 0}
                   >
-                    {cuentasSeparadas 
+                    {cuentasSeparadas
                       ? `Crear ${cuentas.filter(c => c.productos.length > 0).length} Pedidos Separados`
                       : 'Crear Pedido'
                     }
@@ -1459,7 +1366,7 @@ export default function PedidosPage() {
             <DialogHeader className="px-4 sm:px-6 pt-4 sm:pt-6 pb-3 border-b shrink-0">
               <DialogTitle>Editar Pedido #{editingOrder?.id?.slice(0, 8)}</DialogTitle>
             </DialogHeader>
-            
+
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 overflow-y-scroll p-4 sm:p-6" style={{WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain'}}>
               {/* Productos */}
               <div className="lg:col-span-2 space-y-4">
@@ -1578,10 +1485,10 @@ export default function PedidosPage() {
                     </div>
                   </div>
 
-                  <Button 
-                    className="w-full hover:opacity-90" 
+                  <Button
+                    className="w-full hover:opacity-90"
                     style={{ backgroundColor: themeColors.secondary }}
-                    onClick={handleUpdateOrder} 
+                    onClick={handleUpdateOrder}
                     disabled={cart.length === 0}
                   >
                     Actualizar Pedido
@@ -1610,7 +1517,7 @@ export default function PedidosPage() {
                 Mesa: {addingToOrder?.mesa} | Total actual: {formatCurrency(addingToOrder?.total || 0)}
               </p>
             </DialogHeader>
-            
+
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 overflow-y-scroll p-4 sm:p-6" style={{WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain'}}>
               {/* Productos */}
               <div className="lg:col-span-2 space-y-4">
@@ -1744,9 +1651,9 @@ export default function PedidosPage() {
                     </p>
                   </div>
 
-                  <Button 
-                    className="w-full bg-purple-500 hover:bg-purple-600" 
-                    onClick={handleAddItemsToOrder} 
+                  <Button
+                    className="w-full bg-purple-500 hover:bg-purple-600"
+                    onClick={handleAddItemsToOrder}
                     disabled={cart.length === 0}
                   >
                     <Plus className="h-4 w-4 mr-2" />
@@ -1769,13 +1676,13 @@ export default function PedidosPage() {
             </DialogHeader>
             <div className="space-y-4 py-4">
               <p className="text-sm text-gray-600">
-                {cuentas.length === 0 
+                {cuentas.length === 0
                   ? 'Ingresa el nombre de la primera persona para crear cuentas separadas.'
                   : 'Ingresa el nombre de la persona para agregar otra cuenta.'}
               </p>
               <div className="space-y-2">
                 <Label>Nombre de la persona</Label>
-                <Input 
+                <Input
                   placeholder="Ej: Juan, María..."
                   value={nuevoNombreCuenta}
                   onChange={(e) => setNuevoNombreCuenta(e.target.value)}
@@ -1793,7 +1700,7 @@ export default function PedidosPage() {
               }}>
                 Cancelar
               </Button>
-              <Button 
+              <Button
                 onClick={confirmarNuevaCuenta}
                 style={{ backgroundColor: themeColors.secondary }}
                 className="hover:opacity-90"

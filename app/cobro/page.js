@@ -50,6 +50,13 @@ export default function CobroPage() {
   const [appliedCoupon, setAppliedCoupon] = useState(null)
   const [couponLoading, setCouponLoading] = useState(false)
 
+  const getOrderClientName = (order) => (
+    order.customers?.nombre ||
+    order.customer_nombre ||
+    order.factura_nombre ||
+    'Cliente sin nombre'
+  )
+
   useEffect(() => {
     if (!authLoading && !user) {
       router.push('/login')
@@ -206,7 +213,7 @@ export default function CobroPage() {
         const hora = new Date(order.fecha_pago).toLocaleTimeString('es-PY', { hour: '2-digit', minute: '2-digit' })
         const productos = order.order_items?.map(i => `${i.cantidad}x ${i.nombre_item_snapshot?.replace(/,/g, ' ')}`).join(' | ') || 'N/A'
         const cantidadItems = order.order_items?.reduce((sum, i) => sum + i.cantidad, 0) || 0
-        
+
         csvContent += `${order.id.slice(0, 8)},${hora},${order.tipo},${order.mesa || 'N/A'},${order.metodo_pago},${productos},${cantidadItems},${order.total}\n`
       })
 
@@ -433,7 +440,7 @@ export default function CobroPage() {
           .eq('telefono', ruc)
           .limit(1)
           .single()
-        
+
         cliente = clienteTel
       }
 
@@ -463,7 +470,7 @@ export default function CobroPage() {
   const generarReciboPDF = async (orderItems, total) => {
     try {
       const { jsPDF } = await import('jspdf')
-      
+
       // Cargar configuración del recibo
       let config = {
         pageWidth: 80,
@@ -473,7 +480,7 @@ export default function CobroPage() {
         fontSize: 8,
         lineHeight: 4
       }
-      
+
       try {
         const savedConfig = localStorage.getItem('reciboConfig')
         if (savedConfig) {
@@ -491,7 +498,7 @@ export default function CobroPage() {
 
       doc.setFont('helvetica', 'normal')
       doc.setFontSize(config.fontSize)
-      
+
       let y = config.marginTop
 
       // Nombre del restaurante
@@ -544,7 +551,7 @@ export default function CobroPage() {
       orderItems.forEach(item => {
         const descripcion = item.nombre_item_snapshot.substring(0, 20)
         const subtotal = item.cantidad * item.precio_unitario
-        
+
         doc.text(item.cantidad.toString(), config.marginLeft, y)
         doc.text(descripcion, config.marginLeft + 10, y)
         doc.text(formatearNumeroRecibo(subtotal), config.pageWidth - config.marginLeft, y, { align: 'right' })
@@ -614,16 +621,16 @@ export default function CobroPage() {
   const procesarDescuentoStock = async (orderId) => {
     const alertas = []
     let productosDescontados = []
-    
+
     try {
       console.log('🔄 Iniciando descuento de stock para pedido:', orderId)
-      
+
       // Obtener items del pedido con información del menu_item
       const { data: orderItems, error: itemsError } = await supabase
         .from('order_items')
         .select('*, menu_items(id, nombre, usar_stock_avanzado, crear_en_stock)')
         .eq('order_id', orderId)
-      
+
       if (itemsError) {
         console.error('❌ Error obteniendo items del pedido:', itemsError)
         toast.error('Error al obtener items del pedido para stock')
@@ -640,7 +647,7 @@ export default function CobroPage() {
       // Procesar cada item del pedido
       for (const item of orderItems) {
         const menuItem = item.menu_items
-        
+
         if (!menuItem) {
           console.log(`⚠️ Item ${item.nombre_item_snapshot} no tiene menu_item asociado (menu_item_id: ${item.menu_item_id})`)
           continue
@@ -655,7 +662,7 @@ export default function CobroPage() {
             .from('menu_receta')
             .select('*, stock_items(id, nombre, cantidad, stock_minimo_alerta, unidad_medida)')
             .eq('menu_item_id', menuItem.id)
-          
+
           if (recetaError) {
             console.error(`❌ Error obteniendo receta para ${menuItem.nombre}:`, recetaError)
             continue
@@ -678,12 +685,12 @@ export default function CobroPage() {
 
             // Obtener unidades
             const unidadStock = stockItem.unidad_medida || 'unidad'
-            
+
             // Calcular cantidad a descontar con conversión de unidades
             // La receta siempre se guarda en la unidad más pequeña (gramos, ml, unidades)
             let cantidadBase = receta.cantidad_usada * item.cantidad
             let cantidadADescontar = cantidadBase
-            
+
             // Conversión automática: si stock está en kg/litro, la receta está en g/ml
             if (unidadStock === 'kg') {
               cantidadADescontar = cantidadBase / 1000 // gramos a kg
@@ -692,7 +699,7 @@ export default function CobroPage() {
               cantidadADescontar = cantidadBase / 1000 // ml a litros
               console.log(`   → Conversión: ${cantidadBase}ml = ${cantidadADescontar}L`)
             }
-            
+
             const nuevaCantidad = stockItem.cantidad - cantidadADescontar
 
             console.log(`   → ${stockItem.nombre}: ${stockItem.cantidad} - ${cantidadADescontar} = ${nuevaCantidad} ${unidadStock}`)
@@ -700,7 +707,7 @@ export default function CobroPage() {
             // Actualizar stock
             const { error: updateError } = await supabase
               .from('stock_items')
-              .update({ 
+              .update({
                 cantidad: nuevaCantidad
               })
               .eq('id', stockItem.id)
@@ -721,7 +728,7 @@ export default function CobroPage() {
                 motivo: `Venta - Pedido cobrado (${menuItem.nombre})`,
                 order_id: orderId
               })
-            
+
             if (movError) {
               console.log('⚠️ Error registrando movimiento:', movError)
             }
@@ -740,11 +747,11 @@ export default function CobroPage() {
             console.log(`✅ Descontado ${cantidadADescontar} de ${stockItem.nombre}`)
           }
         }
-        
+
         // Caso 2: Producto creado directamente en stock (vendible entero)
         else if (menuItem.crear_en_stock) {
           console.log(`📦 Buscando producto vendible: ${menuItem.nombre}`)
-          
+
           // Buscar el producto en stock_items por nombre
           const { data: stockItems, error: stockError } = await supabase
             .from('stock_items')
@@ -752,7 +759,7 @@ export default function CobroPage() {
             .eq('restaurant_id', restaurant.id)
             .eq('nombre', menuItem.nombre)
             .limit(1)
-          
+
           if (stockError) {
             console.error(`❌ Error buscando stock para ${menuItem.nombre}:`, stockError)
             continue
@@ -771,7 +778,7 @@ export default function CobroPage() {
           // Actualizar stock
           const { error: updateError } = await supabase
             .from('stock_items')
-            .update({ 
+            .update({
               cantidad: nuevaCantidad
             })
             .eq('id', stockItem.id)
@@ -792,7 +799,7 @@ export default function CobroPage() {
               motivo: 'Venta - Pedido cobrado',
               order_id: orderId
             })
-          
+
           if (movError) {
             console.log('⚠️ Error registrando movimiento:', movError)
           }
@@ -821,7 +828,7 @@ export default function CobroPage() {
       } else {
         console.log('ℹ️ No se descontó ningún producto del stock')
       }
-      
+
     } catch (error) {
       console.error('❌ Error general procesando stock:', error)
       toast.error('Error procesando descuento de stock')
@@ -875,7 +882,7 @@ export default function CobroPage() {
             .eq('restaurant_id', restaurant.id)
             .eq('telefono', paymentForm.factura_ruc)
             .single()
-          
+
           existingCustomer = customerByTel
         }
 
@@ -884,7 +891,7 @@ export default function CobroPage() {
             nombre: paymentForm.factura_nombre,
             acepta_marketing_whatsapp: paymentForm.acepta_promociones
           }
-          
+
           try {
             await supabase
               .from('customers')
@@ -896,7 +903,7 @@ export default function CobroPage() {
               .update(updateData)
               .eq('id', existingCustomer.id)
           }
-          
+
           customerId = existingCustomer.id
         } else {
           const newCustomerData = {
@@ -905,19 +912,19 @@ export default function CobroPage() {
             telefono: paymentForm.factura_ruc,
             acepta_marketing_whatsapp: paymentForm.acepta_promociones
           }
-          
+
           try {
             newCustomerData.ruc = paymentForm.factura_ruc
           } catch (e) {
             console.log('Campo RUC no disponible')
           }
-          
+
           const { data: newCustomer } = await supabase
             .from('customers')
             .insert([newCustomerData])
             .select()
             .single()
-          
+
           customerId = newCustomer?.id
         }
       } else if (paymentForm.customer_nombre && paymentForm.customer_telefono) {
@@ -953,7 +960,7 @@ export default function CobroPage() {
       }
 
       const finalTotal = calculateFinalTotal()
-      
+
       // Construir método de pago descriptivo para MIXTO
       let metodoPagoFinal = paymentForm.metodo_pago
       if (paymentForm.metodo_pago === 'MIXTO') {
@@ -1005,7 +1012,7 @@ export default function CobroPage() {
       if (paymentForm.generar_factura && orderItems && orderItems.length > 0) {
         try {
           const { generarFacturaPDF, calcularTotalesFactura, DEFAULT_CONFIG } = await import('@/lib/facturaGenerator')
-          
+
           let facturaConfig = DEFAULT_CONFIG
           try {
             const savedConfig = localStorage.getItem('facturaConfig')
@@ -1124,14 +1131,14 @@ export default function CobroPage() {
                 // Identificar items nuevos (tienen 🆕 o es_adicional)
                 const itemsOriginales = order.order_items?.filter(i => !i.nombre_item_snapshot?.startsWith('🆕') && !i.es_adicional) || []
                 const itemsNuevos = order.order_items?.filter(i => i.nombre_item_snapshot?.startsWith('🆕') || i.es_adicional) || []
-                
+
                 return (
                 <Card key={order.id} className={`border-2 ${itemsNuevos.length > 0 ? 'border-green-400 shadow-lg' : 'border-orange-200'}`}>
                   <CardHeader className={itemsNuevos.length > 0 ? 'bg-green-50' : 'bg-orange-50'}>
                     <div className="flex items-start justify-between">
                       <div>
                         <CardTitle className="text-lg flex items-center">
-                          Pedido #{order.id.slice(0, 8)}
+                          {getOrderClientName(order)}
                           {itemsNuevos.length > 0 && (
                             <span className="ml-2 bg-green-500 text-white text-xs px-2 py-0.5 rounded-full animate-pulse">
                               +{itemsNuevos.length} NUEVO
@@ -1175,7 +1182,7 @@ export default function CobroPage() {
 
                     <div className="border-t pt-2">
                       <p className="font-semibold mb-1 text-sm">Productos:</p>
-                      
+
                       {/* Items originales */}
                       {itemsOriginales.map(item => (
                         <div key={item.id} className="flex justify-between text-xs mb-1">
@@ -1183,7 +1190,7 @@ export default function CobroPage() {
                           <span className="font-medium">{formatCurrency(item.precio_unitario * item.cantidad)}</span>
                         </div>
                       ))}
-                      
+
                       {/* Items nuevos separados */}
                       {itemsNuevos.length > 0 && (
                         <div className="mt-2 pt-2 border-t border-green-300 bg-green-50 rounded p-2">
@@ -1204,14 +1211,14 @@ export default function CobroPage() {
                     </div>
 
                     <div className="flex space-x-2">
-                      <Button 
+                      <Button
                         className="flex-1 hover:opacity-90 text-lg py-6"
                         style={{ backgroundColor: themeColors.secondary }}
                         onClick={() => openPaymentDialog(order)}
                       >
                         <CreditCard className="mr-2 h-5 w-5" /> Cobrar
                       </Button>
-                      <Button 
+                      <Button
                         variant="outline"
                         className="py-6 border-amber-400 text-amber-700 hover:bg-amber-50"
                         onClick={() => handleMarcarPendiente(order.id)}
@@ -1219,7 +1226,7 @@ export default function CobroPage() {
                       >
                         <Clock className="h-5 w-5" />
                       </Button>
-                      <Button 
+                      <Button
                         variant="destructive"
                         className="py-6"
                         onClick={() => handleEliminarPedido(order.id)}
@@ -1256,7 +1263,7 @@ export default function CobroPage() {
                   <CardHeader className="bg-amber-50">
                     <div className="flex items-start justify-between">
                       <div>
-                        <CardTitle className="text-lg">Pedido #{order.id.slice(0, 8)}</CardTitle>
+                        <CardTitle className="text-lg">{getOrderClientName(order)}</CardTitle>
                         <p className="text-sm text-gray-600 mt-1">
                           {new Date(order.created_at).toLocaleString('es-ES')}
                         </p>
@@ -1300,13 +1307,13 @@ export default function CobroPage() {
                     </div>
 
                     <div className="flex space-x-2">
-                      <Button 
+                      <Button
                         className="flex-1 bg-green-600 hover:bg-green-700 text-lg py-6"
                         onClick={() => openPaymentDialog(order)}
                       >
                         <CheckCircle className="mr-2 h-5 w-5" /> Cobrado
                       </Button>
-                      <Button 
+                      <Button
                         variant="outline"
                         className="py-6"
                         onClick={() => handleRegresarACobrar(order.id)}
@@ -1338,7 +1345,7 @@ export default function CobroPage() {
                 <span className="text-gray-600">Últimos 30 días</span>
                 <Badge variant="outline">{ordersCobrados.length} pedidos</Badge>
               </div>
-              <Button 
+              <Button
                 onClick={exportDailySalesToExcel}
                 className="bg-green-600 hover:bg-green-700"
               >
@@ -1353,12 +1360,9 @@ export default function CobroPage() {
                   <CardHeader className="bg-gradient-to-r from-gray-50 to-green-50 pb-2">
                     <div className="flex items-start justify-between">
                       <div>
-                        <CardTitle className="text-lg">Pedido #{order.id.slice(0, 8)}</CardTitle>
+                        <CardTitle className="text-lg">{getOrderClientName(order)}</CardTitle>
                         <p className="text-sm text-gray-600 mt-1">
                           Pagado: {new Date(order.fecha_pago).toLocaleString('es-ES')}
-                        </p>
-                        <p className="text-sm font-medium text-gray-700 mt-1">
-                          Cliente: {order.customers?.nombre || order.factura_nombre || order.customer_nombre || 'Consumidor final'}
                         </p>
                       </div>
                       <Badge className="bg-green-500">PAGADO</Badge>
@@ -1431,9 +1435,9 @@ export default function CobroPage() {
 
           {/* Pestaña Cobro Rápido */}
           <TabsContent value="rapido">
-            <CobroRapidoSection 
-              restaurant={restaurant} 
-              formatCurrency={formatCurrency} 
+            <CobroRapidoSection
+              restaurant={restaurant}
+              formatCurrency={formatCurrency}
               onOrderCreated={(order) => {
                 // Cuando se crea el pedido desde cobro rápido, abrir diálogo de pago
                 openPaymentDialog(order)
@@ -1465,7 +1469,7 @@ export default function CobroPage() {
                   <>
                     <div className="space-y-2">
                       <Label>Nombre del Cliente (opcional)</Label>
-                      <Input 
+                      <Input
                         value={paymentForm.customer_nombre}
                         onChange={(e) => setPaymentForm({...paymentForm, customer_nombre: e.target.value})}
                         placeholder="Juan Pérez"
@@ -1474,7 +1478,7 @@ export default function CobroPage() {
 
                     <div className="space-y-2">
                       <Label>Teléfono/WhatsApp (opcional)</Label>
-                      <Input 
+                      <Input
                         value={paymentForm.customer_telefono}
                         onChange={(e) => setPaymentForm({...paymentForm, customer_telefono: e.target.value})}
                         placeholder="+595 900 000 000"
@@ -1482,7 +1486,7 @@ export default function CobroPage() {
                     </div>
 
                     <div className="flex items-center space-x-2">
-                      <Checkbox 
+                      <Checkbox
                         checked={paymentForm.acepta_promociones}
                         onCheckedChange={(checked) => setPaymentForm({...paymentForm, acepta_promociones: checked})}
                       />
@@ -1499,10 +1503,10 @@ export default function CobroPage() {
                       <Receipt className="h-5 w-5 text-green-600" />
                       <Label className="font-semibold cursor-pointer">Generar Recibo</Label>
                     </div>
-                    <Checkbox 
+                    <Checkbox
                       checked={paymentForm.generar_recibo}
                       onCheckedChange={(checked) => setPaymentForm({
-                        ...paymentForm, 
+                        ...paymentForm,
                         generar_recibo: checked,
                         generar_factura: checked ? false : paymentForm.generar_factura
                       })}
@@ -1515,10 +1519,10 @@ export default function CobroPage() {
                       <FileText className="h-5 w-5 text-blue-600" />
                       <Label className="font-semibold cursor-pointer">Generar Factura</Label>
                     </div>
-                    <Checkbox 
+                    <Checkbox
                       checked={paymentForm.generar_factura}
                       onCheckedChange={(checked) => setPaymentForm({
-                        ...paymentForm, 
+                        ...paymentForm,
                         generar_factura: checked,
                         generar_recibo: checked ? false : paymentForm.generar_recibo
                       })}
@@ -1530,10 +1534,10 @@ export default function CobroPage() {
                 {paymentForm.generar_factura && (
                   <div className="space-y-3 border border-blue-200 p-4 rounded-lg bg-blue-50/50">
                     <p className="text-sm font-semibold text-blue-800 mb-2">📋 Datos para la Factura</p>
-                    
+
                     <div className="space-y-2">
                       <Label>RUC / C.I. N° *</Label>
-                      <Input 
+                      <Input
                         value={paymentForm.factura_ruc}
                         onChange={(e) => setPaymentForm({...paymentForm, factura_ruc: e.target.value})}
                         onBlur={(e) => buscarClientePorRUC(e.target.value)}
@@ -1544,7 +1548,7 @@ export default function CobroPage() {
 
                     <div className="space-y-2">
                       <Label>Nombre / Razón Social *</Label>
-                      <Input 
+                      <Input
                         value={paymentForm.factura_nombre}
                         onChange={(e) => setPaymentForm({...paymentForm, factura_nombre: e.target.value})}
                         placeholder="JUAN PÉREZ"
@@ -1564,7 +1568,7 @@ export default function CobroPage() {
                     <Tag className="mr-2 h-4 w-4" /> Aplicar Cupón
                   </Label>
                   <div className="flex space-x-2">
-                    <Input 
+                    <Input
                       value={paymentForm.cupon_codigo}
                       onChange={(e) => setPaymentForm({...paymentForm, cupon_codigo: e.target.value})}
                       placeholder="Código del cupón"
@@ -1572,7 +1576,7 @@ export default function CobroPage() {
                       className="uppercase"
                     />
                     {!appliedCoupon ? (
-                      <Button 
+                      <Button
                         variant="outline"
                         onClick={validateAndApplyCoupon}
                         disabled={couponLoading}
@@ -1580,7 +1584,7 @@ export default function CobroPage() {
                         {couponLoading ? 'Validando...' : 'Aplicar'}
                       </Button>
                     ) : (
-                      <Button 
+                      <Button
                         variant="destructive"
                         onClick={() => {
                           setAppliedCoupon(null)
@@ -1598,8 +1602,8 @@ export default function CobroPage() {
                         <Tag className="mr-2 h-4 w-4" /> Cupón "{appliedCoupon.codigo}" aplicado
                       </p>
                       <p className="text-sm text-green-700">
-                        Descuento: {appliedCoupon.tipo === 'PORCENTAJE' 
-                          ? `${appliedCoupon.valor}%` 
+                        Descuento: {appliedCoupon.tipo === 'PORCENTAJE'
+                          ? `${appliedCoupon.valor}%`
                           : formatCurrency(appliedCoupon.valor)}
                       </p>
                     </div>
@@ -1725,10 +1729,10 @@ export default function CobroPage() {
                       <Coins className="h-5 w-5 text-yellow-600" />
                       <Label className="font-semibold text-yellow-800">Calcular Vuelto</Label>
                     </div>
-                    
+
                     <div className="space-y-2">
                       <Label className="text-sm">Monto Recibido (Gs)</Label>
-                      <Input 
+                      <Input
                         type="number"
                         value={paymentForm.monto_recibido}
                         onChange={(e) => setPaymentForm({...paymentForm, monto_recibido: e.target.value})}
@@ -1756,7 +1760,7 @@ export default function CobroPage() {
                   </div>
                 )}
 
-                <Button 
+                <Button
                   className="w-full hover:opacity-90 py-6 text-lg"
                   style={{ backgroundColor: themeColors.secondary }}
                   onClick={handleProcessPayment}
@@ -1764,17 +1768,17 @@ export default function CobroPage() {
                 >
                   {paymentForm.generar_factura ? (
                     <>
-                      <FileText className="mr-2 h-5 w-5" /> 
+                      <FileText className="mr-2 h-5 w-5" />
                       Procesar Pago - {formatCurrency(calculateFinalTotal())} y Descargar Factura
                     </>
                   ) : paymentForm.generar_recibo ? (
                     <>
-                      <Receipt className="mr-2 h-5 w-5" /> 
+                      <Receipt className="mr-2 h-5 w-5" />
                       Procesar Pago - {formatCurrency(calculateFinalTotal())} y Descargar Recibo
                     </>
                   ) : (
                     <>
-                      <CreditCard className="mr-2 h-5 w-5" /> 
+                      <CreditCard className="mr-2 h-5 w-5" />
                       Procesar Pago - {formatCurrency(calculateFinalTotal())}
                     </>
                   )}
@@ -1811,10 +1815,10 @@ function CobroRapidoSection({ restaurant, formatCurrency, onOrderCreated }) {
       setIsLoading(false)
       return
     }
-    
+
     try {
       console.log('Loading products for restaurant:', restaurant.id)
-      
+
       const { data: cats, error: catsError } = await supabase
         .from('menu_categories')
         .select('*')
@@ -1850,7 +1854,7 @@ function CobroRapidoSection({ restaurant, formatCurrency, onOrderCreated }) {
   }
 
   const filteredProducts = menuItems.filter(item => {
-    const matchesSearch = !searchTerm || 
+    const matchesSearch = !searchTerm ||
       item.nombre.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesCategory = !selectedCategory || selectedCategory === 'all' || item.category_id === selectedCategory
     return matchesSearch && matchesCategory
@@ -1932,12 +1936,12 @@ function CobroRapidoSection({ restaurant, formatCurrency, onOrderCreated }) {
       // Limpiar carrito y llamar al callback para abrir diálogo de pago
       setCart([])
       setProcesando(false)
-      
+
       // Llamar al callback del componente padre para abrir el diálogo de pago
       if (onOrderCreated) {
         onOrderCreated(completeOrder)
       }
-      
+
       toast.success('Pedido creado. Procede con el cobro.')
     } catch (error) {
       console.error('Error en cobro rápido:', error)
@@ -2043,7 +2047,7 @@ function CobroRapidoSection({ restaurant, formatCurrency, onOrderCreated }) {
                 Al hacer clic se creará el pedido y se abrirá la ventana de cobro completa
               </p>
 
-              <Button 
+              <Button
                 className="w-full bg-green-500 hover:bg-green-600 py-6 text-lg"
                 onClick={handleProcederACobro}
                 disabled={cart.length === 0 || procesando}

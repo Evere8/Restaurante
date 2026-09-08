@@ -12,11 +12,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Download, Save, RotateCcw, FileText, Receipt } from 'lucide-react'
 import { toast } from 'sonner'
 import { generarFacturaPDF, DEFAULT_CONFIG } from '@/lib/facturaGenerator'
+import { supabase } from '@/lib/supabase'
 
 // Configuración por defecto del recibo
 const DEFAULT_RECIBO_CONFIG = {
-  pageWidth: 80,
-  pageHeight: 200,
+  pageWidth: 210,
+  pageHeight: 148,
   marginLeft: 5,
   marginTop: 5,
   restaurante: {
@@ -54,10 +55,11 @@ const EJEMPLO_DATA = {
 export default function ConfiguracionFacturaPage() {
   const { user, restaurant, loading: authLoading } = useAuth()
   const router = useRouter()
-  
+
   const [facturaConfig, setFacturaConfig] = useState(DEFAULT_CONFIG)
   const [reciboConfig, setReciboConfig] = useState(DEFAULT_RECIBO_CONFIG)
   const [activeTab, setActiveTab] = useState('factura')
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -66,25 +68,79 @@ export default function ConfiguracionFacturaPage() {
   }, [user, authLoading, router])
 
   useEffect(() => {
-    // Cargar configuraciones guardadas
-    const savedFactura = localStorage.getItem('facturaConfig')
-    if (savedFactura) {
-      try {
-        setFacturaConfig(JSON.parse(savedFactura))
-      } catch (e) {
-        console.error('Error cargando config factura:', e)
+    if (restaurant?.id) {
+      loadConfigFromSupabase()
+    }
+  }, [restaurant])
+
+  // Cargar configuración desde Supabase
+  const loadConfigFromSupabase = async () => {
+    try {
+      // Cargar config de factura
+      const { data: facturaData } = await supabase
+        .from('factura_config')
+        .select('config')
+        .eq('restaurant_id', restaurant.id)
+        .eq('tipo', 'factura')
+        .single()
+
+      if (facturaData?.config) {
+        setFacturaConfig(facturaData.config)
+      } else {
+        // Fallback a localStorage
+        const savedFactura = localStorage.getItem('facturaConfig')
+        if (savedFactura) {
+          try {
+            setFacturaConfig(JSON.parse(savedFactura))
+          } catch (e) {
+            console.error('Error cargando config factura:', e)
+          }
+        }
+      }
+
+      // Cargar config de recibo
+      const { data: reciboData } = await supabase
+        .from('factura_config')
+        .select('config')
+        .eq('restaurant_id', restaurant.id)
+        .eq('tipo', 'recibo')
+        .single()
+
+      if (reciboData?.config) {
+        setReciboConfig(reciboData.config)
+      } else {
+        // Fallback a localStorage
+        const savedRecibo = localStorage.getItem('reciboConfig')
+        if (savedRecibo) {
+          try {
+            setReciboConfig(JSON.parse(savedRecibo))
+          } catch (e) {
+            console.error('Error cargando config recibo:', e)
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error cargando configuración de Supabase:', error)
+      // Fallback a localStorage
+      const savedFactura = localStorage.getItem('facturaConfig')
+      if (savedFactura) {
+        try {
+          setFacturaConfig(JSON.parse(savedFactura))
+        } catch (e) {
+          console.error('Error cargando config factura:', e)
+        }
+      }
+
+      const savedRecibo = localStorage.getItem('reciboConfig')
+      if (savedRecibo) {
+        try {
+          setReciboConfig(JSON.parse(savedRecibo))
+        } catch (e) {
+          console.error('Error cargando config recibo:', e)
+        }
       }
     }
-    
-    const savedRecibo = localStorage.getItem('reciboConfig')
-    if (savedRecibo) {
-      try {
-        setReciboConfig(JSON.parse(savedRecibo))
-      } catch (e) {
-        console.error('Error cargando config recibo:', e)
-      }
-    }
-  }, [])
+  }
 
   // Funciones para Factura
   const updateFacturaConfig = (path, value) => {
@@ -98,9 +154,30 @@ export default function ConfiguracionFacturaPage() {
     setFacturaConfig(newConfig)
   }
 
-  const saveFacturaConfig = () => {
-    localStorage.setItem('facturaConfig', JSON.stringify(facturaConfig))
-    toast.success('Configuración de factura guardada')
+  const saveFacturaConfig = async () => {
+    setSaving(true)
+    try {
+      // Guardar en Supabase
+      const { error } = await supabase
+        .from('factura_config')
+        .upsert({
+          restaurant_id: restaurant.id,
+          tipo: 'factura',
+          config: facturaConfig
+        }, { onConflict: 'restaurant_id,tipo' })
+
+      if (error) throw error
+
+      // También guardar en localStorage como backup
+      localStorage.setItem('facturaConfig', JSON.stringify(facturaConfig))
+      toast.success('Configuración de factura guardada en la nube')
+    } catch (error) {
+      console.error('Error guardando en Supabase:', error)
+      // Fallback a localStorage
+      localStorage.setItem('facturaConfig', JSON.stringify(facturaConfig))
+      toast.success('Configuración guardada localmente')
+    }
+    setSaving(false)
   }
 
   const resetFacturaConfig = () => {
@@ -135,7 +212,7 @@ export default function ConfiguracionFacturaPage() {
     for (let i = 0; i < keys.length - 1; i++) {
       obj = obj[keys[i]]
     }
-    
+
     // Si es texto, no convertir a número
     if (path.includes('texto')) {
       obj[keys[keys.length - 1]] = value
@@ -145,9 +222,30 @@ export default function ConfiguracionFacturaPage() {
     setReciboConfig(newConfig)
   }
 
-  const saveReciboConfig = () => {
-    localStorage.setItem('reciboConfig', JSON.stringify(reciboConfig))
-    toast.success('Configuración de recibo guardada')
+  const saveReciboConfig = async () => {
+    setSaving(true)
+    try {
+      // Guardar en Supabase
+      const { error } = await supabase
+        .from('factura_config')
+        .upsert({
+          restaurant_id: restaurant.id,
+          tipo: 'recibo',
+          config: reciboConfig
+        }, { onConflict: 'restaurant_id,tipo' })
+
+      if (error) throw error
+
+      // También guardar en localStorage como backup
+      localStorage.setItem('reciboConfig', JSON.stringify(reciboConfig))
+      toast.success('Configuración de recibo guardada en la nube')
+    } catch (error) {
+      console.error('Error guardando en Supabase:', error)
+      // Fallback a localStorage
+      localStorage.setItem('reciboConfig', JSON.stringify(reciboConfig))
+      toast.success('Configuración guardada localmente')
+    }
+    setSaving(false)
   }
 
   const resetReciboConfig = () => {
@@ -159,16 +257,16 @@ export default function ConfiguracionFacturaPage() {
   const downloadTestReciboPDF = async () => {
     try {
       const { jsPDF } = await import('jspdf')
-      
+
       const config = reciboConfig
       const doc = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: [config.pageWidth, config.pageHeight]
-      })
+  orientation: 'landscape',
+  unit: 'mm',
+  format: [config.pageWidth, config.pageHeight]
+})
 
       doc.setFont('helvetica', 'normal')
-      
+
       let y = config.marginTop
 
       // Nombre del restaurante
@@ -193,7 +291,7 @@ export default function ConfiguracionFacturaPage() {
       doc.setFontSize(config.fecha.fontSize)
       const fecha = new Date()
       doc.text(`Fecha: ${fecha.toLocaleDateString('es-PY')}`, config.marginLeft, config.fecha.y)
-      
+
       // Hora
       doc.text(`Hora: ${fecha.toLocaleTimeString('es-PY')}`, config.marginLeft, config.hora.y)
 
@@ -218,7 +316,7 @@ export default function ConfiguracionFacturaPage() {
       EJEMPLO_DATA.items.forEach(item => {
         const subtotal = item.cantidad * item.precioUnitario
         totalGeneral += subtotal
-        
+
         doc.text(item.cantidad.toString(), config.tabla.columnas.cantidad.x, y)
         doc.text(item.descripcion, config.tabla.columnas.descripcion.x, y)
         doc.text(formatNum(subtotal), config.tabla.columnas.total.x, y, { align: 'right' })
@@ -675,9 +773,9 @@ export default function ConfiguracionFacturaPage() {
                     <div className="p-3 bg-yellow-50 rounded-lg">
                       <Label className="font-bold text-yellow-800">💬 Mensaje Final</Label>
                       <div className="mt-2">
-                        <Input 
-                          value={reciboConfig.mensaje.texto} 
-                          onChange={(e) => updateReciboConfig('mensaje.texto', e.target.value)} 
+                        <Input
+                          value={reciboConfig.mensaje.texto}
+                          onChange={(e) => updateReciboConfig('mensaje.texto', e.target.value)}
                           placeholder="¡Gracias por su compra!"
                         />
                       </div>

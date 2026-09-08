@@ -17,8 +17,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Plus, Edit, Trash2, Package, AlertTriangle, X, ChevronRight, FolderTree, Layers } from 'lucide-react'
+import { Plus, Edit, Trash2, Package, AlertTriangle, X, ChevronRight, FolderTree, Layers, Upload } from 'lucide-react'
 import { toast } from 'sonner'
+import { compressAndUploadImage } from '@/lib/imageUpload'
 
 export default function MenuPage() {
   const { user, restaurant, loading: authLoading } = useAuth()
@@ -57,6 +58,30 @@ export default function MenuPage() {
   })
 
   const [recetaItems, setRecetaItems] = useState([])
+  const [uploadingImage, setUploadingImage] = useState(false)
+
+  const handleProductImageUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('La imagen es muy grande. Máximo 10MB')
+      e.target.value = ''
+      return
+    }
+    setUploadingImage(true)
+    try {
+      const { url, error } = await compressAndUploadImage(file, 'productos', restaurant?.id || 'r')
+      if (error || !url) {
+        toast.error(error || 'Error al subir imagen')
+      } else {
+        setProductForm((prev) => ({ ...prev, img_url: url }))
+        toast.success('Imagen comprimida y subida correctamente')
+      }
+    } finally {
+      setUploadingImage(false)
+      e.target.value = ''
+    }
+  }
 
   const [categoryForm, setCategoryForm] = useState({
     nombre: '',
@@ -65,7 +90,7 @@ export default function MenuPage() {
     descripcion: '',
     icono: ''
   })
-  
+
   // Estado para filtrar vista de categorías
   const [showSubcategories, setShowSubcategories] = useState(true)
 
@@ -88,7 +113,7 @@ export default function MenuPage() {
       .select('*')
       .eq('restaurant_id', restaurant.id)
       .order('orden', { ascending: true })
-    
+
     setCategories(catsData || [])
 
     // Cargar productos
@@ -225,7 +250,7 @@ export default function MenuPage() {
             cantidad: productForm.cantidad_inicial ? parseFloat(productForm.cantidad_inicial) : 0,
             unidad_medida: productForm.unidad_medida || 'unidad',
             costo: productForm.coste ? parseFloat(productForm.coste) : null,
-            vencimiento: productForm.fecha_compra && productForm.dias_para_vencer 
+            vencimiento: productForm.fecha_compra && productForm.dias_para_vencer
               ? new Date(new Date(productForm.fecha_compra).getTime() + productForm.dias_para_vencer * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
               : null,
             stock_minimo_alerta: parseFloat(productForm.stock_minimo_alerta) || 1,
@@ -453,10 +478,10 @@ export default function MenuPage() {
     })
     setCategoryDialogOpen(true)
   }
-  
+
   // Obtener solo categorías principales (sin parent_id)
   const mainCategories = categories.filter(c => !c.parent_id)
-  
+
   // Obtener subcategorías de una categoría principal
   const getSubcategories = (parentId) => {
     return categories.filter(c => c.parent_id === parentId)
@@ -477,7 +502,7 @@ export default function MenuPage() {
   const updateRecetaItem = (index, field, value) => {
     const updated = [...recetaItems]
     updated[index][field] = value
-    
+
     if (field === 'stock_item_id') {
       const item = stockItems.find(s => s.id === value)
       if (item) {
@@ -487,7 +512,7 @@ export default function MenuPage() {
         updated[index].unidad_receta = item.unidad_medida || 'unidad'
       }
     }
-    
+
     setRecetaItems(updated)
   }
 
@@ -566,7 +591,7 @@ export default function MenuPage() {
                   <DialogHeader>
                     <DialogTitle>{editingProduct ? 'Editar' : 'Nuevo'} Producto</DialogTitle>
                   </DialogHeader>
-                  
+
                   {showManualWarning && (
                     <Alert className="bg-yellow-50 border-yellow-200">
                       <AlertTriangle className="h-4 w-4 text-yellow-600" />
@@ -594,13 +619,13 @@ export default function MenuPage() {
                         </SelectContent>
                       </Select>
                     </div>
-                    
+
                     {/* Subcategoría - solo si hay subcategorías para la categoría seleccionada */}
                     {productForm.category_id && getSubcategories(productForm.category_id).length > 0 && (
                       <div className="space-y-2">
                         <Label>Subcategoría <span className="text-gray-400 text-xs">(opcional)</span></Label>
-                        <Select 
-                          value={productForm.subcategory_id || 'none'} 
+                        <Select
+                          value={productForm.subcategory_id || 'none'}
                           onValueChange={(val) => setProductForm({...productForm, subcategory_id: val === 'none' ? '' : val})}
                         >
                           <SelectTrigger>
@@ -633,18 +658,18 @@ export default function MenuPage() {
                     {/* Checkboxes de Stock */}
                     <div className="col-span-2 space-y-3 border-t pt-3">
                       <div className="flex items-center space-x-2">
-                        <Switch 
-                          checked={productForm.usar_stock_avanzado} 
-                          onCheckedChange={(checked) => setProductForm({...productForm, usar_stock_avanzado: checked, crear_en_stock: false})} 
+                        <Switch
+                          checked={productForm.usar_stock_avanzado}
+                          onCheckedChange={(checked) => setProductForm({...productForm, usar_stock_avanzado: checked, crear_en_stock: false})}
                         />
                         <Label>✨ Usar Stock Avanzado (con Receta)</Label>
                       </div>
-                      
+
                       {!productForm.usar_stock_avanzado && (
                         <div className="flex items-center space-x-2">
-                          <Switch 
-                            checked={productForm.crear_en_stock} 
-                            onCheckedChange={(checked) => setProductForm({...productForm, crear_en_stock: checked})} 
+                          <Switch
+                            checked={productForm.crear_en_stock}
+                            onCheckedChange={(checked) => setProductForm({...productForm, crear_en_stock: checked})}
                           />
                           <Label>📦 Crear automáticamente en STOCK</Label>
                         </div>
@@ -674,11 +699,11 @@ export default function MenuPage() {
                       <>
                         <div className="space-y-2">
                           <Label>Cantidad Inicial *</Label>
-                          <Input 
-                            type="number" 
+                          <Input
+                            type="number"
                             step="0.01"
-                            value={productForm.cantidad_inicial} 
-                            onChange={(e) => setProductForm({...productForm, cantidad_inicial: e.target.value})} 
+                            value={productForm.cantidad_inicial}
+                            onChange={(e) => setProductForm({...productForm, cantidad_inicial: e.target.value})}
                             placeholder="Ej: 100"
                           />
                         </div>
@@ -709,26 +734,67 @@ export default function MenuPage() {
                     )}
 
                     <div className="col-span-2 space-y-2">
-                      <Label>URL Imagen</Label>
-                      <Input 
-                        value={productForm.img_url} 
-                        onChange={(e) => setProductForm({...productForm, img_url: e.target.value})} 
-                        onBlur={(e) => {
-                          const cleanUrl = extractImageUrl(e.target.value)
-                          if (cleanUrl !== e.target.value) {
-                            setProductForm({...productForm, img_url: cleanUrl})
-                            toast.success('URL de imagen extraída correctamente')
-                          }
-                        }}
-                        placeholder="Pega cualquier URL de Google Imágenes o URL directa" 
-                      />
+                      <Label>Imagen del Producto</Label>
+                      <div className="flex flex-col gap-2">
+                        {/* Botón de subir desde PC/galería */}
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="file"
+                            id="product-image-upload"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={handleProductImageUpload}
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            disabled={uploadingImage}
+                            onClick={() => document.getElementById('product-image-upload')?.click()}
+                            className="flex items-center"
+                          >
+                            <Upload className="h-4 w-4 mr-2" />
+                            {uploadingImage ? 'Subiendo...' : 'Subir desde PC/Galería'}
+                          </Button>
+                          {productForm.img_url && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setProductForm({ ...productForm, img_url: '' })}
+                              className="text-red-600"
+                            >
+                              <X className="h-4 w-4 mr-1" /> Quitar
+                            </Button>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-500">
+                          La imagen se comprimirá automáticamente (~400KB máx, 1200px) para optimizar tu hosting sin perder calidad notable.
+                        </p>
+
+                        {/* Campo URL opcional */}
+                        <div>
+                          <Label className="text-xs text-gray-600">O pega una URL de imagen:</Label>
+                          <Input
+                            value={productForm.img_url}
+                            onChange={(e) => setProductForm({...productForm, img_url: e.target.value})}
+                            onBlur={(e) => {
+                              const cleanUrl = extractImageUrl(e.target.value)
+                              if (cleanUrl !== e.target.value) {
+                                setProductForm({...productForm, img_url: cleanUrl})
+                                toast.success('URL de imagen extraída correctamente')
+                              }
+                            }}
+                            placeholder="https://... o URL de Google Imágenes"
+                          />
+                        </div>
+                      </div>
                       {productForm.img_url && (
                         <div className="mt-2">
                           <p className="text-xs text-gray-500 mb-1">Vista previa:</p>
                           <div className="w-32 h-32 bg-gray-50 rounded border flex items-center justify-center overflow-hidden">
-                            <img 
-                              src={productForm.img_url} 
-                              alt="Preview" 
+                            <img
+                              src={productForm.img_url}
+                              alt="Preview"
                               className="w-full h-full object-cover"
                               onLoad={(e) => {
                                 e.target.style.display = 'block'
@@ -751,7 +817,7 @@ export default function MenuPage() {
                             <Plus className="h-4 w-4 mr-1" /> Agregar Insumo
                           </Button>
                         </div>
-                        
+
                         {recetaItems.length === 0 ? (
                           <div className="text-center py-4 bg-gray-50 rounded-lg border-2 border-dashed">
                             <p className="text-gray-500">No hay insumos en la receta. Agrega al menos uno.</p>
@@ -762,12 +828,12 @@ export default function MenuPage() {
                               const stockItem = stockItems.find(s => s.id === item.stock_item_id)
                               const unidadStock = stockItem?.unidad_medida || 'unidad'
                               const unidadIngreso = unidadStock === 'kg' ? 'gramos' : unidadStock === 'litro' ? 'ml' : unidadStock
-                              
+
                               return (
                                 <div key={index} className="p-3 bg-orange-50 rounded-lg border space-y-2">
                                   <div className="flex items-center space-x-2">
-                                    <Select 
-                                      value={item.stock_item_id} 
+                                    <Select
+                                      value={item.stock_item_id}
                                       onValueChange={(val) => updateRecetaItem(index, 'stock_item_id', val)}
                                     >
                                       <SelectTrigger className="flex-1">
@@ -785,11 +851,11 @@ export default function MenuPage() {
                                       <X className="h-4 w-4 text-red-500" />
                                     </Button>
                                   </div>
-                                  
+
                                   <div className="flex items-center space-x-2">
-                                    <Input 
-                                      type="number" 
-                                      step="0.01" 
+                                    <Input
+                                      type="number"
+                                      step="0.01"
                                       placeholder={`Cantidad en ${unidadIngreso}`}
                                       value={item.cantidad}
                                       onChange={(e) => updateRecetaItem(index, 'cantidad', e.target.value)}
@@ -807,7 +873,7 @@ export default function MenuPage() {
                             })}
                           </div>
                         )}
-                        
+
                         <div className="bg-blue-50 border border-blue-200 p-3 rounded-lg text-sm">
                           <p className="font-semibold text-blue-800 mb-1">💡 Unidades de medida:</p>
                           <ul className="text-blue-700 list-disc list-inside space-y-1">
@@ -837,10 +903,10 @@ export default function MenuPage() {
                 <Card key={product.id} className="overflow-hidden">
                   {product.img_url && (
                     <div className="w-full h-40 bg-gray-100 rounded-t-lg overflow-hidden flex items-center justify-center">
-                      <img 
-                        src={product.img_url} 
-                        alt={product.nombre} 
-                        className="w-full h-full object-cover" 
+                      <img
+                        src={product.img_url}
+                        alt={product.nombre}
+                        className="w-full h-full object-cover"
                         onError={(e) => {
                           e.target.style.display = 'none'
                         }}
@@ -938,8 +1004,8 @@ export default function MenuPage() {
                       {/* Tipo de categoría */}
                       <div className="space-y-2">
                         <Label>Tipo</Label>
-                        <Select 
-                          value={categoryForm.parent_id || 'principal'} 
+                        <Select
+                          value={categoryForm.parent_id || 'principal'}
                           onValueChange={(val) => setCategoryForm({...categoryForm, parent_id: val === 'principal' ? null : val})}
                         >
                           <SelectTrigger>
@@ -966,12 +1032,12 @@ export default function MenuPage() {
                           Las subcategorías aparecerán como títulos de sección en el menú del cliente
                         </p>
                       </div>
-                      
+
                       <div className="space-y-2">
                         <Label>Nombre *</Label>
                         <Input value={categoryForm.nombre} onChange={(e) => setCategoryForm({...categoryForm, nombre: e.target.value})} />
                       </div>
-                      
+
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label>Orden</Label>
@@ -979,19 +1045,19 @@ export default function MenuPage() {
                         </div>
                         <div className="space-y-2">
                           <Label>Icono <span className="text-gray-400 text-xs">(emoji)</span></Label>
-                          <Input 
-                            value={categoryForm.icono} 
-                            onChange={(e) => setCategoryForm({...categoryForm, icono: e.target.value})} 
+                          <Input
+                            value={categoryForm.icono}
+                            onChange={(e) => setCategoryForm({...categoryForm, icono: e.target.value})}
                             placeholder="🍕"
                           />
                         </div>
                       </div>
-                      
+
                       <div className="space-y-2">
                         <Label>Descripción <span className="text-gray-400 text-xs">(opcional)</span></Label>
-                        <Textarea 
-                          value={categoryForm.descripcion} 
-                          onChange={(e) => setCategoryForm({...categoryForm, descripcion: e.target.value})} 
+                        <Textarea
+                          value={categoryForm.descripcion}
+                          onChange={(e) => setCategoryForm({...categoryForm, descripcion: e.target.value})}
                           placeholder="Descripción de la categoría..."
                           rows={2}
                         />
@@ -1019,7 +1085,7 @@ export default function MenuPage() {
                     mainCategories.map(category => {
                       const productCount = products.filter(p => p.category_id === category.id).length
                       const subcats = getSubcategories(category.id)
-                      
+
                       return (
                         <div key={category.id}>
                           {/* Categoría Principal */}
@@ -1042,17 +1108,17 @@ export default function MenuPage() {
                               </div>
                             </div>
                             <div className="flex space-x-2">
-                              <Button 
-                                size="sm" 
+                              <Button
+                                size="sm"
                                 variant="outline"
                                 className="text-blue-600 border-blue-200 hover:bg-blue-50"
                                 onClick={() => {
-                                  setCategoryForm({ 
-                                    nombre: '', 
-                                    orden: subcats.length, 
-                                    parent_id: category.id, 
+                                  setCategoryForm({
+                                    nombre: '',
+                                    orden: subcats.length,
+                                    parent_id: category.id,
                                     descripcion: '',
-                                    icono: '' 
+                                    icono: ''
                                   })
                                   setEditingCategory(null)
                                   setCategoryDialogOpen(true)
@@ -1068,15 +1134,15 @@ export default function MenuPage() {
                               </Button>
                             </div>
                           </div>
-                          
+
                           {/* Subcategorías */}
                           {subcats.length > 0 && (
                             <div className="bg-gray-50/50">
                               {subcats.map(subcat => {
                                 const subProductCount = products.filter(p => p.subcategory_id === subcat.id).length
                                 return (
-                                  <div 
-                                    key={subcat.id} 
+                                  <div
+                                    key={subcat.id}
                                     className="p-3 pl-16 flex items-center justify-between hover:bg-gray-100 border-l-4 border-blue-200"
                                   >
                                     <div className="flex items-center">
@@ -1114,7 +1180,7 @@ export default function MenuPage() {
                 </div>
               </CardContent>
             </Card>
-            
+
             {/* Tip informativo */}
             <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
               <h4 className="font-medium text-blue-800 flex items-center mb-2">

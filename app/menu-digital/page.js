@@ -14,9 +14,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { QrCode, Link2, Copy, Download, Palette, Image, Eye, Save, ExternalLink, Settings, Smartphone, Gift, Plus, Trash2, Percent } from 'lucide-react'
+import { Progress } from '@/components/ui/progress'
+import { QrCode, Link2, Copy, Download, Palette, Image, Eye, Save, ExternalLink, Settings, Smartphone, Gift, Plus, Trash2, Percent, Loader2, CheckCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import QRCode from 'qrcode'
+
+// Helper para formatear tamaño de archivo
+function formatFileSize(bytes) {
+  if (bytes === 0) return '0 Bytes'
+  const k = 1024
+  const sizes = ['Bytes', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+}
 
 export default function MenuDigitalPage() {
   const { user, restaurant, loading: authLoading } = useAuth()
@@ -35,14 +45,18 @@ export default function MenuDigitalPage() {
     horario_apertura: '',
     horario_cierre: '',
     mostrar_precios: true,
-    permitir_pedidos: true
+    permitir_pedidos: true,
+    menu_pdf_url: '' // URL del PDF del menú
   })
 
   const [slug, setSlug] = useState('')
   const [qrDataUrl, setQrDataUrl] = useState('')
   const [saving, setSaving] = useState(false)
   const [uploadingImage, setUploadingImage] = useState(false)
-  
+  const [uploadingPdf, setUploadingPdf] = useState(false)
+  const [pdfProgress, setPdfProgress] = useState(0)
+  const [compressionInfo, setCompressionInfo] = useState(null)
+
   // Promociones
   const [promotions, setPromotions] = useState([])
   const [menuItems, setMenuItems] = useState([])
@@ -92,11 +106,96 @@ export default function MenuDigitalPage() {
           horario_apertura: data.horario_apertura || '',
           horario_cierre: data.horario_cierre || '',
           mostrar_precios: data.mostrar_precios ?? true,
-          permitir_pedidos: data.permitir_pedidos ?? true
+          permitir_pedidos: data.permitir_pedidos ?? true,
+          menu_pdf_url: data.menu_pdf_url || ''
         })
       }
     } catch (err) {
       console.log('No hay configuración previa o tabla no existe aún')
+    }
+  }
+
+  // Función para subir PDF del menú con compresión automática
+  const handleUploadPdf = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (file.type !== 'application/pdf') {
+      toast.error('Solo se permiten archivos PDF')
+      return
+    }
+
+    // Límite máximo de 100MB para el archivo original (soporta PDFs grandes)
+    if (file.size > 100 * 1024 * 1024) {
+      toast.error('El archivo es demasiado grande (máximo 100MB)')
+      return
+    }
+
+    setUploadingPdf(true)
+    setPdfProgress(0)
+    setCompressionInfo(null)
+
+    try {
+      let fileToUpload = file
+      let wasCompressed = false
+
+      // Si el archivo es mayor a 9MB, comprimir usando import dinámico
+      if (file.size > 9 * 1024 * 1024) {
+        toast.info('Comprimiendo PDF, esto puede tardar varios minutos para archivos grandes...')
+
+        // Import dinámico para evitar problemas de SSR
+        const { compressPDF } = await import('@/lib/pdfCompressor')
+
+        const result = await compressPDF(file, {
+          quality: 0.5,  // Calidad más baja para archivos muy grandes
+          scale: 0.7,    // Escala reducida para mejor compresión
+          maxSizeMB: 9,
+          onProgress: (progress) => {
+            setPdfProgress(progress)
+          }
+        })
+
+        fileToUpload = result.blob
+        wasCompressed = result.wasCompressed
+
+        if (wasCompressed) {
+          setCompressionInfo({
+            original: formatFileSize(result.originalSize),
+            compressed: formatFileSize(result.compressedSize),
+            reduction: result.reduction
+          })
+          toast.success(`PDF comprimido: ${result.reduction}% de reducción`)
+        }
+      }
+
+      // Verificar tamaño final
+      if (fileToUpload.size > 10 * 1024 * 1024) {
+        toast.error('El PDF sigue siendo muy grande después de la compresión. Intenta con un PDF con menos imágenes de alta resolución.')
+        setUploadingPdf(false)
+        return
+      }
+
+      setPdfProgress(95)
+
+      // Convertir a base64 para guardar
+      const reader = new FileReader()
+      reader.onload = async (event) => {
+        const base64 = event.target.result
+        setConfig(prev => ({ ...prev, menu_pdf_url: base64 }))
+        setPdfProgress(100)
+        toast.success(wasCompressed ? 'PDF comprimido y cargado exitosamente' : 'PDF cargado exitosamente')
+        setUploadingPdf(false)
+      }
+      reader.onerror = () => {
+        toast.error('Error al leer el archivo')
+        setUploadingPdf(false)
+      }
+      reader.readAsDataURL(fileToUpload)
+
+    } catch (error) {
+      console.error('Error:', error)
+      toast.error('Error al procesar el PDF: ' + error.message)
+      setUploadingPdf(false)
     }
   }
 
@@ -146,10 +245,11 @@ export default function MenuDigitalPage() {
 
   const getMenuUrl = (slugValue = slug) => {
     // Usar NEXT_PUBLIC_BASE_URL o window.location.origin
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ||
                     (typeof window !== 'undefined' ? window.location.origin : '')
     // Usar el ID del restaurante como slug si no hay slug personalizado
     const finalSlug = slugValue || restaurant?.id
+    // Usar /menu/ que muestra la pantalla de selección (PDF o Interactivo)
     return `${baseUrl}/menu/${finalSlug}`
   }
 
@@ -171,7 +271,8 @@ export default function MenuDigitalPage() {
         horario_apertura: config.horario_apertura || null,
         horario_cierre: config.horario_cierre || null,
         mostrar_precios: config.mostrar_precios,
-        permitir_pedidos: config.permitir_pedidos
+        permitir_pedidos: config.permitir_pedidos,
+        menu_pdf_url: config.menu_pdf_url || null
       }
 
       // Guardar o actualizar configuración
@@ -189,7 +290,7 @@ export default function MenuDigitalPage() {
             updated_at: new Date().toISOString()
           })
           .eq('restaurant_id', restaurant.id)
-        
+
         if (updateError) throw updateError
       } else {
         const { error: insertError } = await supabase
@@ -198,7 +299,7 @@ export default function MenuDigitalPage() {
             restaurant_id: restaurant.id,
             ...configToSave
           })
-        
+
         if (insertError) throw insertError
       }
 
@@ -240,7 +341,7 @@ export default function MenuDigitalPage() {
 
     try {
       setUploadingImage(true)
-      
+
       const fileExt = file.name.split('.').pop()
       const fileName = `${restaurant.id}-${type}-${Date.now()}.${fileExt}`
       const filePath = `${type}/${fileName}`
@@ -288,7 +389,7 @@ export default function MenuDigitalPage() {
 
     try {
       setUploadingImage(true)
-      
+
       const fileExt = file.name.split('.').pop()
       const fileName = `${restaurant.id}-logo-${Date.now()}.${fileExt}`
       const filePath = `logos/${fileName}`
@@ -378,10 +479,10 @@ export default function MenuDigitalPage() {
       // Calcular precio original y final
       const selectedItems = menuItems.filter(m => promoForm.items_ids.includes(m.id))
       const precioOriginal = selectedItems.reduce((sum, item) => sum + parseFloat(item.precio_base || 0), 0)
-      
+
       let precioFinal = precioOriginal
       const porcentajeDescuento = parseFloat(promoForm.porcentaje_descuento) || 0
-      
+
       if (promoForm.tipo_descuento === 'porcentaje' && porcentajeDescuento > 0) {
         precioFinal = precioOriginal * (1 - porcentajeDescuento / 100)
       } else if (promoForm.tipo_descuento === '2x1') {
@@ -543,10 +644,10 @@ export default function MenuDigitalPage() {
                   <CardContent className="text-center">
                     {qrDataUrl ? (
                       <div className="inline-block p-4 bg-white rounded-xl shadow-lg border-2 border-gray-200">
-                        <img 
+                        <img
                           ref={qrRef}
-                          src={qrDataUrl} 
-                          alt="QR Code" 
+                          src={qrDataUrl}
+                          alt="QR Code"
                           className="w-64 h-64 mx-auto"
                         />
                         <p className="mt-4 font-bold text-lg">{restaurant?.nombre}</p>
@@ -598,13 +699,13 @@ export default function MenuDigitalPage() {
 
                     <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                       <p className="text-blue-800 text-sm">
-                        <strong>💡 Tip:</strong> Este link funcionará tanto en desarrollo como en producción (Vercel). 
+                        <strong>💡 Tip:</strong> Este link funcionará tanto en desarrollo como en producción (Vercel).
                         El QR siempre apuntará al dominio correcto.
                       </p>
                     </div>
 
-                    <Button 
-                      className="w-full bg-orange-500 hover:bg-orange-600" 
+                    <Button
+                      className="w-full bg-orange-500 hover:bg-orange-600"
                       onClick={() => window.open(getMenuUrl(), '_blank')}
                     >
                       <Eye className="h-4 w-4 mr-2" />
@@ -712,8 +813,8 @@ export default function MenuDigitalPage() {
                   <CardContent className="space-y-4">
                     <div className="flex items-center space-x-4">
                       {restaurant?.logo_url ? (
-                        <img 
-                          src={restaurant.logo_url} 
+                        <img
+                          src={restaurant.logo_url}
                           alt="Logo"
                           className="w-24 h-24 object-contain rounded-lg border bg-white p-2"
                         />
@@ -726,15 +827,15 @@ export default function MenuDigitalPage() {
                         <p className="text-sm text-gray-600 mb-2">
                           Sube el logo de tu restaurante
                         </p>
-                        <Input 
-                          type="file" 
-                          accept="image/*" 
-                          onChange={handleLogoUpload} 
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleLogoUpload}
                           disabled={uploadingImage}
                         />
                       </div>
                     </div>
-                    
+
                     <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
                       <p className="text-xs text-yellow-800">
                         💡 <strong>Tip:</strong> Usa una imagen cuadrada (ej: 200x200px) para mejor visualización
@@ -757,13 +858,13 @@ export default function MenuDigitalPage() {
                   <CardContent className="space-y-4">
                     {config.imagen_portada ? (
                       <div className="relative">
-                        <img 
-                          src={config.imagen_portada} 
+                        <img
+                          src={config.imagen_portada}
                           alt="Portada"
                           className="w-full h-32 object-cover rounded-lg"
                         />
-                        <Button 
-                          size="sm" 
+                        <Button
+                          size="sm"
                           variant="destructive"
                           className="absolute top-2 right-2"
                           onClick={() => setConfig({ ...config, imagen_portada: '' })}
@@ -780,10 +881,10 @@ export default function MenuDigitalPage() {
                     {/* Opción 1: Subir archivo */}
                     <div className="space-y-2">
                       <Label className="text-sm font-medium">Opción 1: Subir imagen</Label>
-                      <Input 
-                        type="file" 
-                        accept="image/*" 
-                        onChange={(e) => handleImageUpload(e, 'portada')} 
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleImageUpload(e, 'portada')}
                         disabled={uploadingImage}
                       />
                       <p className="text-xs text-gray-500">
@@ -807,9 +908,9 @@ export default function MenuDigitalPage() {
                     {/* Preview de cómo se verá */}
                     <div className="bg-gray-50 p-3 rounded-lg border">
                       <p className="text-xs font-medium text-gray-600 mb-2">Vista previa del encabezado:</p>
-                      <div 
+                      <div
                         className="relative h-20 rounded-lg overflow-hidden bg-cover bg-center"
-                        style={{ 
+                        style={{
                           backgroundColor: config.colores?.secondary || '#1e3a5f',
                           backgroundImage: config.imagen_portada ? `url(${config.imagen_portada})` : 'none'
                         }}
@@ -944,6 +1045,98 @@ export default function MenuDigitalPage() {
                       </div>
                       <input type="checkbox" checked={config.permitir_pedidos} onChange={(e) => setConfig({ ...config, permitir_pedidos: e.target.checked })} className="w-5 h-5" />
                     </div>
+                  </div>
+
+                  {/* Sección PDF del Menú */}
+                  <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <div className="flex items-center justify-between mb-3">
+                      <div>
+                        <Label className="text-blue-800 font-semibold">📄 Menú en PDF</Label>
+                        <p className="text-sm text-blue-600">Sube tu menú en PDF para que los clientes puedan verlo</p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      {config.menu_pdf_url ? (
+                        <div className="flex items-center space-x-3 p-3 bg-white rounded-lg border">
+                          <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
+                            <span className="text-2xl">📕</span>
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-medium text-green-600">PDF cargado ✓</p>
+                            <p className="text-xs text-gray-500">El menú PDF está listo para mostrarse</p>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => window.open(config.menu_pdf_url, '_blank')}
+                          >
+                            <Eye className="h-4 w-4 mr-1" />
+                            Ver
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => setConfig({ ...config, menu_pdf_url: '' })}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="border-2 border-dashed border-blue-300 rounded-lg p-6 text-center bg-white">
+                          {uploadingPdf ? (
+                            <div className="space-y-4">
+                              <Loader2 className="h-10 w-10 animate-spin mx-auto text-blue-500" />
+                              <div>
+                                <p className="text-sm font-medium text-blue-700">
+                                  {pdfProgress < 90 ? 'Comprimiendo PDF...' : 'Finalizando...'}
+                                </p>
+                                <p className="text-xs text-gray-500 mt-1">
+                                  {pdfProgress < 20 && 'Leyendo archivo...'}
+                                  {pdfProgress >= 20 && pdfProgress < 90 && 'Procesando páginas...'}
+                                  {pdfProgress >= 90 && 'Guardando...'}
+                                </p>
+                              </div>
+                              <Progress value={pdfProgress} className="w-full max-w-xs mx-auto" />
+                              <p className="text-xs text-gray-400">{pdfProgress}%</p>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="text-4xl mb-2">📄</div>
+                              <p className="text-sm text-gray-600 mb-1">Arrastra tu PDF aquí o haz clic para seleccionar</p>
+                              <p className="text-xs text-gray-400 mb-3">Máximo 100MB - Se comprimirá automáticamente a menos de 10MB</p>
+                              <Input
+                                type="file"
+                                accept=".pdf,application/pdf"
+                                onChange={handleUploadPdf}
+                                disabled={uploadingPdf}
+                                className="max-w-xs mx-auto"
+                              />
+                            </>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Mostrar info de compresión */}
+                      {compressionInfo && (
+                        <div className="mt-3 p-3 bg-green-50 rounded-lg border border-green-200">
+                          <div className="flex items-center space-x-2">
+                            <CheckCircle className="h-5 w-5 text-green-500" />
+                            <span className="text-sm font-medium text-green-700">PDF comprimido exitosamente</span>
+                          </div>
+                          <div className="mt-2 text-xs text-green-600 space-y-1">
+                            <p>Tamaño original: {compressionInfo.original}</p>
+                            <p>Tamaño comprimido: {compressionInfo.compressed}</p>
+                            <p className="font-semibold">Reducción: {compressionInfo.reduction}%</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <p className="text-xs text-blue-700 mt-3">
+                      💡 <strong>Nota:</strong> Si subes un PDF, los clientes verán primero una pantalla con 2 opciones:
+                      "Ver Menú" (PDF) y "Menú Interactivo" (para hacer pedidos).
+                    </p>
                   </div>
                 </CardContent>
               </Card>

@@ -81,17 +81,17 @@ export default function MenuPublicoPage() {
     const checkSavedOrder = async () => {
       // Primero verificar si hay múltiples pedidos (cuentas separadas)
       const savedOrders = localStorage.getItem(`activeOrders_${slug}`)
-      
+
       if (savedOrders) {
         const orders = JSON.parse(savedOrders)
         const orderIds = orders.map(o => o.id)
-        
+
         // Verificar que los pedidos aún existen
         const { data: updatedOrders, error } = await supabase
           .from('orders')
           .select('*, order_items(*)')
           .in('id', orderIds)
-        
+
         if (error || !updatedOrders || updatedOrders.length === 0) {
           console.log('Pedidos guardados ya no existen, limpiando...')
           localStorage.removeItem(`activeOrder_${slug}`)
@@ -101,7 +101,7 @@ export default function MenuPublicoPage() {
           setShowOrderStatus(false)
           return
         }
-        
+
         // Si todos están pagados, limpiar
         if (updatedOrders.every(o => o.estado === 'PAGADO')) {
           localStorage.removeItem(`activeOrder_${slug}`)
@@ -111,7 +111,7 @@ export default function MenuPublicoPage() {
           setShowOrderStatus(false)
           return
         }
-        
+
         // Los pedidos existen y están activos
         setActiveOrders(updatedOrders)
         setActiveOrder(updatedOrders[0])
@@ -119,19 +119,19 @@ export default function MenuPublicoPage() {
         setCheckoutForm(prev => ({ ...prev, mesa: updatedOrders[0].mesa || '' }))
         return
       }
-      
+
       // Modo normal - un solo pedido
       const savedOrder = localStorage.getItem(`activeOrder_${slug}`)
       if (savedOrder) {
         const order = JSON.parse(savedOrder)
-        
+
         // Verificar que el pedido aún existe en la base de datos
         const { data, error } = await supabase
           .from('orders')
           .select('*, order_items(*)')
           .eq('id', order.id)
           .single()
-        
+
         if (error || !data) {
           // El pedido fue eliminado, limpiar localStorage
           console.log('Pedido guardado ya no existe, limpiando...')
@@ -140,7 +140,7 @@ export default function MenuPublicoPage() {
           setShowOrderStatus(false)
           return
         }
-        
+
         // Si el pedido está PAGADO, también limpiar
         if (data.estado === 'PAGADO') {
           localStorage.removeItem(`activeOrder_${slug}`)
@@ -148,14 +148,14 @@ export default function MenuPublicoPage() {
           setShowOrderStatus(false)
           return
         }
-        
+
         // El pedido existe y está activo
         setActiveOrder(data)
         setShowOrderStatus(true)
         setCheckoutForm(prev => ({ ...prev, mesa: data.mesa || '' }))
       }
     }
-    
+
     if (slug) {
       checkSavedOrder()
     }
@@ -166,7 +166,7 @@ export default function MenuPublicoPage() {
     if (activeOrder && activeOrder.estado !== 'PAGADO' && activeOrder.estado !== 'ENTREGADO') {
       // Usar timerStartTime si existe, sino usar created_at del pedido
       const startTime = timerStartTime || new Date(activeOrder.created_at).getTime()
-      
+
       timerRef.current = setInterval(() => {
         const now = Date.now()
         setOrderTimer(Math.floor((now - startTime) / 1000))
@@ -187,17 +187,17 @@ export default function MenuPublicoPage() {
     const pollOrders = async () => {
       // Verificar si hay múltiples pedidos (cuentas separadas)
       const savedOrders = localStorage.getItem(`activeOrders_${slug}`)
-      
+
       if (savedOrders) {
         // Modo cuentas separadas - actualizar todos los pedidos
         const ordersData = JSON.parse(savedOrders)
         const orderIds = ordersData.map(o => o.id)
-        
+
         const { data: updatedOrders, error } = await supabase
           .from('orders')
           .select('*, order_items(*)')
           .in('id', orderIds)
-        
+
         if (error || !updatedOrders || updatedOrders.length === 0) {
           console.log('Pedidos eliminados o no encontrados, limpiando estado...')
           localStorage.removeItem(`activeOrder_${slug}`)
@@ -213,7 +213,7 @@ export default function MenuPublicoPage() {
         // Actualizar localStorage y estado
         localStorage.setItem(`activeOrders_${slug}`, JSON.stringify(updatedOrders))
         setActiveOrders(updatedOrders)
-        
+
         // Actualizar el pedido activo si es uno de los del grupo
         const currentActiveIndex = activeOrderTab < updatedOrders.length ? activeOrderTab : 0
         setActiveOrder(updatedOrders[currentActiveIndex])
@@ -250,7 +250,7 @@ export default function MenuPublicoPage() {
 
         setActiveOrder(data)
         localStorage.setItem(`activeOrder_${slug}`, JSON.stringify(data))
-        
+
         // Si está pagado, limpiar
         if (data.estado === 'PAGADO') {
           localStorage.removeItem(`activeOrder_${slug}`)
@@ -264,7 +264,7 @@ export default function MenuPublicoPage() {
 
     // Primera carga inmediata
     pollOrders()
-    
+
     const interval = setInterval(pollOrders, 3000) // Cada 3 segundos para mejor respuesta
     return () => clearInterval(interval)
   }, [activeOrder?.id, slug, activeOrderTab])
@@ -278,9 +278,9 @@ export default function MenuPublicoPage() {
   const loadRestaurant = async () => {
     try {
       setLoading(true)
-      
+
       let activeRest = null
-      
+
       const { data: restBySlug } = await supabase
         .from('restaurants')
         .select('*')
@@ -295,7 +295,7 @@ export default function MenuPublicoPage() {
           .select('*')
           .eq('id', slug)
           .single()
-        
+
         if (restById) {
           activeRest = restById
         }
@@ -347,7 +347,7 @@ export default function MenuPublicoPage() {
       // Separar categorías principales de subcategorías (si el campo parent_id existe)
       const mainCategories = (cats || []).filter(c => !c.parent_id)
       const subCategories = (cats || []).filter(c => c.parent_id)
-      
+
       // Si no hay subcategorías, usar todas las categorías
       setCategories(mainCategories.length > 0 ? mainCategories : (cats || []))
 
@@ -373,7 +373,7 @@ export default function MenuPublicoPage() {
           mainCategory: category
         }
       })
-      
+
       setProducts(productsWithCat)
       setLoading(false)
 
@@ -414,7 +414,7 @@ export default function MenuPublicoPage() {
   const getDiscountedPrice = (product) => {
     const promo = getProductPromotion(product.id)
     if (!promo) return null
-    
+
     if (promo.tipo_descuento === 'porcentaje') {
       return {
         precioOriginal: product.precio_base,
@@ -438,7 +438,7 @@ export default function MenuPublicoPage() {
   // Filtrar productos por categoría y búsqueda
   const filteredProducts = products.filter(p => {
     const matchesCategory = selectedCategory === 'all' || p.category_id === selectedCategory
-    const matchesSearch = !searchQuery || 
+    const matchesSearch = !searchQuery ||
       p.nombre.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.descripcion?.toLowerCase().includes(searchQuery.toLowerCase())
     return matchesCategory && matchesSearch
@@ -448,13 +448,13 @@ export default function MenuPublicoPage() {
   const groupedProducts = () => {
     // Si no hay productos, retornar vacío
     if (filteredProducts.length === 0) return {}
-    
+
     // Si hay búsqueda activa, mostrar resultados sin agrupar
     if (searchQuery) return { '': filteredProducts }
-    
+
     const groups = {}
     const noSubcat = []
-    
+
     filteredProducts.forEach(p => {
       if (p.subcategory && p.subcategory.nombre) {
         const subcatName = p.subcategory.nombre
@@ -466,12 +466,12 @@ export default function MenuPublicoPage() {
         noSubcat.push(p)
       }
     })
-    
+
     // Si todos los productos no tienen subcategoría, mostrar sin título
     if (Object.keys(groups).length === 0) {
       return { '': noSubcat }
     }
-    
+
     // Ordenar subcategorías por su orden
     const sortedGroups = Object.entries(groups)
       .sort((a, b) => a[1].orden - b[1].orden)
@@ -479,12 +479,12 @@ export default function MenuPublicoPage() {
         acc[key] = val.products
         return acc
       }, {})
-    
+
     // Si hay productos sin subcategoría, agregarlos al final
     if (noSubcat.length > 0) {
       sortedGroups['Otros Productos'] = noSubcat
     }
-    
+
     return sortedGroups
   }
 
@@ -493,13 +493,13 @@ export default function MenuPublicoPage() {
   const openProductModal = (product, isPromotion = false, promoData = null) => {
     // Si el producto tiene promoción individual, aplicarla
     const productPromo = !isPromotion ? getDiscountedPrice(product) : null
-    
+
     setSelectedProduct({
       ...product,
       isPromotion: isPromotion || !!productPromo,
       promoData: promoData || productPromo?.promo,
       productPromo: productPromo,
-      precio: isPromotion ? promoData.precio_final : 
+      precio: isPromotion ? promoData.precio_final :
               productPromo ? productPromo.precioFinal : product.precio_base
     })
     setProductQuantity(productPromo?.tipo === '2x1' ? 2 : 1) // Para 2x1, empezar con 2
@@ -523,12 +523,12 @@ export default function MenuPublicoPage() {
       toast.error('Ingresa un nombre para la cuenta')
       return
     }
-    
+
     const nuevaCuenta = {
       nombre: nuevoNombreCuenta.trim(),
       productos: []
     }
-    
+
     setCuentas([...cuentas, nuevaCuenta])
     setCuentaActiva(cuentas.length)
     setNombreCuentaDialog(false)
@@ -541,10 +541,10 @@ export default function MenuPublicoPage() {
       toast.error('Debe haber al menos una cuenta')
       return
     }
-    
+
     const nuevasCuentas = cuentas.filter((_, i) => i !== index)
     setCuentas(nuevasCuentas)
-    
+
     if (cuentaActiva >= nuevasCuentas.length) {
       setCuentaActiva(nuevasCuentas.length - 1)
     }
@@ -565,7 +565,7 @@ export default function MenuPublicoPage() {
     let precioFinal = selectedProduct.precio
     let cantidadFinal = productQuantity
     let nombrePromo = ''
-    
+
     // Si es promoción 2x1, ajustar el precio
     if (selectedProduct.productPromo?.tipo === '2x1') {
       // Para 2x1: por cada 2 unidades, cobras 1
@@ -581,16 +581,16 @@ export default function MenuPublicoPage() {
     }
 
     const cartItem = {
-      id: selectedProduct.isPromotion && !selectedProduct.productPromo 
-        ? `promo-${selectedProduct.promoData.id}` 
+      id: selectedProduct.isPromotion && !selectedProduct.productPromo
+        ? `promo-${selectedProduct.promoData.id}`
         : selectedProduct.id,
-      nombre: (selectedProduct.isPromotion && !selectedProduct.productPromo 
-        ? selectedProduct.promoData.nombre 
+      nombre: (selectedProduct.isPromotion && !selectedProduct.productPromo
+        ? selectedProduct.promoData.nombre
         : selectedProduct.nombre) + nombrePromo,
       precio: precioFinal,
       precio_original: selectedProduct.precio_base,
-      img_url: selectedProduct.isPromotion && !selectedProduct.productPromo 
-        ? selectedProduct.promoData?.imagen_url 
+      img_url: selectedProduct.isPromotion && !selectedProduct.productPromo
+        ? selectedProduct.promoData?.imagen_url
         : selectedProduct.img_url,
       cantidad: cantidadFinal,
       comentario: productComment,
@@ -604,7 +604,7 @@ export default function MenuPublicoPage() {
       const nuevasCuentas = [...cuentas]
       const cuentaActual = nuevasCuentas[cuentaActiva]
       const existing = cuentaActual.productos.find(item => item.id === cartItem.id && item.comentario === cartItem.comentario)
-      
+
       if (existing) {
         cuentaActual.productos = cuentaActual.productos.map(item =>
           (item.id === cartItem.id && item.comentario === cartItem.comentario)
@@ -614,14 +614,14 @@ export default function MenuPublicoPage() {
       } else {
         cuentaActual.productos.push(cartItem)
       }
-      
+
       setCuentas(nuevasCuentas)
       toast.success(`${cartItem.nombre} agregado a cuenta de ${cuentaActual.nombre}`)
     } else {
       // Modo normal
       const existing = cart.find(item => item.id === cartItem.id && item.comentario === cartItem.comentario)
       if (existing) {
-        setCart(cart.map(item => 
+        setCart(cart.map(item =>
           (item.id === cartItem.id && item.comentario === cartItem.comentario)
             ? { ...item, cantidad: item.cantidad + productQuantity }
             : item
@@ -630,7 +630,7 @@ export default function MenuPublicoPage() {
         setCart([...cart, cartItem])
       }
     }
-    
+
     setSelectedProduct(null)
     setAddedModal(true)
   }
@@ -699,10 +699,10 @@ export default function MenuPublicoPage() {
     return cart.reduce((sum, item) => sum + calculateItemTotal(item), 0)
   }
 
-  const cartTotal = cuentasSeparadas && cuentas.length > 0 
+  const cartTotal = cuentasSeparadas && cuentas.length > 0
     ? calculateCuentaTotal(cuentas[cuentaActiva] || { productos: [] })
     : cart.reduce((sum, item) => sum + calculateItemTotal(item), 0)
-    
+
   const cartCount = cuentasSeparadas && cuentas.length > 0
     ? cuentas.reduce((total, cuenta) => total + cuenta.productos.reduce((sum, item) => sum + item.cantidad, 0), 0)
     : cart.reduce((sum, item) => sum + item.cantidad, 0)
@@ -748,10 +748,10 @@ export default function MenuPublicoPage() {
 
         // Actualizar total del pedido y cambiar estado a PENDIENTE
         const newTotal = activeOrderTotal + cartTotal
-        
+
         const { error: updateError } = await supabase
           .from('orders')
-          .update({ 
+          .update({
             estado: 'PENDIENTE',
             subtotal: newTotal,
             total: newTotal
@@ -788,10 +788,10 @@ export default function MenuPublicoPage() {
         }
 
         const pedidosCreados = []
-        
+
         for (const cuenta of cuentas) {
           if (cuenta.productos.length === 0) continue
-          
+
           const cuentaTotal = calculateCuentaTotal(cuenta)
 
           // Crear pedido con nombre_cuenta y grupo_mesa_id
@@ -835,7 +835,7 @@ export default function MenuPublicoPage() {
             .select('*, order_items(*)')
             .eq('id', order.id)
             .single()
-          
+
           pedidosCreados.push(fullOrder)
         }
 
@@ -844,7 +844,7 @@ export default function MenuPublicoPage() {
         setActiveOrder(pedidosCreados[0]) // El primero como principal
         localStorage.setItem(`activeOrders_${slug}`, JSON.stringify(pedidosCreados))
         localStorage.setItem(`activeOrder_${slug}`, JSON.stringify(pedidosCreados[0]))
-        
+
         // Limpiar
         setCuentasSeparadas(false)
         setCuentas([])
@@ -854,7 +854,7 @@ export default function MenuPublicoPage() {
         setCheckoutOpen(false)
         setConfirmModal(true)
         setShowOrderStatus(true)
-        
+
         toast.success(`¡${pedidosCreados.length} pedidos creados!`)
         return
       }
@@ -995,7 +995,7 @@ export default function MenuPublicoPage() {
     const stages = ['PENDIENTE', 'PREPARANDO', 'LISTO', 'ENTREGADO']
     const currentIndex = stages.indexOf(activeOrder.estado)
     const stageIndex = stages.indexOf(stage)
-    
+
     if (stageIndex > currentIndex) return 0
     if (stageIndex === currentIndex) {
       // Etapa actual: mostrar tiempo transcurrido
@@ -1009,7 +1009,7 @@ export default function MenuPublicoPage() {
     // Usar activeOrders del estado (se actualiza con el polling)
     const ordersToShow = activeOrders.length > 0 ? activeOrders : [activeOrder]
     const currentOrder = ordersToShow[activeOrderTab] || activeOrder
-    
+
     const statusInfo = getStatusInfo(currentOrder.estado)
     const StatusIcon = statusInfo.icon
     const stages = [
@@ -1022,7 +1022,7 @@ export default function MenuPublicoPage() {
     return (
       <div className="min-h-screen pb-24" style={{ backgroundColor: colors.background }}>
         <Toaster position="top-center" richColors />
-        
+
         {/* Header */}
         <div className="p-4 text-white" style={{ backgroundColor: colors.primary }}>
           <div className="flex items-center justify-between">
@@ -1044,7 +1044,7 @@ export default function MenuPublicoPage() {
             )}
           </div>
           <p className="text-sm text-white/80">Mesa {currentOrder.mesa}</p>
-          
+
           {/* Pestañas de cuentas separadas */}
           {ordersToShow.length > 1 && (
             <div className="flex flex-wrap gap-2 mt-3">
@@ -1053,8 +1053,8 @@ export default function MenuPublicoPage() {
                   key={order.id}
                   onClick={() => setActiveOrderTab(index)}
                   className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
-                    activeOrderTab === index 
-                      ? 'bg-white text-gray-900' 
+                    activeOrderTab === index
+                      ? 'bg-white text-gray-900'
                       : 'bg-white/20 text-white'
                   }`}
                 >
@@ -1078,13 +1078,13 @@ export default function MenuPublicoPage() {
                 </h3>
               </div>
             )}
-            
+
             <div className={`w-20 h-20 rounded-full ${statusInfo.color} flex items-center justify-center mx-auto mb-4 animate-pulse`}>
               <StatusIcon className="h-10 w-10 text-white" />
             </div>
             <h2 className="text-2xl font-bold mb-2">{statusInfo.label}</h2>
             <p className="text-gray-600 mb-6">{statusInfo.message}</p>
-            
+
             {/* Timeline detallado con cronómetro por etapa */}
             <div className="flex justify-between items-start mb-6 px-2">
               {stages.map((stage, i) => {
@@ -1096,7 +1096,7 @@ export default function MenuPublicoPage() {
                 const isCurrent = (stageStates.includes(currentOrder.estado) && i === 0) ||
                                   (currentOrder.estado === stage.key)
                 const StageIcon = stage.icon
-                
+
                 return (
                   <div key={stage.key} className="flex flex-col items-center flex-1">
                     <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-1 transition-all ${
@@ -1116,19 +1116,19 @@ export default function MenuPublicoPage() {
                       </div>
                     )}
                     {i < stages.length - 1 && (
-                      <div className={`hidden sm:block absolute h-0.5 w-12 ${isActive ? statusInfo.color : 'bg-gray-200'}`} 
+                      <div className={`hidden sm:block absolute h-0.5 w-12 ${isActive ? statusInfo.color : 'bg-gray-200'}`}
                            style={{ left: `${(i + 1) * 25}%`, top: '20px' }}></div>
                     )}
                   </div>
                 )
               })}
             </div>
-            
+
             {/* Línea de progreso horizontal */}
             <div className="w-full bg-gray-200 rounded-full h-2 mb-4 overflow-hidden">
-              <div 
+              <div
                 className={`h-full transition-all duration-500 ${statusInfo.color}`}
-                style={{ 
+                style={{
                   width: currentOrder.estado === 'PENDIENTE' || currentOrder.estado === 'NUEVO' ? '25%' :
                          currentOrder.estado === 'PREPARANDO' ? '50%' :
                          currentOrder.estado === 'LISTO' ? '75%' :
@@ -1184,7 +1184,7 @@ export default function MenuPublicoPage() {
           {/* Botón para agregar más productos (solo si está entregado) */}
           {currentOrder.estado === 'ENTREGADO' && (
             <div className="mt-6">
-              <Button 
+              <Button
                 className="w-full py-6 text-white text-lg"
                 style={{ backgroundColor: colors.primary }}
                 onClick={() => setShowOrderStatus(false)}
@@ -1202,7 +1202,7 @@ export default function MenuPublicoPage() {
         {/* Botón ver menú si no está entregado */}
         {currentOrder.estado !== 'ENTREGADO' && (
           <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t">
-            <Button 
+            <Button
               variant="outline"
               className="w-full py-4"
               onClick={() => setShowOrderStatus(false)}
@@ -1218,17 +1218,17 @@ export default function MenuPublicoPage() {
   return (
     <div className="min-h-screen pb-24" style={{ backgroundColor: colors.background }}>
       <Toaster position="top-center" richColors />
-      
+
       {/* Header con imagen de portada */}
-      <div 
+      <div
         className="relative h-40 bg-cover bg-center overflow-hidden"
-        style={{ 
+        style={{
           backgroundColor: colors.secondary
         }}
       >
         {/* Imagen de portada como img para mejor control de errores */}
         {config?.imagen_portada && (
-          <img 
+          <img
             src={config.imagen_portada}
             alt="Portada"
             className="absolute inset-0 w-full h-full object-cover"
@@ -1242,8 +1242,8 @@ export default function MenuPublicoPage() {
         <div className="absolute bottom-0 left-0 right-0 p-4">
           <div className="flex items-end space-x-4">
             {restaurant?.logo_url && (
-              <img 
-                src={restaurant.logo_url} 
+              <img
+                src={restaurant.logo_url}
                 alt={restaurant.nombre}
                 className="w-16 h-16 rounded-xl bg-white p-1 object-contain shadow-lg"
               />
@@ -1261,7 +1261,7 @@ export default function MenuPublicoPage() {
             </div>
           </div>
         </div>
-        
+
         {/* Botón ver pedido activo */}
         {activeOrder && activeOrder.estado !== 'PAGADO' && (
           <button
@@ -1287,8 +1287,8 @@ export default function MenuPublicoPage() {
               className="pl-10 bg-gray-50 border-0"
             />
           </div>
-          <Button 
-            size="sm" 
+          <Button
+            size="sm"
             variant="outline"
             onClick={() => setWhatsappModal(true)}
             className="text-xs border-green-500 text-green-600 hover:bg-green-50 whitespace-nowrap"
@@ -1308,16 +1308,16 @@ export default function MenuPublicoPage() {
           </h2>
           <div className="flex overflow-x-auto space-x-3 pb-2 -mx-4 px-4 scrollbar-hide">
             {promotions.map(promo => (
-              <div 
+              <div
                 key={promo.id}
                 className="flex-shrink-0 w-36 bg-white rounded-xl shadow-lg overflow-hidden cursor-pointer transform transition hover:scale-105 border-2 border-red-200"
                 onClick={() => openProductModal(null, true, promo)}
               >
                 <div className="relative">
                   {promo.imagen_url ? (
-                    <img src={promo.imagen_url} alt={promo.nombre} className="w-full h-20 object-cover" />
+                    <img src={promo.imagen_url} alt={promo.nombre} className="w-full aspect-square object-contain bg-white" />
                   ) : (
-                    <div className="w-full h-20 bg-gradient-to-br from-red-400 to-orange-400 flex items-center justify-center">
+                    <div className="w-full aspect-square bg-gradient-to-br from-red-400 to-orange-400 flex items-center justify-center">
                       <Gift className="h-8 w-8 text-white" />
                     </div>
                   )}
@@ -1344,15 +1344,15 @@ export default function MenuPublicoPage() {
           </h2>
           <div className="flex overflow-x-auto space-x-2 pb-2 -mx-4 px-4 scrollbar-hide">
             {popularProducts.map(product => (
-              <div 
+              <div
                 key={product.id}
                 className="flex-shrink-0 w-28 bg-white rounded-xl shadow-md overflow-hidden cursor-pointer"
                 onClick={() => openProductModal(product)}
               >
                 {product.img_url ? (
-                  <img src={product.img_url} alt={product.nombre} className="w-full h-20 object-cover" />
+                  <img src={product.img_url} alt={product.nombre} className="w-full aspect-square object-contain bg-white" />
                 ) : (
-                  <div className="w-full h-20 bg-gray-100 flex items-center justify-center">
+                  <div className="w-full aspect-square bg-gray-100 flex items-center justify-center">
                     <span className="text-2xl">🍽️</span>
                   </div>
                 )}
@@ -1374,8 +1374,8 @@ export default function MenuPublicoPage() {
           <button
             onClick={() => setSelectedCategory('all')}
             className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-              selectedCategory === 'all' 
-                ? 'text-white shadow-md' 
+              selectedCategory === 'all'
+                ? 'text-white shadow-md'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
             style={selectedCategory === 'all' ? { backgroundColor: colors.primary } : {}}
@@ -1387,8 +1387,8 @@ export default function MenuPublicoPage() {
               key={cat.id}
               onClick={() => setSelectedCategory(cat.id)}
               className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                selectedCategory === cat.id 
-                  ? 'text-white shadow-md' 
+                selectedCategory === cat.id
+                  ? 'text-white shadow-md'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
               style={selectedCategory === cat.id ? { backgroundColor: colors.primary } : {}}
@@ -1419,25 +1419,25 @@ export default function MenuPublicoPage() {
                     </h3>
                   </div>
                 )}
-                
+
                 {/* Grid de productos */}
                 <div className="grid grid-cols-3 gap-2">
                   {groupProducts.map(product => {
                     const inCart = cart.filter(item => item.id === product.id)
                     const totalInCart = inCart.reduce((sum, item) => sum + item.cantidad, 0)
                     const productPromo = getDiscountedPrice(product)
-              
+
               return (
-                <div 
+                <div
                   key={product.id}
                   className={`bg-white rounded-lg shadow-sm overflow-hidden cursor-pointer ${productPromo ? 'ring-2 ring-red-400' : ''}`}
                   onClick={() => openProductModal(product)}
                 >
                   <div className="relative">
                     {product.img_url ? (
-                      <img src={product.img_url} alt={product.nombre} className="w-full h-20 object-cover" />
+                      <img src={product.img_url} alt={product.nombre} className="w-full aspect-square object-contain bg-white" />
                     ) : (
-                      <div className="w-full h-20 bg-gray-50 flex items-center justify-center">
+                      <div className="w-full aspect-square bg-gray-50 flex items-center justify-center">
                         <span className="text-2xl">🍽️</span>
                       </div>
                     )}
@@ -1448,7 +1448,7 @@ export default function MenuPublicoPage() {
                       </div>
                     )}
                     {totalInCart > 0 && (
-                      <div 
+                      <div
                         className="absolute top-1 right-1 w-5 h-5 rounded-full flex items-center justify-center text-white text-xs font-bold"
                         style={{ backgroundColor: colors.primary }}
                       >
@@ -1464,7 +1464,7 @@ export default function MenuPublicoPage() {
                           {formatPrice(product.precio_base)}
                         </span>
                         <span className="font-bold text-xs text-red-600">
-                          {productPromo.tipo === '2x1' 
+                          {productPromo.tipo === '2x1'
                             ? `2x ${formatPrice(product.precio_base)}`
                             : formatPrice(productPromo.precioFinal)
                           }
@@ -1512,19 +1512,19 @@ export default function MenuPublicoPage() {
             <>
               {(selectedProduct.img_url || selectedProduct.promoData?.imagen_url) && (
                 <div className="relative">
-                  <img 
-                    src={selectedProduct.isPromotion && selectedProduct.promoData?.imagen_url 
-                      ? selectedProduct.promoData.imagen_url 
+                  <img
+                    src={selectedProduct.isPromotion && selectedProduct.promoData?.imagen_url
+                      ? selectedProduct.promoData.imagen_url
                       : selectedProduct.img_url}
                     alt={selectedProduct.nombre}
-                    className="w-full h-40 object-cover rounded-lg -mt-6 -mx-6 mb-4"
+                    className="w-full h-56 object-contain bg-gray-50 rounded-lg -mt-6 -mx-6 mb-4"
                     style={{ width: 'calc(100% + 48px)', maxWidth: 'none' }}
                   />
                   {/* Badge de promoción en el modal */}
                   {(selectedProduct.productPromo || selectedProduct.promoData) && (
                     <div className="absolute top-2 left-2 bg-red-500 text-white text-sm font-bold px-3 py-1 rounded-full shadow-lg">
                       {selectedProduct.productPromo?.tipo === '2x1' || selectedProduct.promoData?.tipo_descuento === '2x1'
-                        ? '🎉 2x1' 
+                        ? '🎉 2x1'
                         : `🏷️ -${selectedProduct.productPromo?.descuento || selectedProduct.promoData?.porcentaje_descuento}%`
                       }
                     </div>
@@ -1534,8 +1534,8 @@ export default function MenuPublicoPage() {
 
               <DialogHeader>
                 <DialogTitle className="text-lg capitalize">
-                  {selectedProduct.isPromotion && !selectedProduct.productPromo 
-                    ? selectedProduct.promoData?.nombre 
+                  {selectedProduct.isPromotion && !selectedProduct.productPromo
+                    ? selectedProduct.promoData?.nombre
                     : selectedProduct.nombre}
                 </DialogTitle>
               </DialogHeader>
@@ -1620,7 +1620,7 @@ export default function MenuPublicoPage() {
                 />
               </div>
 
-              <Button 
+              <Button
                 className="w-full text-white py-5 text-base mt-2"
                 style={{ backgroundColor: colors.primary }}
                 onClick={addToCartFromModal}
@@ -1641,9 +1641,9 @@ export default function MenuPublicoPage() {
               <Check className="h-7 w-7 text-green-500" />
             </div>
             <h3 className="text-lg font-bold mb-4">¡Agregado!</h3>
-            
+
             <div className="space-y-2">
-              <Button 
+              <Button
                 className="w-full text-white"
                 style={{ backgroundColor: colors.primary }}
                 onClick={() => { setAddedModal(false); setCartOpen(true) }}
@@ -1695,8 +1695,8 @@ export default function MenuPublicoPage() {
                     key={index}
                     onClick={() => setCuentaActiva(index)}
                     className={`px-3 py-1 rounded-full text-xs font-medium transition-all flex items-center gap-1 ${
-                      cuentaActiva === index 
-                        ? 'text-white' 
+                      cuentaActiva === index
+                        ? 'text-white'
                         : 'bg-gray-100 text-gray-700'
                     }`}
                     style={cuentaActiva === index ? { backgroundColor: colors.primary } : {}}
@@ -1742,8 +1742,8 @@ export default function MenuPublicoPage() {
             <div className="text-center py-8">
               <div className="text-4xl mb-3">🛒</div>
               <p className="text-gray-500">Tu carrito está vacío</p>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="mt-4"
                 onClick={() => setCartOpen(false)}
               >
@@ -1755,7 +1755,7 @@ export default function MenuPublicoPage() {
               <div className="text-4xl mb-3">📝</div>
               <p className="text-gray-600 font-medium">Cuenta de {cuentas[cuentaActiva]?.nombre}</p>
               <p className="text-sm text-gray-400 mt-1 mb-4">Esta cuenta no tiene productos aún</p>
-              <Button 
+              <Button
                 className="text-white"
                 style={{ backgroundColor: colors.primary }}
                 onClick={() => setCartOpen(false)}
@@ -1763,7 +1763,7 @@ export default function MenuPublicoPage() {
                 <Plus className="h-4 w-4 mr-2" />
                 Agregar Productos
               </Button>
-              
+
               {/* Mostrar resumen de otras cuentas si tienen productos */}
               {cuentas.some(c => c.productos.length > 0) && (
                 <div className="mt-4 p-3 bg-gray-50 rounded-lg text-left">
@@ -1783,7 +1783,7 @@ export default function MenuPublicoPage() {
                 {getCurrentCartItems().map((item, index) => {
                   const itemTotal = calculateItemTotal(item)
                   const hasPromo = item.productPromo || item.isPromotion
-                  
+
                   return (
                     <div key={`${item.id}-${index}`} className={`p-3 rounded-lg ${hasPromo ? 'bg-red-50 border border-red-200' : 'bg-gray-50'}`}>
                       <div className="flex items-start justify-between">
@@ -1861,7 +1861,7 @@ export default function MenuPublicoPage() {
                     Se crearán {cuentas.filter(c => c.productos.length > 0).length} pedidos separados
                   </p>
                 )}
-                <Button 
+                <Button
                   className="w-full text-white py-5"
                   style={{ backgroundColor: colors.primary }}
                   onClick={() => { setCartOpen(false); setCheckoutOpen(true) }}
@@ -1964,7 +1964,7 @@ export default function MenuPublicoPage() {
               </div>
             </div>
 
-            <Button 
+            <Button
               className="w-full text-white py-5 text-base"
               style={{ backgroundColor: colors.primary }}
               onClick={handleCheckout}
@@ -1995,7 +1995,7 @@ export default function MenuPublicoPage() {
             </div>
             <h3 className="text-xl font-bold mb-2">¡Pedido Enviado!</h3>
             <p className="text-gray-600 mb-4">Tu pedido fue recibido. Puedes seguir el estado desde el menú.</p>
-            <Button 
+            <Button
               className="w-full text-white"
               style={{ backgroundColor: colors.primary }}
               onClick={() => { setConfirmModal(false); setShowOrderStatus(true) }}
@@ -2051,13 +2051,13 @@ export default function MenuPublicoPage() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <p className="text-sm text-gray-600">
-              {cuentas.length === 0 
+              {cuentas.length === 0
                 ? '¿Quieren pagar por separado? Ingresa el nombre de la primera persona.'
                 : 'Ingresa el nombre para agregar otra cuenta.'}
             </p>
             <div>
               <label className="block text-sm font-medium mb-2">Nombre</label>
-              <Input 
+              <Input
                 placeholder="Ej: Juan, María..."
                 value={nuevoNombreCuenta}
                 onChange={(e) => setNuevoNombreCuenta(e.target.value)}
@@ -2067,8 +2067,8 @@ export default function MenuPublicoPage() {
             </div>
           </div>
           <div className="flex space-x-2">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               className="flex-1"
               onClick={() => {
                 setNombreCuentaDialog(false)
@@ -2079,7 +2079,7 @@ export default function MenuPublicoPage() {
             >
               Cancelar
             </Button>
-            <Button 
+            <Button
               className="flex-1 text-white"
               style={{ backgroundColor: colors.primary }}
               onClick={confirmarNuevaCuentaCliente}
