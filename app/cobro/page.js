@@ -27,6 +27,7 @@ export default function CobroPage() {
   const [ordersACobrar, setOrdersACobrar] = useState([])
   const [ordersCobrados, setOrdersCobrados] = useState([])
   const [ordersPendientes, setOrdersPendientes] = useState([])
+  const [registeredCustomers, setRegisteredCustomers] = useState([])
   const [selectedOrder, setSelectedOrder] = useState(null)
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false)
 
@@ -66,15 +67,69 @@ export default function CobroPage() {
   useEffect(() => {
     if (user && restaurant) {
       loadOrders()
+      loadRegisteredCustomers()
       const interval = setInterval(loadOrders, 30000)
       return () => clearInterval(interval)
     }
   }, [user, restaurant])
 
+  const loadRegisteredCustomers = async () => {
+    const { data, error } = await supabase
+      .from('customers')
+      .select('id, nombre, telefono, ruc')
+      .eq('restaurant_id', restaurant.id)
+      .order('nombre', { ascending: true })
+
+    if (error) {
+      console.error('Error cargando clientes para cobro:', error)
+      return
+    }
+
+    setRegisteredCustomers(data || [])
+  }
+
+  const completeCustomerData = (customer) => {
+    if (!customer) return
+
+    setPaymentForm((current) => ({
+      ...current,
+      customer_nombre: customer.nombre || current.customer_nombre,
+      customer_telefono: customer.telefono || current.customer_telefono,
+      factura_nombre: customer.nombre || current.factura_nombre,
+      factura_ruc: customer.ruc || current.factura_ruc
+    }))
+  }
+
+  const handleCustomerNameChange = (name) => {
+    setPaymentForm((current) => ({ ...current, customer_nombre: name }))
+
+    const normalizedName = name.trim().toLocaleLowerCase()
+    if (!normalizedName) return
+
+    const customer = registeredCustomers.find(
+      (item) => (item.nombre || '').trim().toLocaleLowerCase() === normalizedName
+    )
+
+    if (customer) completeCustomerData(customer)
+  }
+
+  const handleInvoiceNameChange = (name) => {
+    setPaymentForm((current) => ({ ...current, factura_nombre: name }))
+
+    const normalizedName = name.trim().toLocaleLowerCase()
+    if (!normalizedName) return
+
+    const customer = registeredCustomers.find(
+      (item) => (item.nombre || '').trim().toLocaleLowerCase() === normalizedName
+    )
+
+    if (customer) completeCustomerData(customer)
+  }
+
   const loadOrders = async () => {
     const { data: aCobrar } = await supabase
       .from('orders')
-      .select('*, order_items(*), customers(nombre, telefono)')
+      .select('*, order_items(*), customers(id, nombre, telefono, ruc)')
       .eq('restaurant_id', restaurant.id)
       .eq('estado', 'ENTREGADO')
       .order('created_at', { ascending: false })
@@ -84,7 +139,7 @@ export default function CobroPage() {
     // Cargar pedidos PENDIENTES (marcados para cobrar después)
     const { data: pendientes } = await supabase
       .from('orders')
-      .select('*, order_items(*), customers(nombre, telefono)')
+      .select('*, order_items(*), customers(id, nombre, telefono, ruc)')
       .eq('restaurant_id', restaurant.id)
       .eq('estado', 'PENDIENTE')
       .order('created_at', { ascending: false })
@@ -104,6 +159,36 @@ export default function CobroPage() {
       .order('fecha_pago', { ascending: false })
 
     setOrdersCobrados(cobrados || [])
+  }
+
+  const loadFacturaConfigForPdf = async (defaultConfig) => {
+    let facturaConfig = defaultConfig
+
+    try {
+      const { data, error } = await supabase
+        .from('factura_config')
+        .select('config')
+        .eq('restaurant_id', restaurant.id)
+        .eq('tipo', 'factura')
+        .single()
+
+      if (!error && data?.config) {
+        facturaConfig = data.config
+        localStorage.setItem('facturaConfig', JSON.stringify(data.config))
+        return facturaConfig
+      }
+    } catch (error) {
+      console.error('Error cargando configuración de factura desde Supabase:', error)
+    }
+
+    try {
+      const savedConfig = localStorage.getItem('facturaConfig')
+      if (savedConfig) facturaConfig = JSON.parse(savedConfig)
+    } catch (_) {
+      // Se usa la configuración predeterminada si la guardada no es válida.
+    }
+
+    return facturaConfig
   }
 
   // Regenerar la factura de un pedido ya cobrado para volver a descargarla.
@@ -126,13 +211,7 @@ export default function CobroPage() {
       }
 
       const { generarFacturaPDF, calcularTotalesFactura, DEFAULT_CONFIG } = await import('@/lib/facturaGenerator')
-      let facturaConfig = DEFAULT_CONFIG
-      try {
-        const savedConfig = localStorage.getItem('facturaConfig')
-        if (savedConfig) facturaConfig = JSON.parse(savedConfig)
-      } catch (_) {
-        // Se usa la configuración predeterminada si la guardada no es válida.
-      }
+      const facturaConfig = await loadFacturaConfigForPdf(DEFAULT_CONFIG)
 
       const itemsFactura = items.map((item, index) => ({
         codigo: String(index + 1).padStart(3, '0'),
@@ -334,8 +413,8 @@ export default function CobroPage() {
       cupon_codigo: '',
       generar_factura: false,
       generar_recibo: false,
-      factura_ruc: '',
-      factura_nombre: '',
+      factura_ruc: order.customers?.ruc || order.factura_ruc || '',
+      factura_nombre: order.customers?.nombre || order.factura_nombre || order.customer_nombre || '',
       factura_condicion: 'CONTADO',
       monto_recibido: '',
       monto_efectivo: '',
@@ -1013,15 +1092,7 @@ export default function CobroPage() {
         try {
           const { generarFacturaPDF, calcularTotalesFactura, DEFAULT_CONFIG } = await import('@/lib/facturaGenerator')
 
-          let facturaConfig = DEFAULT_CONFIG
-          try {
-            const savedConfig = localStorage.getItem('facturaConfig')
-            if (savedConfig) {
-              facturaConfig = JSON.parse(savedConfig)
-            }
-          } catch (e) {
-            console.log('Usando configuración por defecto')
-          }
+          const facturaConfig = await loadFacturaConfigForPdf(DEFAULT_CONFIG)
 
           const itemsFactura = orderItems.map((item, index) => ({
             codigo: String(index + 1).padStart(3, '0'),
@@ -1456,6 +1527,14 @@ export default function CobroPage() {
 
             {selectedOrder && (
               <div className="space-y-4">
+                <datalist id="clientes-registrados">
+                  {registeredCustomers.map((customer) => (
+                    <option key={customer.id} value={customer.nombre || ''}>
+                      {customer.ruc ? `RUC: ${customer.ruc}` : ''}
+                    </option>
+                  ))}
+                </datalist>
+
                 <div className="bg-orange-50 p-4 rounded-lg">
                   <p className="text-sm text-gray-600 mb-2">Pedido #{selectedOrder.id.slice(0, 8)}</p>
                   <div className="flex justify-between items-center">
@@ -1471,9 +1550,13 @@ export default function CobroPage() {
                       <Label>Nombre del Cliente (opcional)</Label>
                       <Input
                         value={paymentForm.customer_nombre}
-                        onChange={(e) => setPaymentForm({...paymentForm, customer_nombre: e.target.value})}
+                        onChange={(e) => handleCustomerNameChange(e.target.value)}
                         placeholder="Juan Pérez"
+                        list="clientes-registrados"
                       />
+                      <p className="text-xs text-gray-500">
+                        Seleccioná un cliente registrado para completar automáticamente teléfono y RUC.
+                      </p>
                     </div>
 
                     <div className="space-y-2">
@@ -1550,9 +1633,10 @@ export default function CobroPage() {
                       <Label>Nombre / Razón Social *</Label>
                       <Input
                         value={paymentForm.factura_nombre}
-                        onChange={(e) => setPaymentForm({...paymentForm, factura_nombre: e.target.value})}
+                        onChange={(e) => handleInvoiceNameChange(e.target.value)}
                         placeholder="JUAN PÉREZ"
                         className="bg-white"
+                        list="clientes-registrados"
                       />
                     </div>
 
