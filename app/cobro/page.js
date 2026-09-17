@@ -7,6 +7,7 @@ import { useTheme } from '@/contexts/ThemeContext'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import Sidebar from '@/components/Sidebar'
+import CustomerSearchInput from '@/components/CustomerSearchInput'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -57,6 +58,8 @@ export default function CobroPage() {
     order.factura_nombre ||
     'Cliente sin nombre'
   )
+
+  const isOrderMarkedPaid = (order) => order?.metodo_pago === 'YA_PAGADO'
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -113,6 +116,10 @@ export default function CobroPage() {
     if (customer) completeCustomerData(customer)
   }
 
+  const handleCustomerSelect = (customer) => {
+    completeCustomerData(customer)
+  }
+
   const handleInvoiceNameChange = (name) => {
     setPaymentForm((current) => ({ ...current, factura_nombre: name }))
 
@@ -124,6 +131,10 @@ export default function CobroPage() {
     )
 
     if (customer) completeCustomerData(customer)
+  }
+
+  const handleInvoiceCustomerSelect = (customer) => {
+    completeCustomerData(customer)
   }
 
   const loadOrders = async () => {
@@ -407,9 +418,9 @@ export default function CobroPage() {
     setSelectedOrder(order)
     setPaymentForm({
       customer_nombre: order.customers?.nombre || order.customer_nombre || '',
-      customer_telefono: order.customers?.telefono || '',
+      customer_telefono: order.customers?.telefono || order.customer_telefono || '',
       acepta_promociones: false,
-      metodo_pago: '',
+      metodo_pago: isOrderMarkedPaid(order) ? 'YA_PAGADO' : '',
       cupon_codigo: '',
       generar_factura: false,
       generar_recibo: false,
@@ -1210,6 +1221,9 @@ export default function CobroPage() {
                       <div>
                         <CardTitle className="text-lg flex items-center">
                           {getOrderClientName(order)}
+                          {isOrderMarkedPaid(order) && (
+                            <Badge className="ml-2 bg-green-600 text-xs">✓ Ya pagado</Badge>
+                          )}
                           {itemsNuevos.length > 0 && (
                             <span className="ml-2 bg-green-500 text-white text-xs px-2 py-0.5 rounded-full animate-pulse">
                               +{itemsNuevos.length} NUEVO
@@ -1548,11 +1562,13 @@ export default function CobroPage() {
                   <>
                     <div className="space-y-2">
                       <Label>Nombre del Cliente (opcional)</Label>
-                      <Input
+                      <CustomerSearchInput
+                        restaurantId={restaurant?.id}
                         value={paymentForm.customer_nombre}
-                        onChange={(e) => handleCustomerNameChange(e.target.value)}
+                        onChange={handleCustomerNameChange}
+                        onSelect={handleCustomerSelect}
+                        searchBy="all"
                         placeholder="Juan Pérez"
-                        list="clientes-registrados"
                       />
                       <p className="text-xs text-gray-500">
                         Seleccioná un cliente registrado para completar automáticamente teléfono y RUC.
@@ -1631,12 +1647,14 @@ export default function CobroPage() {
 
                     <div className="space-y-2">
                       <Label>Nombre / Razón Social *</Label>
-                      <Input
+                      <CustomerSearchInput
+                        restaurantId={restaurant?.id}
                         value={paymentForm.factura_nombre}
-                        onChange={(e) => handleInvoiceNameChange(e.target.value)}
+                        onChange={handleInvoiceNameChange}
+                        onSelect={handleInvoiceCustomerSelect}
+                        searchBy="all"
                         placeholder="JUAN PÉREZ"
-                        className="bg-white"
-                        list="clientes-registrados"
+                        inputClassName="bg-white"
                       />
                     </div>
 
@@ -1725,6 +1743,7 @@ export default function CobroPage() {
                       <SelectItem value="TRANSFERENCIA">Transferencia</SelectItem>
                       <SelectItem value="QR">Código QR</SelectItem>
                       <SelectItem value="MIXTO">Mixto</SelectItem>
+                      <SelectItem value="YA_PAGADO">Ya pagado</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

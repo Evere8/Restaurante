@@ -7,6 +7,7 @@ import { useTheme } from '@/contexts/ThemeContext'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import Sidebar from '@/components/Sidebar'
+import CustomerSearchInput from '@/components/CustomerSearchInput'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -53,6 +54,8 @@ export default function PedidosPage() {
     tipo: 'SALA',
     mesa: '',
     customer_id: '',
+    customer_nombre: '',
+    customer_telefono: '',
     nota_cliente: '',
     nota_cocina: ''
   })
@@ -467,6 +470,73 @@ export default function PedidosPage() {
     }
   }
 
+  const isOrderMarkedPaid = (order) => order?.metodo_pago === 'YA_PAGADO'
+
+  const handleToggleYaPagado = async (order) => {
+    try {
+      const nextPaid = !isOrderMarkedPaid(order)
+      const { error } = await supabase
+        .from('orders')
+        .update({
+          metodo_pago: nextPaid ? 'YA_PAGADO' : null,
+          fecha_pago: nextPaid ? new Date().toISOString() : null
+        })
+        .eq('id', order.id)
+
+      if (error) throw error
+      toast.success(nextPaid ? 'Pedido marcado como ya pagado' : 'Marca de pago quitada')
+      loadOrders()
+    } catch (error) {
+      console.error('Error marcando pago:', error)
+      toast.error('Error al actualizar el pago')
+    }
+  }
+
+  const handleOrderCustomerChange = (name) => {
+    setOrderForm((current) => ({
+      ...current,
+      customer_nombre: name,
+      customer_id: '',
+      customer_telefono: ''
+    }))
+  }
+
+  const handleOrderCustomerSelect = (customer) => {
+    setOrderForm((current) => ({
+      ...current,
+      customer_id: customer?.id || '',
+      customer_nombre: customer?.nombre || current.customer_nombre,
+      customer_telefono: customer?.telefono || ''
+    }))
+  }
+
+  const resolveOrderCustomer = () => {
+    if (orderForm.customer_id) {
+      const selected = customers.find((customer) => customer.id === orderForm.customer_id)
+      return {
+        customer_id: orderForm.customer_id,
+        customer_nombre: selected?.nombre || orderForm.customer_nombre || null,
+        customer_telefono: selected?.telefono || orderForm.customer_telefono || ''
+      }
+    }
+
+    const typedName = (orderForm.customer_nombre || '').trim()
+    if (!typedName) {
+      return { customer_id: null, customer_nombre: null, customer_telefono: '' }
+    }
+
+    const normalizedName = typedName.toLocaleLowerCase()
+    const matched = customers.find(
+      (customer) => (customer.nombre || '').trim().toLocaleLowerCase() === normalizedName
+    )
+
+    return {
+      customer_id: matched?.id || null,
+      customer_nombre: matched?.nombre || typedName,
+      customer_telefono: matched?.telefono || orderForm.customer_telefono || ''
+    }
+  }
+
   const handleEliminarPedido = async (orderId) => {
     if (!confirm('¿Estás seguro de eliminar este pedido? Esta acción no se puede deshacer.')) {
       return
@@ -511,6 +581,8 @@ export default function PedidosPage() {
       tipo: order.tipo,
       mesa: order.mesa || '',
       customer_id: order.customer_id || '',
+      customer_nombre: order.customers?.nombre || order.customer_nombre || '',
+      customer_telefono: order.customers?.telefono || order.customer_telefono || '',
       nota_cliente: order.nota_cliente || '',
       nota_cocina: order.nota_cocina || ''
     })
@@ -526,12 +598,14 @@ export default function PedidosPage() {
     try {
       const subtotal = calculateTotal()
       const total = subtotal
+      const resolvedCustomer = resolveOrderCustomer()
 
       // Actualizar orden - también cambiar estado a NUEVO si viene de ENTREGADO
       const updateData = {
         tipo: orderForm.tipo,
         mesa: orderForm.mesa,
-        customer_id: orderForm.customer_id || null,
+        customer_id: resolvedCustomer.customer_id,
+        customer_nombre: resolvedCustomer.customer_nombre,
         nota_cliente: orderForm.nota_cliente,
         nota_cocina: orderForm.nota_cocina,
         total: total
@@ -640,13 +714,15 @@ export default function PedidosPage() {
 
           const subtotal = calculateTotalCuenta(cuenta)
           const total = subtotal
+          const resolvedCustomer = resolveOrderCustomer()
 
           // Crear pedido con nombre_cuenta y grupo_mesa_id
           const { data: newOrder, error: orderError } = await supabase
             .from('orders')
             .insert([{
               restaurant_id: restaurant.id,
-              customer_id: orderForm.customer_id || null,
+              customer_id: resolvedCustomer.customer_id,
+              customer_nombre: resolvedCustomer.customer_nombre,
               tipo: orderForm.tipo,
               mesa: orderForm.mesa,
               subtotal,
@@ -689,13 +765,15 @@ export default function PedidosPage() {
         // MODO NORMAL: Un solo pedido
         const subtotal = calculateTotal()
         const total = subtotal
+        const resolvedCustomer = resolveOrderCustomer()
 
         // Crear pedido
         const { data: newOrder, error: orderError } = await supabase
           .from('orders')
           .insert([{
             restaurant_id: restaurant.id,
-            customer_id: orderForm.customer_id || null,
+            customer_id: resolvedCustomer.customer_id,
+            customer_nombre: resolvedCustomer.customer_nombre,
             tipo: orderForm.tipo,
             mesa: orderForm.mesa,
             subtotal,
@@ -747,6 +825,8 @@ export default function PedidosPage() {
       tipo: 'SALA',
       mesa: '',
       customer_id: '',
+      customer_nombre: '',
+      customer_telefono: '',
       nota_cliente: '',
       nota_cocina: ''
     })
@@ -906,6 +986,9 @@ export default function PedidosPage() {
                       <div>
                         <CardTitle className="text-lg flex items-center">
                           {order.customers?.nombre || order.customer_nombre || 'Cliente sin nombre'}
+                          {isOrderMarkedPaid(order) && (
+                            <Badge className="ml-2 bg-green-600 text-xs">✓ Ya pagado</Badge>
+                          )}
                           {order.origen === 'DIGITAL' && (
                             <Badge className="ml-2 bg-purple-500 text-xs">📱 Cliente</Badge>
                           )}
@@ -968,6 +1051,15 @@ export default function PedidosPage() {
                           <Button size="sm" variant="outline" className="flex-1" onClick={() => openEditOrder(order)}>
                             <Edit className="h-4 w-4 mr-1" /> Editar
                           </Button>
+                          <Button
+                            size="sm"
+                            variant={isOrderMarkedPaid(order) ? 'default' : 'outline'}
+                            className={isOrderMarkedPaid(order) ? 'bg-green-600 hover:bg-green-700 text-white' : 'border-green-300 text-green-700 hover:bg-green-50'}
+                            onClick={() => handleToggleYaPagado(order)}
+                            title="Marcar como ya pagado"
+                          >
+                            <CheckCircle className="h-4 w-4" />
+                          </Button>
                           <Button size="sm" variant="destructive" onClick={() => handleEliminarPedido(order.id)}>
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -1014,6 +1106,9 @@ export default function PedidosPage() {
                       <div>
                         <CardTitle className="text-lg flex items-center">
                           {order.customers?.nombre || order.customer_nombre || 'Cliente sin nombre'}
+                          {isOrderMarkedPaid(order) && (
+                            <Badge className="ml-2 bg-green-600 text-xs">✓ Ya pagado</Badge>
+                          )}
                           {order.origen === 'DIGITAL' && (
                             <Badge className="ml-2 bg-purple-500 text-xs">📱 Cliente</Badge>
                           )}
@@ -1064,6 +1159,15 @@ export default function PedidosPage() {
                         <div className="flex space-x-2">
                           <Button size="sm" variant="outline" className="flex-1" onClick={() => openEditOrder(order)}>
                             <Edit className="h-4 w-4 mr-1" /> Editar
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant={isOrderMarkedPaid(order) ? 'default' : 'outline'}
+                            className={isOrderMarkedPaid(order) ? 'bg-green-600 hover:bg-green-700 text-white' : 'border-green-300 text-green-700 hover:bg-green-50'}
+                            onClick={() => handleToggleYaPagado(order)}
+                            title="Marcar como ya pagado"
+                          >
+                            <CheckCircle className="h-4 w-4" />
                           </Button>
                           <Button size="sm" variant="destructive" onClick={() => handleEliminarPedido(order.id)}>
                             <Trash2 className="h-4 w-4" />
@@ -1298,16 +1402,17 @@ export default function PedidosPage() {
 
                   <div className="space-y-2">
                     <Label>Cliente (opcional)</Label>
-                    <Select value={orderForm.customer_id} onValueChange={(val) => setOrderForm({...orderForm, customer_id: val})}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleccionar cliente" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {customers.map(customer => (
-                          <SelectItem key={customer.id} value={customer.id}>{customer.nombre}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <CustomerSearchInput
+                      restaurantId={restaurant?.id}
+                      value={orderForm.customer_nombre}
+                      onChange={handleOrderCustomerChange}
+                      onSelect={handleOrderCustomerSelect}
+                      searchBy="all"
+                      placeholder="Escribir o buscar cliente..."
+                    />
+                    <p className="text-xs text-gray-500">
+                      Escribí el nombre libremente o elegí un cliente registrado para cargar sus datos.
+                    </p>
                   </div>
 
                   <div className="space-y-2">
@@ -1472,6 +1577,21 @@ export default function PedidosPage() {
                       <Input value={orderForm.mesa} onChange={(e) => setOrderForm({...orderForm, mesa: e.target.value})} placeholder="Número de mesa" />
                     </div>
                   )}
+
+                  <div className="space-y-2">
+                    <Label>Cliente (opcional)</Label>
+                    <CustomerSearchInput
+                      restaurantId={restaurant?.id}
+                      value={orderForm.customer_nombre}
+                      onChange={handleOrderCustomerChange}
+                      onSelect={handleOrderCustomerSelect}
+                      searchBy="all"
+                      placeholder="Escribir o buscar cliente..."
+                    />
+                    <p className="text-xs text-gray-500">
+                      Podés cambiar el nombre o seleccionar uno registrado antes de actualizar.
+                    </p>
+                  </div>
 
                   <div className="space-y-2">
                     <Label>Notas para cocina</Label>
