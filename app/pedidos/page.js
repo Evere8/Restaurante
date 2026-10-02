@@ -289,7 +289,11 @@ export default function PedidosPage() {
     try {
       const { error } = await supabase
         .from('orders')
-        .update({ estado: 'PREPARANDO' })
+        .update({
+          estado: 'PREPARANDO',
+          tiempo_inicio_preparacion: new Date().toISOString(),
+          tiempo_listo: null
+        })
         .eq('id', orderId)
 
       if (error) throw error
@@ -306,7 +310,10 @@ export default function PedidosPage() {
       // Marcar como ENTREGADO directamente (salta LISTO)
       const { error } = await supabase
         .from('orders')
-        .update({ estado: 'ENTREGADO' })
+        .update({
+          estado: 'ENTREGADO',
+          tiempo_listo: new Date().toISOString()
+        })
         .eq('id', orderId)
 
       if (error) throw error
@@ -502,7 +509,10 @@ export default function PedidosPage() {
     try {
       const { error } = await supabase
         .from('orders')
-        .update({ estado: 'ENTREGADO' })
+        .update({
+          estado: 'ENTREGADO',
+          tiempo_listo: new Date().toISOString()
+        })
         .eq('id', orderId)
 
       if (error) throw error
@@ -1059,7 +1069,12 @@ export default function PedidosPage() {
                       <div className="flex flex-col items-end gap-1">
                         <Badge className={`${estadoColors[order.estado]} text-[10px]`}>{order.estado}</Badge>
                         <div>
-                          <OrderTimer createdAt={order.created_at} fromCreation />
+                          <OrderTimer
+                            createdAt={order.created_at}
+                            estado={order.estado}
+                            tiempoInicio={order.tiempo_inicio_preparacion}
+                            tiempoListo={order.tiempo_listo}
+                          />
                         </div>
                       </div>
                     </div>
@@ -1192,7 +1207,12 @@ export default function PedidosPage() {
                       <div className="flex flex-col items-end gap-1">
                         <Badge className="bg-purple-500 text-[10px]">ENTREGADO</Badge>
                         <div>
-                          <OrderTimer createdAt={order.created_at} fromCreation />
+                          <OrderTimer
+                            createdAt={order.created_at}
+                            estado={order.estado}
+                            tiempoInicio={order.tiempo_inicio_preparacion}
+                            tiempoListo={order.tiempo_listo}
+                          />
                         </div>
                       </div>
                     </div>

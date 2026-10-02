@@ -107,8 +107,8 @@ export default function KDSPage() {
       updateData.tiempo_inicio_preparacion = new Date().toISOString()
     }
     
-    // Registrar tiempo de finalización
-    if (newStatus === 'LISTO') {
+    // Al dejar cocina y al entregar se reinicia el tiempo de la nueva etapa.
+    if (newStatus === 'LISTO' || newStatus === 'ENTREGADO') {
       updateData.tiempo_listo = new Date().toISOString()
     }
 
