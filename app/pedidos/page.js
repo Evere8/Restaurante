@@ -1047,7 +1047,10 @@ export default function PedidosPage() {
                 className="h-9 pl-9 text-sm bg-white"
               />
             </div>
-            <div className="grid grid-cols-1 2xl:grid-cols-2 gap-3">
+            <div
+              className="grid gap-3"
+              style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 20rem), min(100%, 25rem)))' }}
+            >
               {filteredEnProceso.map(order => (
                 <Card key={order.id} className={`${order.estado === 'NUEVO' ? 'border border-blue-400' : order.estado === 'LISTO' ? 'border border-green-400' : 'border border-yellow-400'} ${order.origen === 'DIGITAL' ? 'ring-1 ring-purple-400' : ''}`}>
                   <CardHeader className={`p-3 pb-2 ${order.estado === 'NUEVO' ? 'bg-blue-50' : order.estado === 'LISTO' ? 'bg-green-50' : 'bg-yellow-50'}`}>
@@ -1185,7 +1188,10 @@ export default function PedidosPage() {
                 className="h-9 pl-9 text-sm bg-white"
               />
             </div>
-            <div className="grid grid-cols-1 2xl:grid-cols-2 gap-3">
+            <div
+              className="grid gap-3"
+              style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 20rem), min(100%, 25rem)))' }}
+            >
               {filteredEntregados.map(order => (
                 <Card key={order.id} className="border border-purple-200 hover:border-purple-400 transition-all">
                   <CardHeader className="bg-purple-50 p-3 pb-2">
