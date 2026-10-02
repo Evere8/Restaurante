@@ -992,13 +992,13 @@ export default function PedidosPage() {
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar />
       <div className="flex-1 overflow-auto">
-      <div className="container mx-auto px-4 py-6">
-        <div className="flex items-center justify-between mb-6">
+      <div className="container mx-auto px-4 py-3 sm:py-4">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-800">Gestión de Pedidos</h1>
-            <p className="text-gray-600">Crea y administra pedidos</p>
+            <h1 className="text-xl font-bold leading-tight text-gray-800 sm:text-2xl">Gestión de Pedidos</h1>
+            <p className="hidden text-sm text-gray-600 xl:block">Crea y administra pedidos</p>
           </div>
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             {/* Toggle de sonido */}
             <div className="flex items-center space-x-2 bg-white px-3 py-2 rounded-lg border">
               <button onClick={toggleSound} className="flex items-center space-x-2">
@@ -1011,7 +1011,7 @@ export default function PedidosPage() {
               </button>
             </div>
             <Button
-              className="hover:opacity-90"
+              className="h-11 px-5 text-base hover:opacity-90"
               style={{ backgroundColor: themeColors.secondary }}
               onClick={openCreateDialog}
             >
