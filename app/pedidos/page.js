@@ -45,6 +45,8 @@ export default function PedidosPage() {
   const [selectedCategory, setSelectedCategory] = useState(null)
   const [cart, setCart] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
+  const [searchEnProceso, setSearchEnProceso] = useState('')
+  const [searchEntregados, setSearchEntregados] = useState('')
   const [customers, setCustomers] = useState([])
   const [promotions, setPromotions] = useState([]) // Estado para promociones
   const [orders, setOrders] = useState({
@@ -951,6 +953,20 @@ export default function PedidosPage() {
     return p.category_id === selectedCategory
   })
 
+  const filterOrders = (orderList, searchValue) => {
+    const normalizedSearch = searchValue.trim().toLocaleLowerCase()
+    if (!normalizedSearch) return orderList
+
+    return orderList.filter((order) => {
+      const customerName = order.customers?.nombre || order.customer_nombre || ''
+      const table = order.mesa ? String(order.mesa) : ''
+      return customerName.toLocaleLowerCase().includes(normalizedSearch) || table.toLocaleLowerCase().includes(normalizedSearch)
+    })
+  }
+
+  const filteredEnProceso = filterOrders(orders.enProceso, searchEnProceso)
+  const filteredEntregados = filterOrders(orders.entregados, searchEntregados)
+
   const estadoColors = {
     PENDIENTE: 'bg-orange-500',
     NUEVO: 'bg-blue-500',
@@ -1000,13 +1016,22 @@ export default function PedidosPage() {
                 <Badge style={{ backgroundColor: themeColors.secondary }}>{orders.enProceso.length}</Badge>
               </h2>
             </div>
-            <div className="grid grid-cols-1 2xl:grid-cols-2 gap-4">
-              {orders.enProceso.map(order => (
-                <Card key={order.id} className={`${order.estado === 'NUEVO' ? 'border-2 border-blue-400' : order.estado === 'LISTO' ? 'border-2 border-green-400' : 'border-2 border-yellow-400'} ${order.origen === 'DIGITAL' ? 'ring-2 ring-purple-400' : ''}`}>
-                  <CardHeader className={order.estado === 'NUEVO' ? 'bg-blue-50' : order.estado === 'LISTO' ? 'bg-green-50' : 'bg-yellow-50'}>
+            <div className="relative mb-3">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <Input
+                value={searchEnProceso}
+                onChange={(event) => setSearchEnProceso(event.target.value)}
+                placeholder="Buscar por cliente o mesa..."
+                className="h-9 pl-9 text-sm bg-white"
+              />
+            </div>
+            <div className="grid grid-cols-1 2xl:grid-cols-2 gap-3">
+              {filteredEnProceso.map(order => (
+                <Card key={order.id} className={`${order.estado === 'NUEVO' ? 'border border-blue-400' : order.estado === 'LISTO' ? 'border border-green-400' : 'border border-yellow-400'} ${order.origen === 'DIGITAL' ? 'ring-1 ring-purple-400' : ''}`}>
+                  <CardHeader className={`p-3 pb-2 ${order.estado === 'NUEVO' ? 'bg-blue-50' : order.estado === 'LISTO' ? 'bg-green-50' : 'bg-yellow-50'}`}>
                     <div className="flex items-start justify-between">
                       <div>
-                        <CardTitle className="text-lg flex items-center">
+                        <CardTitle className="text-base flex flex-wrap items-center gap-y-1">
                           {order.customers?.nombre || order.customer_nombre || 'Cliente sin nombre'}
                           {isOrderMarkedPaid(order) && (
                             <Badge className="ml-2 bg-green-600 text-xs">✓ Ya pagado</Badge>
@@ -1015,47 +1040,39 @@ export default function PedidosPage() {
                             <Badge className="ml-2 bg-purple-500 text-xs">📱 Cliente</Badge>
                           )}
                         </CardTitle>
-                        <p className="text-xs text-gray-400 mt-0.5">#{order.id.slice(0, 8)}</p>
-                        <p className="text-sm text-gray-600 mt-1">
-                          {new Date(order.created_at).toLocaleString('es-ES')}
+                        <p className="text-xs text-gray-600 mt-1">
+                          {order.tipo}{order.mesa ? ` · Mesa ${order.mesa}` : ''}
                         </p>
-                        <div className="mt-2">
+                      </div>
+                      <div className="flex flex-col items-end gap-1">
+                        <Badge className={`${estadoColors[order.estado]} text-[10px]`}>{order.estado}</Badge>
+                        <div>
                           <OrderTimer createdAt={order.created_at} fromCreation />
                         </div>
                       </div>
-                      <Badge className={estadoColors[order.estado]}>{order.estado}</Badge>
                     </div>
                   </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Tipo:</span>
-                        <span className="font-medium">{order.tipo}</span>
-                      </div>
-                      {order.mesa && (
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Mesa:</span>
-                          <span className="font-medium">{order.mesa}</span>
-                        </div>
-                      )}
+                  <CardContent className="p-3 pt-0">
+                    <div className="space-y-1.5 text-sm">
                       {order.nota_cliente && (
-                        <div className="bg-gray-100 p-2 rounded text-xs">
+                        <div className="bg-gray-100 p-1.5 rounded text-xs">
                           <span className="font-semibold">Nota:</span> {order.nota_cliente}
                         </div>
                       )}
                       {order.nota_cocina && (
-                        <div className="bg-orange-100 p-2 rounded text-xs border border-orange-300">
+                        <div className="bg-orange-100 p-1.5 rounded text-xs border border-orange-300">
                           <span className="font-semibold text-orange-700">🔔 Cocina:</span>
                           <span className="text-orange-800">{order.nota_cocina}</span>
                         </div>
                       )}
-                      <div className="border-t pt-2 mt-2">
-                        <p className="font-semibold mb-1">Items:</p>
+                      <div className="border-t pt-1.5 mt-1.5">
+                        <p className="font-semibold mb-0.5 text-xs">Items:</p>
+                        <div className="max-h-28 overflow-y-auto pr-1">
                         {order.order_items?.map(item => {
                           const esNuevo = item.nombre_item_snapshot?.startsWith('🆕') || item.es_adicional
                           const paraLlevar = isTakeawayItem(item)
                           return (
-                            <div key={item.id} className={`flex justify-between gap-2 text-xs py-1 ${paraLlevar ? 'bg-amber-100 px-2 rounded border-l-4 border-amber-500 my-1' : esNuevo ? 'bg-green-100 px-2 rounded border-l-4 border-green-500 my-1' : ''}`}>
+                            <div key={item.id} className={`flex justify-between gap-2 text-xs py-0.5 ${paraLlevar ? 'bg-amber-100 px-1.5 rounded border-l-4 border-amber-500 my-0.5' : esNuevo ? 'bg-green-100 px-1.5 rounded border-l-4 border-green-500 my-0.5' : ''}`}>
                               <span className={paraLlevar ? 'font-bold text-amber-800' : esNuevo ? 'font-bold text-green-700' : ''}>
                                 {item.cantidad}x {getDisplayItemName(item.nombre_item_snapshot)}
                                 {paraLlevar && <Badge className="ml-2 bg-amber-500 text-[10px]">PARA LLEVAR</Badge>}
@@ -1066,15 +1083,16 @@ export default function PedidosPage() {
                             </div>
                           )
                         })}
+                        </div>
                       </div>
-                      <div className="border-t pt-2 mt-2 flex justify-between font-bold text-lg">
+                      <div className="border-t pt-1.5 mt-1.5 flex justify-between font-bold text-base">
                         <span>Total:</span>
                         <span className="text-orange-600">{formatCurrency(order.total)}</span>
                       </div>
 
                       {/* Botones de acción */}
-                      <div className="flex flex-col space-y-2 mt-3">
-                        <div className="flex space-x-2">
+                      <div className="flex flex-col space-y-1.5 mt-2">
+                        <div className="flex space-x-1.5">
                           <Button size="sm" variant="outline" className="flex-1" onClick={() => openEditOrder(order)}>
                             <Edit className="h-4 w-4 mr-1" /> Editar
                           </Button>
@@ -1116,9 +1134,9 @@ export default function PedidosPage() {
                   </CardContent>
                 </Card>
               ))}
-              {orders.enProceso.length === 0 && (
+              {filteredEnProceso.length === 0 && (
                 <div className="col-span-full text-center py-12 text-gray-500">
-                  No hay pedidos en proceso
+                  {searchEnProceso ? 'No se encontraron pedidos en proceso' : 'No hay pedidos en proceso'}
                 </div>
               )}
             </div>
@@ -1131,13 +1149,22 @@ export default function PedidosPage() {
                 <Badge className="bg-green-500">{orders.entregados.length}</Badge>
               </h2>
             </div>
-            <div className="grid grid-cols-1 2xl:grid-cols-2 gap-4">
-              {orders.entregados.map(order => (
-                <Card key={order.id} className="border-2 border-purple-200 hover:border-purple-400 transition-all">
-                  <CardHeader className="bg-purple-50">
+            <div className="relative mb-3">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <Input
+                value={searchEntregados}
+                onChange={(event) => setSearchEntregados(event.target.value)}
+                placeholder="Buscar por cliente o mesa..."
+                className="h-9 pl-9 text-sm bg-white"
+              />
+            </div>
+            <div className="grid grid-cols-1 2xl:grid-cols-2 gap-3">
+              {filteredEntregados.map(order => (
+                <Card key={order.id} className="border border-purple-200 hover:border-purple-400 transition-all">
+                  <CardHeader className="bg-purple-50 p-3 pb-2">
                     <div className="flex items-start justify-between">
                       <div>
-                        <CardTitle className="text-lg flex items-center">
+                        <CardTitle className="text-base flex flex-wrap items-center gap-y-1">
                           {order.customers?.nombre || order.customer_nombre || 'Cliente sin nombre'}
                           {isOrderMarkedPaid(order) && (
                             <Badge className="ml-2 bg-green-600 text-xs">✓ Ya pagado</Badge>
@@ -1146,35 +1173,27 @@ export default function PedidosPage() {
                             <Badge className="ml-2 bg-purple-500 text-xs">📱 Cliente</Badge>
                           )}
                         </CardTitle>
-                        <p className="text-xs text-gray-400 mt-0.5">#{order.id.slice(0, 8)}</p>
-                        <p className="text-sm text-gray-600 mt-1">
-                          {new Date(order.created_at).toLocaleString('es-ES')}
+                        <p className="text-xs text-gray-600 mt-1">
+                          {order.tipo}{order.mesa ? ` · Mesa ${order.mesa}` : ''}
                         </p>
-                        <div className="mt-2">
+                      </div>
+                      <div className="flex flex-col items-end gap-1">
+                        <Badge className="bg-purple-500 text-[10px]">ENTREGADO</Badge>
+                        <div>
                           <OrderTimer createdAt={order.created_at} fromCreation />
                         </div>
                       </div>
-                      <Badge className="bg-purple-500">ENTREGADO</Badge>
                     </div>
                   </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Tipo:</span>
-                        <span className="font-medium">{order.tipo}</span>
-                      </div>
-                      {order.mesa && (
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Mesa:</span>
-                          <span className="font-medium">{order.mesa}</span>
-                        </div>
-                      )}
-                      <div className="border-t pt-2 mt-2">
-                        <p className="font-semibold mb-1">Items:</p>
+                  <CardContent className="p-3 pt-0">
+                    <div className="space-y-1.5 text-sm">
+                      <div className="border-t pt-1.5 mt-1.5">
+                        <p className="font-semibold mb-0.5 text-xs">Items:</p>
+                        <div className="max-h-28 overflow-y-auto pr-1">
                         {order.order_items?.map(item => {
                           const paraLlevar = isTakeawayItem(item)
                           return (
-                          <div key={item.id} className={`flex justify-between gap-2 text-xs py-1 ${paraLlevar ? 'bg-amber-100 px-2 rounded border-l-4 border-amber-500 my-1' : ''}`}>
+                          <div key={item.id} className={`flex justify-between gap-2 text-xs py-0.5 ${paraLlevar ? 'bg-amber-100 px-1.5 rounded border-l-4 border-amber-500 my-0.5' : ''}`}>
                             <span className={paraLlevar ? 'font-bold text-amber-800' : ''}>
                               {item.cantidad}x {getDisplayItemName(item.nombre_item_snapshot)}
                               {paraLlevar && <Badge className="ml-2 bg-amber-500 text-[10px]">PARA LLEVAR</Badge>}
@@ -1183,14 +1202,15 @@ export default function PedidosPage() {
                           </div>
                           )
                         })}
+                        </div>
                       </div>
-                      <div className="border-t pt-2 mt-2 flex justify-between font-bold text-lg">
+                      <div className="border-t pt-1.5 mt-1.5 flex justify-between font-bold text-base">
                         <span>Total:</span>
                         <span className="text-orange-600">{formatCurrency(order.total)}</span>
                       </div>
 
                       {/* Botones de acción para pedidos entregados */}
-                      <div className="flex flex-col space-y-2 mt-3">
+                      <div className="flex flex-col space-y-1.5 mt-2">
                         <Button
                           size="sm"
                           className="w-full bg-orange-500 hover:bg-orange-600 text-white"
@@ -1205,7 +1225,7 @@ export default function PedidosPage() {
                         >
                           <Plus className="h-4 w-4 mr-1" /> Agregar más productos
                         </Button>
-                        <div className="flex space-x-2">
+                        <div className="flex space-x-1.5">
                           <Button size="sm" variant="outline" className="flex-1" onClick={() => openEditOrder(order)}>
                             <Edit className="h-4 w-4 mr-1" /> Editar
                           </Button>
@@ -1227,9 +1247,9 @@ export default function PedidosPage() {
                   </CardContent>
                 </Card>
               ))}
-              {orders.entregados.length === 0 && (
+              {filteredEntregados.length === 0 && (
                 <div className="col-span-full text-center py-12 text-gray-500">
-                  No hay pedidos entregados en las últimas 48 horas
+                  {searchEntregados ? 'No se encontraron pedidos entregados' : 'No hay pedidos entregados'}
                 </div>
               )}
             </div>
