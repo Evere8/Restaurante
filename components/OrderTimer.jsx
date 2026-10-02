@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 
-export default function OrderTimer({ createdAt, estado, tiempoInicio, tiempoListo }) {
+export default function OrderTimer({ createdAt, estado, tiempoInicio, tiempoListo, fromCreation = false }) {
   const [timeElapsed, setTimeElapsed] = useState('')
   const [colorClass, setColorClass] = useState('')
 
@@ -11,8 +11,8 @@ export default function OrderTimer({ createdAt, estado, tiempoInicio, tiempoList
       const now = new Date()
       let referenceTime
       
-      // Usar el tiempo apropiado según el estado
-      if (estado === 'NUEVO') {
+      // En Pedidos el tiempo siempre corre desde que se toma la orden.
+      if (fromCreation || estado === 'NUEVO') {
         referenceTime = new Date(createdAt)
       } else if (estado === 'PREPARANDO' && tiempoInicio) {
         referenceTime = new Date(tiempoInicio)

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useNotificationSound } from '@/contexts/NotificationSoundContext'
 import { Button } from '@/components/ui/button'
-import { LogOut, Home, Utensils, ShoppingCart, ChefHat, CreditCard, Users, Tag, BarChart3, Settings, Code, Menu, X, Package, FileText, Smartphone, Volume2, VolumeX, Wallet } from 'lucide-react'
+import { LogOut, Home, Utensils, ShoppingCart, ChefHat, CreditCard, Users, Tag, BarChart3, Settings, Code, Menu, X, Package, FileText, Smartphone, Volume2, VolumeX, Wallet, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
@@ -14,6 +14,7 @@ export default function Sidebar() {
   const { soundEnabled, toggleSound, testSound } = useNotificationSound()
   const pathname = usePathname()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [desktopMenuCollapsed, setDesktopMenuCollapsed] = useState(false)
   const [adminColors, setAdminColors] = useState({
     primary: '#f97316',
     secondary: '#ea580c'
@@ -25,7 +26,16 @@ export default function Sidebar() {
     if (savedColors) {
       setAdminColors(JSON.parse(savedColors))
     }
+    setDesktopMenuCollapsed(localStorage.getItem('sidebarCollapsed') === 'true')
   }, [])
+
+  const toggleDesktopMenu = () => {
+    setDesktopMenuCollapsed((current) => {
+      const next = !current
+      localStorage.setItem('sidebarCollapsed', String(next))
+      return next
+    })
+  }
 
   const menuItems = [
     { href: '/dashboard', label: 'Dashboard', icon: Home, permission: 'dashboard' },
@@ -68,6 +78,19 @@ export default function Sidebar() {
 
   return (
     <>
+      <button
+        onClick={toggleDesktopMenu}
+        className={cn(
+          'hidden lg:flex fixed top-4 z-50 h-9 w-9 items-center justify-center rounded-md text-white shadow-md transition-all hover:opacity-90',
+          desktopMenuCollapsed ? 'left-4' : 'left-60'
+        )}
+        style={{ backgroundColor: adminColors.primary }}
+        title={desktopMenuCollapsed ? 'Mostrar menú' : 'Ocultar menú'}
+        aria-label={desktopMenuCollapsed ? 'Mostrar menú' : 'Ocultar menú'}
+      >
+        {desktopMenuCollapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
+      </button>
+
       {/* Hamburger Button - Mobile Only - A LA DERECHA */}
       <button
         onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -88,8 +111,9 @@ export default function Sidebar() {
       {/* Sidebar */}
       <div
         className={cn(
-          "fixed lg:static inset-y-0 left-0 z-40 w-64 min-h-screen text-white flex flex-col transition-transform duration-300",
-          mobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+          "fixed lg:static inset-y-0 left-0 z-40 w-64 min-h-screen text-white flex flex-col transition-all duration-300",
+          mobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
+          desktopMenuCollapsed && "lg:w-0 lg:opacity-0 lg:pointer-events-none"
         )}
         style={{ 
           background: `linear-gradient(to bottom, ${adminColors.primary}, ${primaryDark})`

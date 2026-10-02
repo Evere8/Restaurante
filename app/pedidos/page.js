@@ -15,10 +15,10 @@ import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
-import { Plus, Minus, ShoppingCart, Search, Trash2, Edit, Play, CheckCircle, Volume2, VolumeX, Users, UserPlus, X } from 'lucide-react'
+import { Plus, Minus, ShoppingCart, Search, Trash2, Edit, Play, CheckCircle, Volume2, VolumeX, Users, UserPlus, X, CreditCard } from 'lucide-react'
+import OrderTimer from '@/components/OrderTimer'
 import { toast } from 'sonner'
 
 const TAKEAWAY_PREFIX = '🥡 PARA LLEVAR - '
@@ -992,24 +992,15 @@ export default function PedidosPage() {
           </div>
         </div>
 
-        <Tabs defaultValue="enProceso" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="enProceso">
-              🔥 En Proceso
-              {orders.enProceso.length > 0 && (
-                <Badge className="ml-2" style={{ backgroundColor: themeColors.secondary }}>{orders.enProceso.length}</Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="entregados">
-              ✅ Entregados
-              {orders.entregados.length > 0 && (
-                <Badge className="ml-2 bg-green-500">{orders.entregados.length}</Badge>
-              )}
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="enProceso">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
+          <section className="min-w-0">
+            <div className="flex items-center justify-between border-b pb-3 mb-4">
+              <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+                <span>🔥 En Proceso</span>
+                <Badge style={{ backgroundColor: themeColors.secondary }}>{orders.enProceso.length}</Badge>
+              </h2>
+            </div>
+            <div className="grid grid-cols-1 2xl:grid-cols-2 gap-4">
               {orders.enProceso.map(order => (
                 <Card key={order.id} className={`${order.estado === 'NUEVO' ? 'border-2 border-blue-400' : order.estado === 'LISTO' ? 'border-2 border-green-400' : 'border-2 border-yellow-400'} ${order.origen === 'DIGITAL' ? 'ring-2 ring-purple-400' : ''}`}>
                   <CardHeader className={order.estado === 'NUEVO' ? 'bg-blue-50' : order.estado === 'LISTO' ? 'bg-green-50' : 'bg-yellow-50'}>
@@ -1028,6 +1019,9 @@ export default function PedidosPage() {
                         <p className="text-sm text-gray-600 mt-1">
                           {new Date(order.created_at).toLocaleString('es-ES')}
                         </p>
+                        <div className="mt-2">
+                          <OrderTimer createdAt={order.created_at} fromCreation />
+                        </div>
                       </div>
                       <Badge className={estadoColors[order.estado]}>{order.estado}</Badge>
                     </div>
@@ -1128,10 +1122,16 @@ export default function PedidosPage() {
                 </div>
               )}
             </div>
-          </TabsContent>
+          </section>
 
-          <TabsContent value="entregados">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <section className="min-w-0">
+            <div className="flex items-center justify-between border-b pb-3 mb-4">
+              <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+                <span>✅ Entregados</span>
+                <Badge className="bg-green-500">{orders.entregados.length}</Badge>
+              </h2>
+            </div>
+            <div className="grid grid-cols-1 2xl:grid-cols-2 gap-4">
               {orders.entregados.map(order => (
                 <Card key={order.id} className="border-2 border-purple-200 hover:border-purple-400 transition-all">
                   <CardHeader className="bg-purple-50">
@@ -1150,6 +1150,9 @@ export default function PedidosPage() {
                         <p className="text-sm text-gray-600 mt-1">
                           {new Date(order.created_at).toLocaleString('es-ES')}
                         </p>
+                        <div className="mt-2">
+                          <OrderTimer createdAt={order.created_at} fromCreation />
+                        </div>
                       </div>
                       <Badge className="bg-purple-500">ENTREGADO</Badge>
                     </div>
@@ -1190,6 +1193,13 @@ export default function PedidosPage() {
                       <div className="flex flex-col space-y-2 mt-3">
                         <Button
                           size="sm"
+                          className="w-full bg-orange-500 hover:bg-orange-600 text-white"
+                          onClick={() => router.push(`/cobro?pedido=${order.id}`)}
+                        >
+                          <CreditCard className="h-4 w-4 mr-1" /> Cobrar
+                        </Button>
+                        <Button
+                          size="sm"
                           className="w-full bg-purple-500 hover:bg-purple-600 text-white"
                           onClick={() => openAddItemsDialog(order)}
                         >
@@ -1224,7 +1234,7 @@ export default function PedidosPage() {
               )}
             </div>
 
-            {orders.length === 0 && (
+            {(orders.enProceso.length + orders.entregados.length) === 0 && (
               <Card>
                 <CardContent className="py-12 text-center">
                   <ShoppingCart className="h-12 w-12 text-gray-400 mx-auto mb-3" />
@@ -1232,8 +1242,8 @@ export default function PedidosPage() {
                 </CardContent>
               </Card>
             )}
-          </TabsContent>
-        </Tabs>
+          </section>
+        </div>
 
         {/* Dialog Crear Pedido */}
         <Dialog open={createDialogOpen} onOpenChange={(open) => {

@@ -36,6 +36,7 @@ export default function CobroPage() {
   const [registeredCustomers, setRegisteredCustomers] = useState([])
   const [selectedOrder, setSelectedOrder] = useState(null)
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false)
+  const [paymentOrderId, setPaymentOrderId] = useState(null)
 
   const [paymentForm, setPaymentForm] = useState({
     customer_nombre: '',
@@ -80,6 +81,26 @@ export default function CobroPage() {
       return () => clearInterval(interval)
     }
   }, [user, restaurant])
+
+  // Abre el mismo diálogo de pago al llegar desde una tarjeta entregada.
+  useEffect(() => {
+    const orderId = new URLSearchParams(window.location.search).get('pedido')
+    if (orderId) setPaymentOrderId(orderId)
+  }, [])
+
+  useEffect(() => {
+    if (!paymentOrderId || paymentDialogOpen) return
+
+    const order = ordersACobrar.find((item) => item.id === paymentOrderId)
+    if (!order) return
+
+    openPaymentDialog(order)
+    setPaymentOrderId(null)
+
+    const url = new URL(window.location.href)
+    url.searchParams.delete('pedido')
+    window.history.replaceState({}, '', `${url.pathname}${url.search}`)
+  }, [paymentOrderId, paymentDialogOpen, ordersACobrar])
 
   const loadRegisteredCustomers = async () => {
     const { data, error } = await supabase
