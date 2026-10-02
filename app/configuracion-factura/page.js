@@ -16,6 +16,7 @@ import { supabase } from '@/lib/supabase'
 
 // Configuración por defecto del recibo
 const DEFAULT_RECIBO_CONFIG = {
+  impresoraPredeterminada: '',
   pageWidth: 210,
   pageHeight: 148,
   marginLeft: 5,
@@ -403,6 +404,23 @@ export default function ConfiguracionFacturaPage() {
                 </div>
               </div>
 
+              <Card className="mb-4 border-blue-200">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg">Impresora de Factura</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <Label>Impresora predeterminada</Label>
+                  <Input
+                    value={facturaConfig.impresoraPredeterminada || ''}
+                    onChange={(e) => setFacturaConfig({ ...facturaConfig, impresoraPredeterminada: e.target.value })}
+                    placeholder="Ej: Epson Caja / Facturas"
+                  />
+                  <p className="text-xs text-gray-500">
+                    Se guarda como preferencia. La selección final depende del diálogo de impresión del navegador.
+                  </p>
+                </CardContent>
+              </Card>
+
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <Card>
                   <CardHeader>
@@ -657,6 +675,23 @@ export default function ConfiguracionFacturaPage() {
                   </Button>
                 </div>
               </div>
+
+              <Card className="mb-4 border-green-200">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg">Impresora de Recibo</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <Label>Impresora predeterminada</Label>
+                  <Input
+                    value={reciboConfig.impresoraPredeterminada || ''}
+                    onChange={(e) => setReciboConfig({ ...reciboConfig, impresoraPredeterminada: e.target.value })}
+                    placeholder="Ej: Térmica Caja / Recibos"
+                  />
+                  <p className="text-xs text-gray-500">
+                    Al cobrar e imprimir recibo se abre la impresión automáticamente. El navegador recuerda la última impresora elegida.
+                  </p>
+                </CardContent>
+              </Card>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <Card>

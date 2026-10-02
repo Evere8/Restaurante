@@ -20,6 +20,11 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { CreditCard, DollarSign, X, Tag, CheckCircle, FileText, Receipt, Coins, Trash2, Download, Calendar, Clock, Printer } from 'lucide-react'
 import { toast } from 'sonner'
 
+const stripNewItemPrefix = (name = '') => name.replace(/^🆕\s*/, '')
+const stripTakeawayPrefix = (name = '') => stripNewItemPrefix(name).replace(/^🥡\s*PARA LLEVAR\s*-\s*/i, '')
+const isTakeawayItemName = (name = '') => /^🆕\s*🥡\s*PARA LLEVAR\s*-/i.test(name) || /^🥡\s*PARA LLEVAR\s*-/i.test(name)
+const getDisplayItemName = (name = '') => stripTakeawayPrefix(name)
+
 export default function CobroPage() {
   const { user, restaurant, loading: authLoading } = useAuth()
   const { formatCurrency, currency } = useCurrency()
@@ -672,6 +677,48 @@ export default function CobroPage() {
     }
   }
 
+  const imprimirPdfBlob = (pdfBlob) => new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(pdfBlob)
+    const iframe = document.createElement('iframe')
+    iframe.style.position = 'fixed'
+    iframe.style.right = '0'
+    iframe.style.bottom = '0'
+    iframe.style.width = '0'
+    iframe.style.height = '0'
+    iframe.style.border = '0'
+
+    const cleanup = () => {
+      setTimeout(() => {
+        if (iframe.parentNode) {
+          iframe.parentNode.removeChild(iframe)
+        }
+        URL.revokeObjectURL(url)
+      }, 1000)
+    }
+
+    iframe.onload = () => {
+      setTimeout(() => {
+        try {
+          iframe.contentWindow?.focus()
+          iframe.contentWindow?.print()
+          cleanup()
+          resolve()
+        } catch (error) {
+          cleanup()
+          reject(error)
+        }
+      }, 300)
+    }
+
+    iframe.onerror = () => {
+      cleanup()
+      reject(new Error('No se pudo cargar el recibo para imprimir'))
+    }
+
+    iframe.src = url
+    document.body.appendChild(iframe)
+  })
+
   const formatearNumeroRecibo = (numero) => {
     return new Intl.NumberFormat('es-PY', {
       minimumFractionDigits: 0,
@@ -1147,14 +1194,8 @@ export default function CobroPage() {
       if (paymentForm.generar_recibo && orderItems && orderItems.length > 0) {
         try {
           const pdfBlob = await generarReciboPDF(orderItems, finalTotal)
-          const url = URL.createObjectURL(pdfBlob)
-          const link = document.createElement('a')
-          link.href = url
-          link.download = `recibo_${selectedOrder.id.slice(0, 8)}_${Date.now()}.pdf`
-          document.body.appendChild(link)
-          link.click()
-          document.body.removeChild(link)
-          URL.revokeObjectURL(url)
+          await imprimirPdfBlob(pdfBlob)
+          toast.success('Recibo enviado a impresión')
         } catch (reciboError) {
           console.error('Error generando recibo:', reciboError)
           toast.warning('Error al generar recibo')
@@ -1270,8 +1311,11 @@ export default function CobroPage() {
 
                       {/* Items originales */}
                       {itemsOriginales.map(item => (
-                        <div key={item.id} className="flex justify-between text-xs mb-1">
-                          <span>{item.cantidad}x {item.nombre_item_snapshot}</span>
+                        <div key={item.id} className={`flex justify-between gap-2 text-xs mb-1 ${isTakeawayItemName(item.nombre_item_snapshot) ? 'bg-amber-100 px-2 py-1 rounded border-l-4 border-amber-500 text-amber-800 font-bold' : ''}`}>
+                          <span>
+                            {item.cantidad}x {getDisplayItemName(item.nombre_item_snapshot)}
+                            {isTakeawayItemName(item.nombre_item_snapshot) && <Badge className="ml-2 bg-amber-500 text-[10px]">PARA LLEVAR</Badge>}
+                          </span>
                           <span className="font-medium">{formatCurrency(item.precio_unitario * item.cantidad)}</span>
                         </div>
                       ))}
@@ -1281,8 +1325,11 @@ export default function CobroPage() {
                         <div className="mt-2 pt-2 border-t border-green-300 bg-green-50 rounded p-2">
                           <p className="text-xs font-bold text-green-700 mb-1">🆕 NUEVOS ITEMS:</p>
                           {itemsNuevos.map(item => (
-                            <div key={item.id} className="flex justify-between text-xs mb-1 text-green-800 font-medium">
-                              <span>{item.cantidad}x {item.nombre_item_snapshot?.replace('🆕 ', '')}</span>
+                            <div key={item.id} className={`flex justify-between gap-2 text-xs mb-1 font-medium ${isTakeawayItemName(item.nombre_item_snapshot) ? 'bg-amber-100 px-2 py-1 rounded border-l-4 border-amber-500 text-amber-800' : 'text-green-800'}`}>
+                              <span>
+                                {item.cantidad}x {getDisplayItemName(item.nombre_item_snapshot)}
+                                {isTakeawayItemName(item.nombre_item_snapshot) && <Badge className="ml-2 bg-amber-500 text-[10px]">PARA LLEVAR</Badge>}
+                              </span>
                               <span>{formatCurrency(item.precio_unitario * item.cantidad)}</span>
                             </div>
                           ))}
@@ -1379,8 +1426,11 @@ export default function CobroPage() {
                     <div className="border-t pt-2">
                       <p className="font-semibold mb-1 text-sm">Productos:</p>
                       {order.order_items?.map(item => (
-                        <div key={item.id} className="flex justify-between text-xs mb-1">
-                          <span>{item.cantidad}x {item.nombre_item_snapshot?.replace('🆕 ', '')}</span>
+                        <div key={item.id} className={`flex justify-between gap-2 text-xs mb-1 ${isTakeawayItemName(item.nombre_item_snapshot) ? 'bg-amber-100 px-2 py-1 rounded border-l-4 border-amber-500 text-amber-800 font-bold' : ''}`}>
+                          <span>
+                            {item.cantidad}x {getDisplayItemName(item.nombre_item_snapshot)}
+                            {isTakeawayItemName(item.nombre_item_snapshot) && <Badge className="ml-2 bg-amber-500 text-[10px]">PARA LLEVAR</Badge>}
+                          </span>
                           <span className="font-medium">{formatCurrency(item.precio_unitario * item.cantidad)}</span>
                         </div>
                       ))}
@@ -1479,8 +1529,11 @@ export default function CobroPage() {
                       </p>
                       <div className="space-y-1 max-h-32 overflow-y-auto bg-gray-50 p-2 rounded">
                         {order.order_items?.map(item => (
-                          <div key={item.id} className="flex justify-between text-xs">
-                            <span className="text-gray-700">{item.cantidad}x {item.nombre_item_snapshot?.replace('🆕 ', '')}</span>
+                          <div key={item.id} className={`flex justify-between gap-2 text-xs ${isTakeawayItemName(item.nombre_item_snapshot) ? 'bg-amber-100 px-2 py-1 rounded border-l-4 border-amber-500 text-amber-800 font-bold' : ''}`}>
+                            <span className={isTakeawayItemName(item.nombre_item_snapshot) ? '' : 'text-gray-700'}>
+                              {item.cantidad}x {getDisplayItemName(item.nombre_item_snapshot)}
+                              {isTakeawayItemName(item.nombre_item_snapshot) && <Badge className="ml-2 bg-amber-500 text-[10px]">PARA LLEVAR</Badge>}
+                            </span>
                             <span className="font-medium">{formatCurrency(item.precio_unitario * item.cantidad)}</span>
                           </div>
                         ))}
@@ -1877,7 +1930,7 @@ export default function CobroPage() {
                   ) : paymentForm.generar_recibo ? (
                     <>
                       <Receipt className="mr-2 h-5 w-5" />
-                      Procesar Pago - {formatCurrency(calculateFinalTotal())} y Descargar Recibo
+                      Procesar Pago - {formatCurrency(calculateFinalTotal())} e Imprimir Recibo
                     </>
                   ) : (
                     <>

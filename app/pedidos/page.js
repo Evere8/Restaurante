@@ -21,6 +21,20 @@ import { Switch } from '@/components/ui/switch'
 import { Plus, Minus, ShoppingCart, Search, Trash2, Edit, Play, CheckCircle, Volume2, VolumeX, Users, UserPlus, X } from 'lucide-react'
 import { toast } from 'sonner'
 
+const TAKEAWAY_PREFIX = '🥡 PARA LLEVAR - '
+
+const stripNewItemPrefix = (name = '') => name.replace(/^🆕\s*/, '')
+const stripTakeawayPrefix = (name = '') => stripNewItemPrefix(name).replace(/^🥡\s*PARA LLEVAR\s*-\s*/i, '')
+const isTakeawaySnapshot = (name = '') => /^🆕\s*🥡\s*PARA LLEVAR\s*-/i.test(name) || /^🥡\s*PARA LLEVAR\s*-/i.test(name)
+const isTakeawayItem = (item) => Boolean(item?.para_llevar || isTakeawaySnapshot(item?.nombre_item_snapshot || item?.nombre || ''))
+const getDisplayItemName = (name = '') => stripTakeawayPrefix(name)
+const formatOrderItemSnapshot = (item, { nuevo = false } = {}) => {
+  const promoName = item.tiene_promo
+    ? `${stripTakeawayPrefix(item.nombre)} (${item.promo_descuento}% OFF)`
+    : stripTakeawayPrefix(item.nombre)
+  return `${nuevo ? '🆕 ' : ''}${isTakeawayItem(item) ? TAKEAWAY_PREFIX : ''}${promoName}`
+}
+
 export default function PedidosPage() {
   const { user, restaurant, loading: authLoading } = useAuth()
   const { formatCurrency } = useCurrency()
@@ -352,7 +366,8 @@ export default function PedidosPage() {
       tiene_promo: !!promoInfo,
       promo_tipo: promoInfo?.tipo || null,
       promo_descuento: promoInfo?.descuento || 0,
-      promo_nombre: promoInfo?.nombrePromo || null
+      promo_nombre: promoInfo?.nombrePromo || null,
+      para_llevar: false
     }
 
     if (cuentasSeparadas && cuentas.length > 0) {
@@ -424,6 +439,21 @@ export default function PedidosPage() {
     } else {
       setCart(cart.filter(item => item.id !== productId))
     }
+  }
+
+  const toggleCartItemTakeaway = (productId) => {
+    if (cuentasSeparadas && cuentas.length > 0) {
+      const nuevasCuentas = [...cuentas]
+      nuevasCuentas[cuentaActiva].productos = nuevasCuentas[cuentaActiva].productos.map(item =>
+        item.id === productId ? { ...item, para_llevar: !isTakeawayItem(item) } : item
+      )
+      setCuentas(nuevasCuentas)
+      return
+    }
+
+    setCart(cart.map(item =>
+      item.id === productId ? { ...item, para_llevar: !isTakeawayItem(item) } : item
+    ))
   }
 
   const calculateTotal = () => {
@@ -572,9 +602,10 @@ export default function PedidosPage() {
       id: item.menu_item_id || `temp_item_${item.id || index}`,
       originalMenuItemId: item.menu_item_id,
       orderItemId: item.id, // Guardar el ID del order_item original
-      nombre: item.nombre_item_snapshot,
+      nombre: getDisplayItemName(item.nombre_item_snapshot),
       precio_base: item.precio_unitario,
-      cantidad: item.cantidad
+      cantidad: item.cantidad,
+      para_llevar: isTakeawayItem(item)
     }))
     setCart(cartItems)
     setOrderForm({
@@ -655,7 +686,7 @@ export default function PedidosPage() {
           menu_item_id: menuItemId,
           cantidad: item.cantidad,
           precio_unitario: parseFloat(item.precio_base),
-          nombre_item_snapshot: item.nombre
+          nombre_item_snapshot: formatOrderItemSnapshot(item)
         }
       })
 
@@ -742,7 +773,7 @@ export default function PedidosPage() {
           const orderItems = cuenta.productos.map(item => ({
             order_id: newOrder.id,
             menu_item_id: item.id,
-            nombre_item_snapshot: item.tiene_promo ? `${item.nombre} (${item.promo_descuento}% OFF)` : item.nombre,
+            nombre_item_snapshot: formatOrderItemSnapshot(item),
             precio_unitario: parseFloat(item.precio_base),
             cantidad: item.cantidad,
             total_item: parseFloat(item.precio_base) * item.cantidad
@@ -791,7 +822,7 @@ export default function PedidosPage() {
         const orderItems = cart.map(item => ({
           order_id: newOrder.id,
           menu_item_id: item.id,
-          nombre_item_snapshot: item.tiene_promo ? `${item.nombre} (${item.promo_descuento}% OFF)` : item.nombre,
+          nombre_item_snapshot: formatOrderItemSnapshot(item),
           precio_unitario: parseFloat(item.precio_base),
           cantidad: item.cantidad,
           total_item: parseFloat(item.precio_base) * item.cantidad
@@ -857,7 +888,7 @@ export default function PedidosPage() {
       const orderItems = cart.map(item => ({
         order_id: addingToOrder.id,
         menu_item_id: item.id,
-        nombre_item_snapshot: `🆕 ${item.nombre}`, // Marcar como nuevo con emoji
+        nombre_item_snapshot: formatOrderItemSnapshot(item, { nuevo: true }), // Marcar como nuevo con emoji
         precio_unitario: parseFloat(item.precio_base),
         cantidad: item.cantidad,
         total_item: parseFloat(item.precio_base) * item.cantidad
@@ -1028,12 +1059,14 @@ export default function PedidosPage() {
                         <p className="font-semibold mb-1">Items:</p>
                         {order.order_items?.map(item => {
                           const esNuevo = item.nombre_item_snapshot?.startsWith('🆕') || item.es_adicional
+                          const paraLlevar = isTakeawayItem(item)
                           return (
-                            <div key={item.id} className={`flex justify-between text-xs py-1 ${esNuevo ? 'bg-green-100 px-2 rounded border-l-4 border-green-500 my-1' : ''}`}>
-                              <span className={esNuevo ? 'font-bold text-green-700' : ''}>
-                                {item.cantidad}x {item.nombre_item_snapshot}
+                            <div key={item.id} className={`flex justify-between gap-2 text-xs py-1 ${paraLlevar ? 'bg-amber-100 px-2 rounded border-l-4 border-amber-500 my-1' : esNuevo ? 'bg-green-100 px-2 rounded border-l-4 border-green-500 my-1' : ''}`}>
+                              <span className={paraLlevar ? 'font-bold text-amber-800' : esNuevo ? 'font-bold text-green-700' : ''}>
+                                {item.cantidad}x {getDisplayItemName(item.nombre_item_snapshot)}
+                                {paraLlevar && <Badge className="ml-2 bg-amber-500 text-[10px]">PARA LLEVAR</Badge>}
                               </span>
-                              <span className={esNuevo ? 'font-bold text-green-700' : ''}>
+                              <span className={paraLlevar ? 'font-bold text-amber-800' : esNuevo ? 'font-bold text-green-700' : ''}>
                                 {formatCurrency(item.precio_unitario * item.cantidad)}
                               </span>
                             </div>
@@ -1135,12 +1168,18 @@ export default function PedidosPage() {
                       )}
                       <div className="border-t pt-2 mt-2">
                         <p className="font-semibold mb-1">Items:</p>
-                        {order.order_items?.map(item => (
-                          <div key={item.id} className="flex justify-between text-xs">
-                            <span>{item.cantidad}x {item.nombre_item_snapshot}</span>
+                        {order.order_items?.map(item => {
+                          const paraLlevar = isTakeawayItem(item)
+                          return (
+                          <div key={item.id} className={`flex justify-between gap-2 text-xs py-1 ${paraLlevar ? 'bg-amber-100 px-2 rounded border-l-4 border-amber-500 my-1' : ''}`}>
+                            <span className={paraLlevar ? 'font-bold text-amber-800' : ''}>
+                              {item.cantidad}x {getDisplayItemName(item.nombre_item_snapshot)}
+                              {paraLlevar && <Badge className="ml-2 bg-amber-500 text-[10px]">PARA LLEVAR</Badge>}
+                            </span>
                             <span>{formatCurrency(item.precio_unitario * item.cantidad)}</span>
                           </div>
-                        ))}
+                          )
+                        })}
                       </div>
                       <div className="border-t pt-2 mt-2 flex justify-between font-bold text-lg">
                         <span>Total:</span>
@@ -1334,10 +1373,13 @@ export default function PedidosPage() {
                 {/* Lista de productos del carrito actual */}
                 <div className="space-y-2 mb-4 max-h-[200px] overflow-y-auto">
                   {getCurrentCartItems().map(item => (
-                    <div key={item.id} className="bg-gray-50 p-2 rounded-lg">
+                    <div key={item.id} className={`p-2 rounded-lg border ${isTakeawayItem(item) ? 'bg-amber-50 border-amber-300' : 'bg-gray-50 border-transparent'}`}>
                       <div className="flex items-start justify-between mb-2">
                         <div>
                           <span className="text-sm font-medium">{item.nombre}</span>
+                          {isTakeawayItem(item) && (
+                            <Badge className="ml-2 bg-amber-500 text-[10px]">PARA LLEVAR</Badge>
+                          )}
                           {item.tiene_promo && (
                             <span className="ml-2 text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded">
                               -{item.promo_descuento}%
@@ -1348,7 +1390,7 @@ export default function PedidosPage() {
                           <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
-                      <div className="flex items-center justify-between">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
                         <div className="flex items-center space-x-2">
                           <Button size="sm" variant="outline" onClick={() => updateCartQuantity(item.id, -1)}>
                             <Minus className="h-3 w-3" />
@@ -1368,6 +1410,14 @@ export default function PedidosPage() {
                             {formatCurrency(parseFloat(item.precio_base) * item.cantidad)}
                           </span>
                         </div>
+                        <Button
+                          size="sm"
+                          variant={isTakeawayItem(item) ? 'default' : 'outline'}
+                          className={isTakeawayItem(item) ? 'bg-amber-500 hover:bg-amber-600 text-white' : 'border-amber-300 text-amber-700 hover:bg-amber-50'}
+                          onClick={() => toggleCartItemTakeaway(item.id)}
+                        >
+                          Para llevar
+                        </Button>
                       </div>
                     </div>
                   ))}
@@ -1533,14 +1583,19 @@ export default function PedidosPage() {
 
                 <div className="space-y-2 mb-4">
                   {cart.map(item => (
-                    <div key={item.id} className="bg-gray-50 p-2 rounded-lg">
+                    <div key={item.id} className={`p-2 rounded-lg border ${isTakeawayItem(item) ? 'bg-amber-50 border-amber-300' : 'bg-gray-50 border-transparent'}`}>
                       <div className="flex items-start justify-between mb-2">
-                        <span className="font-medium text-sm">{item.nombre}</span>
+                        <span className="font-medium text-sm">
+                          {item.nombre}
+                          {isTakeawayItem(item) && (
+                            <Badge className="ml-2 bg-amber-500 text-[10px]">PARA LLEVAR</Badge>
+                          )}
+                        </span>
                         <Button size="sm" variant="ghost" onClick={() => removeFromCart(item.id)}>
                           <Trash2 className="h-4 w-4 text-red-500" />
                         </Button>
                       </div>
-                      <div className="flex items-center justify-between">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
                         <div className="flex items-center space-x-2">
                           <Button size="sm" variant="outline" onClick={() => updateCartQuantity(item.id, -1)}>
                             <Minus className="h-3 w-3" />
@@ -1551,6 +1606,14 @@ export default function PedidosPage() {
                           </Button>
                         </div>
                         <span className="font-bold text-orange-600">{formatCurrency(parseFloat(item.precio_base) * item.cantidad)}</span>
+                        <Button
+                          size="sm"
+                          variant={isTakeawayItem(item) ? 'default' : 'outline'}
+                          className={isTakeawayItem(item) ? 'bg-amber-500 hover:bg-amber-600 text-white' : 'border-amber-300 text-amber-700 hover:bg-amber-50'}
+                          onClick={() => toggleCartItemTakeaway(item.id)}
+                        >
+                          Para llevar
+                        </Button>
                       </div>
                     </div>
                   ))}
@@ -1702,8 +1765,11 @@ export default function PedidosPage() {
                   <div className="mb-4 p-3 bg-gray-50 rounded-lg border">
                     <p className="font-semibold text-sm mb-2 text-gray-600">Items actuales:</p>
                     {addingToOrder.order_items.map(item => (
-                      <div key={item.id} className="flex justify-between text-xs py-1 text-gray-500">
-                        <span>{item.cantidad}x {item.nombre_item_snapshot}</span>
+                      <div key={item.id} className={`flex justify-between gap-2 text-xs py-1 ${isTakeawayItem(item) ? 'bg-amber-100 px-2 rounded border-l-4 border-amber-500 text-amber-800 font-bold my-1' : 'text-gray-500'}`}>
+                        <span>
+                          {item.cantidad}x {getDisplayItemName(item.nombre_item_snapshot)}
+                          {isTakeawayItem(item) && <Badge className="ml-2 bg-amber-500 text-[10px]">PARA LLEVAR</Badge>}
+                        </span>
                         <span>{formatCurrency(item.precio_unitario * item.cantidad)}</span>
                       </div>
                     ))}
@@ -1723,14 +1789,19 @@ export default function PedidosPage() {
                     </div>
                   ) : (
                     cart.map(item => (
-                      <div key={item.id} className="bg-purple-50 p-2 rounded-lg border border-purple-200">
+                      <div key={item.id} className={`p-2 rounded-lg border ${isTakeawayItem(item) ? 'bg-amber-50 border-amber-300' : 'bg-purple-50 border-purple-200'}`}>
                         <div className="flex items-start justify-between mb-2">
-                          <span className="font-medium text-sm">{item.nombre}</span>
+                          <span className="font-medium text-sm">
+                            {item.nombre}
+                            {isTakeawayItem(item) && (
+                              <Badge className="ml-2 bg-amber-500 text-[10px]">PARA LLEVAR</Badge>
+                            )}
+                          </span>
                           <button onClick={() => removeFromCart(item.id)} className="text-red-500">
                             <Trash2 className="h-4 w-4" />
                           </button>
                         </div>
-                        <div className="flex items-center justify-between">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
                           <div className="flex items-center space-x-2">
                             <Button size="sm" variant="outline" onClick={() => updateCartQuantity(item.id, -1)}>
                               <Minus className="h-3 w-3" />
@@ -1741,6 +1812,14 @@ export default function PedidosPage() {
                             </Button>
                           </div>
                           <span className="font-bold text-purple-600">{formatCurrency(parseFloat(item.precio_base) * item.cantidad)}</span>
+                          <Button
+                            size="sm"
+                            variant={isTakeawayItem(item) ? 'default' : 'outline'}
+                            className={isTakeawayItem(item) ? 'bg-amber-500 hover:bg-amber-600 text-white' : 'border-amber-300 text-amber-700 hover:bg-amber-50'}
+                            onClick={() => toggleCartItemTakeaway(item.id)}
+                          >
+                            Para llevar
+                          </Button>
                         </div>
                       </div>
                     ))
