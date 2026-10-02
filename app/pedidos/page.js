@@ -80,6 +80,7 @@ export default function PedidosPage() {
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [addItemsDialogOpen, setAddItemsDialogOpen] = useState(false)
   const [addingToOrder, setAddingToOrder] = useState(null) // Pedido al que se agregará más productos
+  const [paymentOrderId, setPaymentOrderId] = useState(null)
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -271,6 +272,17 @@ export default function PedidosPage() {
 
     setOrders(categorized)
   }
+
+  useEffect(() => {
+    const handlePaymentComplete = (event) => {
+      if (event.origin !== window.location.origin || event.data?.type !== 'crm-restaurante:payment-complete') return
+      setPaymentOrderId(null)
+      loadOrders()
+    }
+
+    window.addEventListener('message', handlePaymentComplete)
+    return () => window.removeEventListener('message', handlePaymentComplete)
+  }, [])
 
   // Funciones para cambiar estado del pedido
   const handleIniciarPreparacion = async (orderId) => {
@@ -1214,7 +1226,7 @@ export default function PedidosPage() {
                         <Button
                           size="sm"
                           className="w-full bg-orange-500 hover:bg-orange-600 text-white"
-                          onClick={() => router.push(`/cobro?pedido=${order.id}`)}
+                          onClick={() => setPaymentOrderId(order.id)}
                         >
                           <CreditCard className="h-4 w-4 mr-1" /> Cobrar
                         </Button>
@@ -1939,6 +1951,27 @@ export default function PedidosPage() {
             </div>
           </DialogContent>
         </Dialog>
+
+        {paymentOrderId && (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-3 sm:p-6">
+            <div className="relative h-[86vh] w-full max-w-xl overflow-hidden rounded-lg bg-white shadow-2xl">
+              <button
+                onClick={() => setPaymentOrderId(null)}
+                className="absolute right-3 top-3 z-10 rounded-md bg-white/90 p-2 text-gray-600 shadow hover:bg-white hover:text-gray-900"
+                title="Cerrar cobro"
+                aria-label="Cerrar cobro"
+              >
+                <X className="h-5 w-5" />
+              </button>
+              <iframe
+                key={paymentOrderId}
+                src={`/cobro?pedido=${paymentOrderId}&embed=1`}
+                title="Procesar pago"
+                className="h-full w-full border-0"
+              />
+            </div>
+          </div>
+        )}
         </div>
       </div>
     </div>

@@ -37,6 +37,7 @@ export default function CobroPage() {
   const [selectedOrder, setSelectedOrder] = useState(null)
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false)
   const [paymentOrderId, setPaymentOrderId] = useState(null)
+  const [embeddedMode, setEmbeddedMode] = useState(false)
 
   const [paymentForm, setPaymentForm] = useState({
     customer_nombre: '',
@@ -84,7 +85,9 @@ export default function CobroPage() {
 
   // Abre el mismo diálogo de pago al llegar desde una tarjeta entregada.
   useEffect(() => {
-    const orderId = new URLSearchParams(window.location.search).get('pedido')
+    const params = new URLSearchParams(window.location.search)
+    const orderId = params.get('pedido')
+    setEmbeddedMode(params.get('embed') === '1')
     if (orderId) setPaymentOrderId(orderId)
   }, [])
 
@@ -1237,6 +1240,9 @@ export default function CobroPage() {
 
       setPaymentDialogOpen(false)
       loadOrders()
+      if (window.parent !== window) {
+        window.parent.postMessage({ type: 'crm-restaurante:payment-complete' }, window.location.origin)
+      }
     } catch (error) {
       console.error('Error procesando pago:', error)
       toast.error('Error al procesar pago')
@@ -1248,9 +1254,9 @@ export default function CobroPage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      <Sidebar />
-      <div className="flex-1 overflow-auto">
+    <div className={embeddedMode ? 'min-h-screen bg-transparent' : 'flex min-h-screen bg-gray-50'}>
+      {!embeddedMode && <Sidebar />}
+      <div className={embeddedMode ? 'hidden' : 'flex-1 overflow-auto'}>
       <div className="container mx-auto px-4 py-6">
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-gray-800">Sistema de Cobro</h1>
@@ -1605,10 +1611,12 @@ export default function CobroPage() {
             />
           </TabsContent>
         </Tabs>
+        </div>
+      </div>
 
-        {/* Dialog de Pago */}
-        <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
-          <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+      {/* Dialog de Pago */}
+      <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Procesar Pago</DialogTitle>
             </DialogHeader>
@@ -1962,10 +1970,8 @@ export default function CobroPage() {
                 </Button>
               </div>
             )}
-          </DialogContent>
-        </Dialog>
-        </div>
-      </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
