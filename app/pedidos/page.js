@@ -1020,7 +1020,7 @@ export default function PedidosPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
+        <div className="grid grid-cols-1 gap-6 items-start md:grid-cols-2">
           <section className="min-w-0">
             <div className="flex items-center justify-between border-b pb-3 mb-4">
               <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
