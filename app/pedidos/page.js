@@ -1047,16 +1047,13 @@ export default function PedidosPage() {
                 className="h-9 pl-9 text-sm bg-white"
               />
             </div>
-            <div
-              className="grid gap-3"
-              style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 20rem), min(100%, 25rem)))' }}
-            >
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
               {filteredEnProceso.map(order => (
-                <Card key={order.id} className={`${order.estado === 'NUEVO' ? 'border border-blue-400' : order.estado === 'LISTO' ? 'border border-green-400' : 'border border-yellow-400'} ${order.origen === 'DIGITAL' ? 'ring-1 ring-purple-400' : ''}`}>
+                <Card key={order.id} className={`min-w-0 ${order.estado === 'NUEVO' ? 'border border-blue-400' : order.estado === 'LISTO' ? 'border border-green-400' : 'border border-yellow-400'} ${order.origen === 'DIGITAL' ? 'ring-1 ring-purple-400' : ''}`}>
                   <CardHeader className={`p-3 pb-2 ${order.estado === 'NUEVO' ? 'bg-blue-50' : order.estado === 'LISTO' ? 'bg-green-50' : 'bg-yellow-50'}`}>
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <CardTitle className="text-base flex flex-wrap items-center gap-y-1">
+                    <div className="flex flex-wrap items-start justify-between gap-1">
+                      <div className="min-w-0 flex-1">
+                        <CardTitle className="text-base flex flex-wrap items-center gap-y-1 break-words">
                           {order.customers?.nombre || order.customer_nombre || 'Cliente sin nombre'}
                           {isOrderMarkedPaid(order) && (
                             <Badge className="ml-2 bg-green-600 text-xs">✓ Ya pagado</Badge>
@@ -1103,11 +1100,11 @@ export default function PedidosPage() {
                           const paraLlevar = isTakeawayItem(item)
                           return (
                             <div key={item.id} className={`flex justify-between gap-2 text-xs py-0.5 ${paraLlevar ? 'bg-amber-100 px-1.5 rounded border-l-4 border-amber-500 my-0.5' : esNuevo ? 'bg-green-100 px-1.5 rounded border-l-4 border-green-500 my-0.5' : ''}`}>
-                              <span className={paraLlevar ? 'font-bold text-amber-800' : esNuevo ? 'font-bold text-green-700' : ''}>
+                              <span className={`min-w-0 flex-1 break-words ${paraLlevar ? 'font-bold text-amber-800' : esNuevo ? 'font-bold text-green-700' : ''}`}>
                                 {item.cantidad}x {getDisplayItemName(item.nombre_item_snapshot)}
                                 {paraLlevar && <Badge className="ml-2 bg-amber-500 text-[10px]">PARA LLEVAR</Badge>}
                               </span>
-                              <span className={paraLlevar ? 'font-bold text-amber-800' : esNuevo ? 'font-bold text-green-700' : ''}>
+                              <span className={`shrink-0 ${paraLlevar ? 'font-bold text-amber-800' : esNuevo ? 'font-bold text-green-700' : ''}`}>
                                 {formatCurrency(item.precio_unitario * item.cantidad)}
                               </span>
                             </div>
@@ -1115,14 +1112,14 @@ export default function PedidosPage() {
                         })}
                         </div>
                       </div>
-                      <div className="border-t pt-1.5 mt-1.5 flex justify-between font-bold text-base">
+                      <div className="border-t pt-1.5 mt-1.5 flex flex-wrap justify-between gap-1 font-bold text-base">
                         <span>Total:</span>
                         <span className="text-orange-600">{formatCurrency(order.total)}</span>
                       </div>
 
                       {/* Botones de acción */}
                       <div className="flex flex-col space-y-1.5 mt-2">
-                        <div className="flex space-x-1.5">
+                        <div className="flex flex-wrap gap-1.5">
                           <Button size="sm" variant="outline" className="flex-1" onClick={() => openEditOrder(order)}>
                             <Edit className="h-4 w-4 mr-1" /> Editar
                           </Button>
@@ -1188,16 +1185,13 @@ export default function PedidosPage() {
                 className="h-9 pl-9 text-sm bg-white"
               />
             </div>
-            <div
-              className="grid gap-3"
-              style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 20rem), min(100%, 25rem)))' }}
-            >
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
               {filteredEntregados.map(order => (
-                <Card key={order.id} className="border border-purple-200 hover:border-purple-400 transition-all">
+                <Card key={order.id} className="min-w-0 border border-purple-200 hover:border-purple-400 transition-all">
                   <CardHeader className="bg-purple-50 p-3 pb-2">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <CardTitle className="text-base flex flex-wrap items-center gap-y-1">
+                    <div className="flex flex-wrap items-start justify-between gap-1">
+                      <div className="min-w-0 flex-1">
+                        <CardTitle className="text-base flex flex-wrap items-center gap-y-1 break-words">
                           {order.customers?.nombre || order.customer_nombre || 'Cliente sin nombre'}
                           {isOrderMarkedPaid(order) && (
                             <Badge className="ml-2 bg-green-600 text-xs">✓ Ya pagado</Badge>
@@ -1232,17 +1226,17 @@ export default function PedidosPage() {
                           const paraLlevar = isTakeawayItem(item)
                           return (
                           <div key={item.id} className={`flex justify-between gap-2 text-xs py-0.5 ${paraLlevar ? 'bg-amber-100 px-1.5 rounded border-l-4 border-amber-500 my-0.5' : ''}`}>
-                            <span className={paraLlevar ? 'font-bold text-amber-800' : ''}>
+                            <span className={`min-w-0 flex-1 break-words ${paraLlevar ? 'font-bold text-amber-800' : ''}`}>
                               {item.cantidad}x {getDisplayItemName(item.nombre_item_snapshot)}
                               {paraLlevar && <Badge className="ml-2 bg-amber-500 text-[10px]">PARA LLEVAR</Badge>}
                             </span>
-                            <span>{formatCurrency(item.precio_unitario * item.cantidad)}</span>
+                            <span className="shrink-0">{formatCurrency(item.precio_unitario * item.cantidad)}</span>
                           </div>
                           )
                         })}
                         </div>
                       </div>
-                      <div className="border-t pt-1.5 mt-1.5 flex justify-between font-bold text-base">
+                      <div className="border-t pt-1.5 mt-1.5 flex flex-wrap justify-between gap-1 font-bold text-base">
                         <span>Total:</span>
                         <span className="text-orange-600">{formatCurrency(order.total)}</span>
                       </div>
@@ -1258,12 +1252,12 @@ export default function PedidosPage() {
                         </Button>
                         <Button
                           size="sm"
-                          className="w-full bg-purple-500 hover:bg-purple-600 text-white"
+                          className="h-auto min-h-9 w-full whitespace-normal bg-purple-500 py-1.5 text-white hover:bg-purple-600"
                           onClick={() => openAddItemsDialog(order)}
                         >
                           <Plus className="h-4 w-4 mr-1" /> Agregar más productos
                         </Button>
-                        <div className="flex space-x-1.5">
+                        <div className="flex flex-wrap gap-1.5">
                           <Button size="sm" variant="outline" className="flex-1" onClick={() => openEditOrder(order)}>
                             <Edit className="h-4 w-4 mr-1" /> Editar
                           </Button>

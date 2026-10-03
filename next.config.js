@@ -27,7 +27,8 @@ const nextConfig = {
       {
         source: "/pedidos",
         headers: [
-          { key: "Cache-Control", value: "no-store, max-age=0" },
+          { key: "Cache-Control", value: "private, no-store, no-cache, max-age=0, must-revalidate" },
+          { key: "Vercel-CDN-Cache-Control", value: "no-store" },
         ],
       },
       {
