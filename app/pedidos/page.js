@@ -1002,22 +1002,19 @@ export default function PedidosPage() {
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar />
       <div className="flex-1 overflow-auto">
-      <div className="container mx-auto px-4 py-3 sm:py-4">
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-xl font-bold leading-tight text-gray-800 sm:text-2xl">Gestión de Pedidos</h1>
-            <p className="hidden text-sm text-gray-600 xl:block">Crea y administra pedidos</p>
-          </div>
-          <div className="flex items-center gap-2 sm:gap-3">
+      <div className="container mx-auto px-4 py-2">
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <h1 className="text-lg font-bold leading-tight text-gray-800 sm:text-xl">Gestión de Pedidos</h1>
+          <div className="flex items-center gap-2">
             {/* Toggle de sonido */}
-            <div className="flex items-center space-x-2 bg-white px-3 py-2 rounded-lg border">
-              <button onClick={toggleSound} className="flex items-center space-x-2">
+            <div className="flex h-9 items-center rounded-lg border bg-white px-2">
+              <button onClick={toggleSound} className="flex items-center gap-1.5">
                 {soundEnabled ? (
-                  <Volume2 className="h-5 w-5 text-green-600" />
+                  <Volume2 className="h-4 w-4 text-green-600" />
                 ) : (
-                  <VolumeX className="h-5 w-5 text-gray-400" />
+                  <VolumeX className="h-4 w-4 text-gray-400" />
                 )}
-                <span className="text-sm">{soundEnabled ? 'Sonido ON' : 'Sonido OFF'}</span>
+                <span className="text-xs sm:text-sm">{soundEnabled ? 'Sonido ON' : 'Sonido OFF'}</span>
               </button>
             </div>
             <Button
@@ -1032,19 +1029,19 @@ export default function PedidosPage() {
 
         <div className="grid grid-cols-1 gap-6 items-start md:grid-cols-2">
           <section className="min-w-0">
-            <div className="flex items-center justify-between border-b pb-3 mb-4">
-              <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+            <div className="mb-2 flex items-center justify-between border-b pb-1.5">
+              <h2 className="flex items-center gap-2 text-lg font-semibold text-gray-800">
                 <span>🔥 En Proceso</span>
                 <Badge style={{ backgroundColor: themeColors.secondary }}>{orders.enProceso.length}</Badge>
               </h2>
             </div>
-            <div className="relative mb-3">
+            <div className="relative mb-2">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <Input
                 value={searchEnProceso}
                 onChange={(event) => setSearchEnProceso(event.target.value)}
                 placeholder="Buscar por cliente o mesa..."
-                className="h-9 pl-9 text-sm bg-white"
+                className="h-8 bg-white pl-9 text-sm"
               />
             </div>
             <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
@@ -1170,19 +1167,19 @@ export default function PedidosPage() {
           </section>
 
           <section className="min-w-0">
-            <div className="flex items-center justify-between border-b pb-3 mb-4">
-              <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+            <div className="mb-2 flex items-center justify-between border-b pb-1.5">
+              <h2 className="flex items-center gap-2 text-lg font-semibold text-gray-800">
                 <span>✅ Entregados</span>
                 <Badge className="bg-green-500">{orders.entregados.length}</Badge>
               </h2>
             </div>
-            <div className="relative mb-3">
+            <div className="relative mb-2">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <Input
                 value={searchEntregados}
                 onChange={(event) => setSearchEntregados(event.target.value)}
                 placeholder="Buscar por cliente o mesa..."
-                className="h-9 pl-9 text-sm bg-white"
+                className="h-8 bg-white pl-9 text-sm"
               />
             </div>
             <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
