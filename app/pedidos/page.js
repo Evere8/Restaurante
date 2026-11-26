@@ -17,6 +17,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Plus, Minus, ShoppingCart, Search, Trash2, Edit, Play, CheckCircle, Volume2, VolumeX, Users, UserPlus, X, CreditCard } from 'lucide-react'
 import OrderTimer from '@/components/OrderTimer'
 import { toast } from 'sonner'
@@ -81,6 +82,7 @@ export default function PedidosPage() {
   const [addItemsDialogOpen, setAddItemsDialogOpen] = useState(false)
   const [addingToOrder, setAddingToOrder] = useState(null) // Pedido al que se agregará más productos
   const [paymentOrderId, setPaymentOrderId] = useState(null)
+  const [savingPaymentOrderId, setSavingPaymentOrderId] = useState(null)
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -524,27 +526,60 @@ export default function PedidosPage() {
     }
   }
 
-  const isOrderMarkedPaid = (order) => order?.metodo_pago === 'YA_PAGADO'
+  const isOrderMarkedPaid = (order) => Boolean(order?.metodo_pago && order?.fecha_pago)
 
-  const handleToggleYaPagado = async (order) => {
+  const handleSetYaPagado = async (order, method) => {
+    if (savingPaymentOrderId) return
+    setSavingPaymentOrderId(order.id)
     try {
-      const nextPaid = !isOrderMarkedPaid(order)
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('orders')
         .update({
-          metodo_pago: nextPaid ? 'YA_PAGADO' : null,
-          fecha_pago: nextPaid ? new Date().toISOString() : null
+          metodo_pago: method,
+          fecha_pago: method ? (order.fecha_pago || new Date().toISOString()) : null
         })
         .eq('id', order.id)
+        .eq('restaurant_id', restaurant.id)
+        .neq('estado', 'PAGADO')
+        .select('id')
+        .maybeSingle()
 
       if (error) throw error
-      toast.success(nextPaid ? 'Pedido marcado como ya pagado' : 'Marca de pago quitada')
-      loadOrders()
+      if (!data) throw new Error('El pedido ya fue cobrado o no está disponible')
+      toast.success(method ? `Pago registrado: ${method === 'TARJETA_DEBITO' ? 'tarjeta' : method}` : 'Marca de pago quitada')
+      await loadOrders()
     } catch (error) {
       console.error('Error marcando pago:', error)
       toast.error('Error al actualizar el pago')
+    } finally {
+      setSavingPaymentOrderId(null)
     }
   }
+
+  const paidMethodSelector = (order) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          size="sm"
+          variant={isOrderMarkedPaid(order) ? 'default' : 'outline'}
+          className={isOrderMarkedPaid(order) ? 'bg-green-600 hover:bg-green-700 text-white' : 'border-green-300 text-green-700 hover:bg-green-50'}
+          disabled={Boolean(savingPaymentOrderId)}
+          title={isOrderMarkedPaid(order) ? `Pagado con ${order.metodo_pago}. Cambiar método` : 'Marcar como ya pagado'}
+          aria-label={isOrderMarkedPaid(order) ? `Pagado con ${order.metodo_pago}. Cambiar método` : 'Marcar como ya pagado'}
+        >
+          <CheckCircle className="h-4 w-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem onSelect={() => handleSetYaPagado(order, 'TARJETA_DEBITO')}>Tarjeta</DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => handleSetYaPagado(order, 'QR')}>QR</DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => handleSetYaPagado(order, 'EFECTIVO')}>Efectivo</DropdownMenuItem>
+        {isOrderMarkedPaid(order) && (
+          <DropdownMenuItem onSelect={() => handleSetYaPagado(order, null)} className="text-red-600">Quitar marca de pagado</DropdownMenuItem>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
 
   const handleOrderCustomerChange = (name) => {
     setOrderForm((current) => ({
@@ -1053,7 +1088,7 @@ export default function PedidosPage() {
                         <CardTitle className="text-base flex flex-wrap items-center gap-y-1 break-words">
                           {order.customers?.nombre || order.customer_nombre || 'Cliente sin nombre'}
                           {isOrderMarkedPaid(order) && (
-                            <Badge className="ml-2 bg-green-600 text-xs">✓ Ya pagado</Badge>
+                            <Badge className="ml-2 bg-green-600 text-xs">✓ Ya pagado{order.metodo_pago !== 'YA_PAGADO' ? ` · ${order.metodo_pago === 'TARJETA_DEBITO' ? 'Tarjeta' : order.metodo_pago}` : ''}</Badge>
                           )}
                           {order.origen === 'DIGITAL' && (
                             <Badge className="ml-2 bg-purple-500 text-xs">📱 Cliente</Badge>
@@ -1120,15 +1155,7 @@ export default function PedidosPage() {
                           <Button size="sm" variant="outline" className="flex-1" onClick={() => openEditOrder(order)}>
                             <Edit className="h-4 w-4 mr-1" /> Editar
                           </Button>
-                          <Button
-                            size="sm"
-                            variant={isOrderMarkedPaid(order) ? 'default' : 'outline'}
-                            className={isOrderMarkedPaid(order) ? 'bg-green-600 hover:bg-green-700 text-white' : 'border-green-300 text-green-700 hover:bg-green-50'}
-                            onClick={() => handleToggleYaPagado(order)}
-                            title="Marcar como ya pagado"
-                          >
-                            <CheckCircle className="h-4 w-4" />
-                          </Button>
+                          {paidMethodSelector(order)}
                           <Button size="sm" variant="destructive" onClick={() => handleEliminarPedido(order.id)}>
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -1191,7 +1218,7 @@ export default function PedidosPage() {
                         <CardTitle className="text-base flex flex-wrap items-center gap-y-1 break-words">
                           {order.customers?.nombre || order.customer_nombre || 'Cliente sin nombre'}
                           {isOrderMarkedPaid(order) && (
-                            <Badge className="ml-2 bg-green-600 text-xs">✓ Ya pagado</Badge>
+                            <Badge className="ml-2 bg-green-600 text-xs">✓ Ya pagado{order.metodo_pago !== 'YA_PAGADO' ? ` · ${order.metodo_pago === 'TARJETA_DEBITO' ? 'Tarjeta' : order.metodo_pago}` : ''}</Badge>
                           )}
                           {order.origen === 'DIGITAL' && (
                             <Badge className="ml-2 bg-purple-500 text-xs">📱 Cliente</Badge>
@@ -1258,15 +1285,7 @@ export default function PedidosPage() {
                           <Button size="sm" variant="outline" className="flex-1" onClick={() => openEditOrder(order)}>
                             <Edit className="h-4 w-4 mr-1" /> Editar
                           </Button>
-                          <Button
-                            size="sm"
-                            variant={isOrderMarkedPaid(order) ? 'default' : 'outline'}
-                            className={isOrderMarkedPaid(order) ? 'bg-green-600 hover:bg-green-700 text-white' : 'border-green-300 text-green-700 hover:bg-green-50'}
-                            onClick={() => handleToggleYaPagado(order)}
-                            title="Marcar como ya pagado"
-                          >
-                            <CheckCircle className="h-4 w-4" />
-                          </Button>
+                          {paidMethodSelector(order)}
                           <Button size="sm" variant="destructive" onClick={() => handleEliminarPedido(order.id)}>
                             <Trash2 className="h-4 w-4" />
                           </Button>

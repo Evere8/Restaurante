@@ -17,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
-import { CreditCard, DollarSign, X, Tag, CheckCircle, FileText, Receipt, Coins, Trash2, Download, Calendar, Clock, Printer } from 'lucide-react'
+import { CreditCard, DollarSign, X, Tag, CheckCircle, FileText, Receipt, Coins, Trash2, Download, Calendar, Clock, Printer, Search } from 'lucide-react'
 import { toast } from 'sonner'
 
 const stripNewItemPrefix = (name = '') => name.replace(/^🆕\s*/, '')
@@ -32,6 +32,7 @@ export default function CobroPage() {
   const router = useRouter()
   const [ordersACobrar, setOrdersACobrar] = useState([])
   const [ordersCobrados, setOrdersCobrados] = useState([])
+  const [searchCobrados, setSearchCobrados] = useState('')
   const [ordersPendientes, setOrdersPendientes] = useState([])
   const [registeredCustomers, setRegisteredCustomers] = useState([])
   const [selectedOrder, setSelectedOrder] = useState(null)
@@ -66,7 +67,18 @@ export default function CobroPage() {
     'Cliente sin nombre'
   )
 
-  const isOrderMarkedPaid = (order) => order?.metodo_pago === 'YA_PAGADO'
+  const isOrderMarkedPaid = (order) => Boolean(order?.metodo_pago && order?.fecha_pago)
+
+  const filteredCobrados = ordersCobrados.filter((order) => {
+    const query = searchCobrados.trim().toLocaleLowerCase()
+    if (!query) return true
+    const amount = Number(order.total) || 0
+    const numericQuery = query.replace(/[^\d]/g, '')
+    const amountMatches = numericQuery && [String(amount), Math.round(amount).toLocaleString('es-PY')]
+      .some((value) => value.replace(/[^\d]/g, '').includes(numericQuery))
+    return [order.mesa, order.customers?.nombre, order.customer_nombre, order.factura_nombre]
+      .some((value) => String(value || '').toLocaleLowerCase().includes(query)) || amountMatches
+  })
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -449,9 +461,9 @@ export default function CobroPage() {
       customer_nombre: order.customers?.nombre || order.customer_nombre || '',
       customer_telefono: order.customers?.telefono || order.customer_telefono || '',
       acepta_promociones: false,
-      metodo_pago: isOrderMarkedPaid(order) ? 'YA_PAGADO' : '',
+      metodo_pago: order.metodo_pago || '',
       cupon_codigo: '',
-      generar_factura: false,
+      generar_factura: Boolean(order.metodo_pago && (order.customers?.ruc || order.factura_ruc) && (order.customers?.nombre || order.factura_nombre || order.customer_nombre)),
       generar_recibo: false,
       factura_ruc: order.customers?.ruc || order.factura_ruc || '',
       factura_nombre: order.customers?.nombre || order.factura_nombre || order.customer_nombre || '',
@@ -1290,7 +1302,7 @@ export default function CobroPage() {
                         <CardTitle className="text-lg flex items-center">
                           {getOrderClientName(order)}
                           {isOrderMarkedPaid(order) && (
-                            <Badge className="ml-2 bg-green-600 text-xs">✓ Ya pagado</Badge>
+                            <Badge className="ml-2 bg-green-600 text-xs">✓ Ya pagado{order.metodo_pago !== 'YA_PAGADO' ? ` · ${order.metodo_pago === 'TARJETA_DEBITO' ? 'Tarjeta' : order.metodo_pago}` : ''}</Badge>
                           )}
                           {itemsNuevos.length > 0 && (
                             <span className="ml-2 bg-green-500 text-white text-xs px-2 py-0.5 rounded-full animate-pulse">
@@ -1500,6 +1512,16 @@ export default function CobroPage() {
           </TabsContent>
 
           <TabsContent value="cobrados">
+            <div className="relative mb-4 max-w-lg">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <Input
+                value={searchCobrados}
+                onChange={(event) => setSearchCobrados(event.target.value)}
+                placeholder="Buscar por mesa, nombre de factura o monto..."
+                aria-label="Buscar pedidos cobrados por mesa, nombre de factura o monto"
+                className="pl-9"
+              />
+            </div>
             {/* Header con botón de exportar */}
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center space-x-2">
@@ -1517,7 +1539,7 @@ export default function CobroPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {ordersCobrados.map(order => (
+              {filteredCobrados.map(order => (
                 <Card key={order.id} className="border border-gray-200 hover:shadow-md transition-shadow">
                   <CardHeader className="bg-gradient-to-r from-gray-50 to-green-50 pb-2">
                     <div className="flex items-start justify-between">
@@ -1588,11 +1610,11 @@ export default function CobroPage() {
               ))}
             </div>
 
-            {ordersCobrados.length === 0 && (
+            {filteredCobrados.length === 0 && (
               <Card>
                 <CardContent className="py-12 text-center">
                   <CheckCircle className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                  <p className="text-gray-600">No hay pedidos cobrados en los últimos 30 días</p>
+                  <p className="text-gray-600">{searchCobrados ? 'No se encontraron pedidos cobrados' : 'No hay pedidos cobrados en los últimos 30 días'}</p>
                 </CardContent>
               </Card>
             )}
